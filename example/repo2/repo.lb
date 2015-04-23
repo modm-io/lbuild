@@ -1,0 +1,11 @@
+
+def prepare(repo):
+	
+	repo.require_option("target", "Target architecture for the library.")
+	repo.require_option("include_tests", "Include the unit-tests")
+
+	#repo['b'] = 1
+	#value = repo['a']
+
+def configure(options):
+	pass

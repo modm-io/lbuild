@@ -1,0 +1,12 @@
+
+def prepare(module):
+	pass
+
+def configure(env):
+	return {
+		"name": "module2",
+		"depends": [],
+	}
+
+def build(env, config):
+	pass
