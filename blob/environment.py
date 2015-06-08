@@ -3,7 +3,7 @@
 # Copyright (c) 2015, Fabian Greif
 # All Rights Reserved.
 #
-# The file is part of the lbuild project and is released under the
+# The file is part of the blob project and is released under the
 # 2-clause BSD license. See the file `LICENSE.txt` for the full license
 # governing this code.
 
@@ -30,6 +30,12 @@ class Environment:
 			self.__copytree(srcpath, destpath, ignore)
 		else:
 			shutil.copy2(srcpath, destpath)
+	
+	def template(self, src, dest, subsititutions={}):
+		"""
+		Uses the Jinja2 template engine to generate files.
+		"""
+		pass
 	
 	def modulepath(self, *path):
 		"""Relocate given path to the path of the module file."""

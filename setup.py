@@ -1,22 +1,30 @@
+#!/usr/bin/env python3
+#
+# Copyright (c) 2015, Fabian Greif
+# All Rights Reserved.
+#
+# The file is part of the blob project and is released under the
+# 2-clause BSD license. See the file `LICENSE.txt` for the full license
+# governing this code.
 
 from setuptools import setup, find_packages
 
 setup(
-	name = "l.gen",	
+	name = "blob",	
 	version = "0.1",
-	packages = find_packages(exclude=["test"]),
-	scripts = ['l.gen'],
+	packages = find_packages(exclude=["test", "example"]),
+	scripts = ['blob'],
 
 	# Project uses reStructuredText, so ensure that the docutils get
 	# installed or upgraded on the target machine
-	install_requires = ['lxml'],
+	install_requires = ['lxml', 'jinja2'],
 	
 	# Metadata
 	author = "Fabian Greif",
     author_email = "fabian.greif@rwth-aachen.de",
     description = "Library builder to create a compilable library from a set of template files for different target environments",
     license = "BSD",
-    keywords = "library generator",
+    keywords = "library builder generator",
     url = "https://github.com/dergraaf/library-builder",
 	classifiers = [
 		"Development Status :: 2 - Pre-Alpha",

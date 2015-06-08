@@ -1,0 +1,4 @@
+
+def prepare(repo):
+	repo.set_name("Repo2")
+	repo.find_modules()

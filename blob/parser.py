@@ -3,7 +3,7 @@
 # Copyright (c) 2015, Fabian Greif
 # All Rights Reserved.
 #
-# The file is part of the lbuild project and is released under the
+# The file is part of the blob project and is released under the
 # 2-clause BSD license. See the file `LICENSE.txt` for the full license
 # governing this code.
 
@@ -14,8 +14,8 @@ import pkgutil
 import logging.config
 from lxml import etree
 
-import lbuild.environment
-import lbuild.repository
+import blob.environment
+import blob.repository
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +25,35 @@ REPO_FILENAME = 'repo.lb'
 class ParserException(Exception):
     None
 
+
+class Parser:
+    
+    def __init__(self):
+        self.repositories = []
+    
+    def parse_repository(self, repofile):
+        repo = blob.repository.Repository(os.path.dirname(repofile))
+        try:
+            with open(repofile) as f:
+                code = compile(f.read(), repofile, 'exec')
+                local = {}
+                exec(code, local)
+                
+                prepare = local.get('prepare')
+                if prepare is None:
+                    raise ParserException("No prepare() function found!")
+                
+                # Execution prepare() function. In this function modules and
+                # options are added. 
+                prepare(repo)
+        except Exception as e:
+            raise ParserException("Invalid repository configuration file '%s': %s" % (repofile, e))
+        
+        self.repositories.append(repo)
+        return repo
+    
+    def parse_configuration(self, configfile):
+        pass
 
 def parse_configfile(filename):
     """Parse the project configuration file.
@@ -36,7 +65,7 @@ def parse_configfile(filename):
         logger.debug("Parse library configuration '%s'" % filename)
         xmlroot = etree.parse(filename)
         
-        xmlschema = etree.fromstring(pkgutil.get_data('lbuild', 'resources/library.xsd'))
+        xmlschema = etree.fromstring(pkgutil.get_data('blob', 'resources/library.xsd'))
         
         schema = etree.XMLSchema(xmlschema)
         schema.assertValid(xmlroot)
@@ -83,67 +112,51 @@ def search_repositories(repositories):
             logger.debug("No repository configuration found '%s'" % repofile)
     return repos
 
-
-def parse_repository(filename):
-    repo = lbuild.repository.Repository()
-    
-    try:
-        with open(filename) as f:
-            code = compile(f.read(), filename, 'exec')
-            local = {}
-            exec(code, local)
-            
-            prepare_function = local.get('prepare')
-            if prepare_function is None:
-                raise ParserException("No prepare() function found!")
-            
-            prepare_function(repo)
-    except Exception as e:
-        raise ParserException("Invalid repository configuration in '%s': %s" % (filename, e))
-    
-    return repo
-
-
 def parse_modules(repositories, config):
     modules = {}
     for repo in repositories:
         for modulefile in repo.getModules():
             try:
-                with open(modulefile) as f:
-                    logger.debug("Parse modulefile '%s'" % modulefile)
-                    code = compile(f.read(), modulefile, 'exec')
-        
-                    local = {}
-                    exec(code, local)
-                    
-                    module = {}
-                    
-                    module['modulepath'] = os.path.dirname(modulefile)
-                    module['environment'] = lbuild.environment.Environment(module['modulepath'], config['__outpath'])
-                    
-                    configure_function = local.get('configure')
-                    if configure_function is None:
-                        raise ParserException("No configure() function found!")
-                    
-                    # Execute configure() function from module
-                    configuration = configure_function(module['environment'])
-                    
-                    try:
-                        module['name'] = configuration['name']
-                        module['depends'] = configuration['depends']
-                    except TypeError as e:
-                        raise ParserException("configure() function must return a dict with 'name' and 'depends'")
-                    
-                    module['build'] = local['build']
-        
-                    # Append to the list of available modules
-                    modules[module['name']] = module
-                    
-                    logger.info("Found module '%s'" % module['name'])
+                module = parse_module(modulefile, config)
+                
+                # Append to the list of available modules
+                modules[module['name']] = module
             except Exception as e:
                 raise ParserException("Invalid module configuration in '%s': %s" % (modulefile, e))
     return modules
 
+
+def parse_module(modulefile, config):
+    with open(modulefile) as f:
+        logger.debug("Parse modulefile '%s'" % modulefile)
+        code = compile(f.read(), modulefile, 'exec')
+
+        local = {}
+        exec(code, local)
+        
+        module = {}
+        
+        module['modulepath'] = os.path.dirname(modulefile)
+        module['environment'] = blob.environment.Environment(module['modulepath'], config['__outpath'])
+        
+        configure_function = local.get('configure')
+        if configure_function is None:
+            raise ParserException("No configure() function found!")
+        
+        # Execute configure() function from module
+        configuration = configure_function(module['environment'])
+        
+        try:
+            module['name'] = configuration['name']
+            module['depends'] = configuration['depends']
+        except TypeError as e:
+            raise ParserException("configure() function must return a dict with 'name' and 'depends'")
+        
+        module['build'] = local['build']
+        
+        logger.info("Found module '%s'" % module['name'])
+        
+        return module
 
 def resolve_dependencies(config, modules):
     """Resolve dependencies by adding missing modules"""
