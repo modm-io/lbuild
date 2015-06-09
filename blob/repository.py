@@ -15,6 +15,29 @@ from . import exception
 from . import utils
 from . import environment
 
+class Options:
+    
+    def __init__(self, repository, options):
+        self.repository = repository
+        self.options = options
+    
+    def __getitem__(self, key):
+        o = key.split(":")
+        if len(o) != 2:
+            raise exception.BlobException("Option name '%s' must contain exactly one colon " \
+                                          "to separate repository and option name.")
+        repo, option = o
+        if repo == "":
+            key = "%s:%s" % (self.repository.name, option)
+        
+        return self.options[key].value
+        
+    def __repr__(self): 
+        return repr(self.options)
+
+    def __len__(self): 
+        return len(self.options)
+
 
 class Repository:
     
@@ -26,6 +49,7 @@ class Repository:
         # Dict of modules, using the filename as the key
         self.modules = {}
         
+        # Name -> Option()
         self.options = {}
     
     def set_name(self, name):
@@ -85,5 +109,5 @@ class Repository:
         repository options.
         """
         if ":" in name:
-            raise exception.BlobException("Character ':' is not allowed in options name '%s'" % name)
+            raise exception.BlobException("Character ':' is not allowed in option name '%s'" % name)
         self.options[name] = environment.Option(name, description, default)

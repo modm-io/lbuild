@@ -2,7 +2,7 @@
 def init(module):
 	module.set_name("module1")
 
-def prepare(module, repo):
+def prepare(module, options):
 	return True
 
 def build(env):

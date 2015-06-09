@@ -12,7 +12,7 @@
 
   <xsd:complexType name="OptionsType">
     <xsd:sequence>
-      <xsd:element name="option" type="OptionType" />
+      <xsd:element name="option" type="OptionType" minOccurs="0" maxOccurs="unbounded" />
     </xsd:sequence>
   </xsd:complexType>
 

@@ -10,8 +10,10 @@
 import os
 import shutil
 
+from . import exception
 
 class Option:
+    
     def __init__(self, name, description, value):
         self.name = name
         self.description = description
@@ -20,9 +22,42 @@ class Option:
 
 class Environment:
     
-    def __init__(self, modulepath, outpath):
-        self.__modulepath = modulepath
-        self.__outpath = outpath
+    def __init__(self):
+        self.modules = {}
+    
+    def get_module(self, modulename):
+        """Get the module representation from a module name.
+        
+        The name can either be fully qualified or have an empty repository
+        string. In the later case all repositories are searched for the module
+        name. An error is raised in case multiple repositories are found.
+        
+        Args:
+            modulename :  Name of the module in the format 'repository:module'.
+                          'repository' can be an empty string.
+        """
+        repopart, modulepart = modulename.split(':')
+        m = None
+        if repopart == "":
+            for name, module in self.modules.items():
+                _, n = name.split(':')
+                if n == modulepart:
+                    if m is not None:
+                        raise exception.BlobException("Name '%s' is ambiguous. " \
+                                                      "Please specify the repository." % modulename)
+                    m = module
+            if m is None:
+                raise exception.BlobException("Module '%s' not found." % modulename)
+            else:
+                return m
+        else:
+            try:
+                return self.modules[modulename]
+            except KeyError:
+                raise exception.BlobException("Module '%s' not found." % modulename)
+        
+
+class ModuleEnvironment:
     
     def copy(self, src, dest, ignore=None):
         """

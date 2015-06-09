@@ -3,15 +3,15 @@ def init(module):
 	module.set_name("other")
 	module.set_description("Another module")
 
-def prepare(module, repo):
-	if repo.options["target"] == "hosted":
-		module.depends(["module1", "repo2:module2"])
-	elif repo.options["target"] == "stm32":
-		module.depends(["module1"])
+def prepare(module, options):
+	if options[":target"] == "hosted":
+		module.depends([":module1", "repo2:module3"])
+	elif options[":target"] == "stm32":
+		module.depends(":module1")
 	else:
 		return False
 	
-	module.add_option(name="other", default=123, description="Another option")
+	module.add_option(name="foo", default=123, description="Another option")
 	return True
 
 def build(env):

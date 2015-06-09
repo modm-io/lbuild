@@ -8,7 +8,9 @@
 # governing this code.
 
 from . import environment
-from parser import ParserError
+from . import exception
+from . import utils
+from blob import repository
 
 class Module:
     
@@ -26,12 +28,17 @@ class Module:
         self.path = path
         
         self.name = None
+        self.full_name = None
         self.description = ""
         
         self.functions = {}
+        self.dependencies = []
+        
+        self.options = {}
     
     def set_name(self, name):
         self.name = name
+        self.full_name = "%s:%s" % (self.repository.name, name)
     
     def set_description(self, description):
         self.description = description
@@ -43,8 +50,12 @@ class Module:
         selection and dependencies of modules.
         """
         if ":" in name:
-            raise ParserError("Character ':' is not allowed in options name '%s'" % name)
+            raise exception.BlobException("Character ':' is not allowed in options name '%s'" % name)
         self.options[name] = environment.Option(name, description, default)
     
-    def depends(self, dependency):
-        pass
+    def depends(self, dependencies):
+        for dependency in utils.listify(dependencies):
+            if len(dependency.split(':')) != 2:
+                raise exception.BlobException("Modulename '%s' must contain exactly one ':' as " \
+                                              "separator between repository and module name" % dependency)
+            self.dependencies.append(dependency)

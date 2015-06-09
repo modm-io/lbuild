@@ -2,7 +2,7 @@
 def init(module):
 	module.set_name("module4.submodule1")
 
-def prepare(module, repo):
+def prepare(module, options):
 	module.depends(":module4")
 	return True
 

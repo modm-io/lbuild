@@ -2,8 +2,11 @@
 def init(module):
 	module.set_name("module2")
 
-def prepare(module, repo):
-	return True
+def prepare(module, options):
+	if options[":target"] == "hosted":
+		return False
+	else:
+		return True
 
 def build(env):
 	pass
