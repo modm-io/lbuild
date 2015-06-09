@@ -1,0 +1,9 @@
+
+def init(module):
+	module.set_name("module1")
+
+def prepare(module, repo):
+	return True
+
+def build(env):
+	pass

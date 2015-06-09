@@ -14,25 +14,21 @@ import pkgutil
 import logging.config
 from lxml import etree
 
-import blob.environment
-import blob.repository
+from . import exception
+from . import module
+from . import environment
+from . import repository
 
-logger = logging.getLogger(__name__)
-
-
-REPO_FILENAME = 'repo.lb' 
-
-class ParserException(Exception):
-    None
-
+logger = logging.getLogger('blob.parser')
 
 class Parser:
     
     def __init__(self):
         self.repositories = []
+        self.modules = {}
     
     def parse_repository(self, repofile):
-        repo = blob.repository.Repository(os.path.dirname(repofile))
+        repo = repository.Repository(os.path.dirname(repofile))
         try:
             with open(repofile) as f:
                 code = compile(f.read(), repofile, 'exec')
@@ -41,16 +37,68 @@ class Parser:
                 
                 prepare = local.get('prepare')
                 if prepare is None:
-                    raise ParserException("No prepare() function found!")
+                    raise exception.BlobException("No prepare() function found!")
                 
                 # Execution prepare() function. In this function modules and
                 # options are added. 
                 prepare(repo)
+                
+                if repo.name is None:
+                    raise exception.BlobException("The prepare(repo) function must set a repo name! Please use the set_name() method.")
         except Exception as e:
-            raise ParserException("Invalid repository configuration file '%s': %s" % (repofile, e))
+            raise exception.BlobException("Invalid repository configuration file '%s': %s" % (repofile, e))
         
         self.repositories.append(repo)
         return repo
+    
+    def parse_modules(self):
+        """Parse the module files of all repositories."""
+        for repo in self.repositories:
+            for modulefile, m in repo.modules.items():
+                # Parse all modules which are not yet updated
+                if m is None:
+                    m = self.parse_module(repo, modulefile)
+                    repo.modules[modulefile] = m
+                    
+                self.modules["%s:%s" % (repo.name, m.name)] = m
+    
+    def parse_module(self, repo, modulefile):
+        """
+        Parse a specific module file.
+        
+        Returns:
+            Module() module definition object.
+        """
+        try:
+            with open(modulefile) as f:
+                logger.debug("Parse modulefile '%s'" % modulefile)
+                code = compile(f.read(), modulefile, 'exec')
+        
+                local = {}
+                exec(code, local)
+                
+                m = module.Module(repo, modulefile, os.path.dirname(modulefile))
+                
+                #module['modulepath'] = 
+                #module['environment'] = environment.Environment(module['modulepath'], config['__outpath'])
+                
+                for functionname in ['init', 'prepare', 'build']:
+                    f = local.get(functionname)
+                    if f is None:
+                        raise exception.BlobException("No function '%s' found!" % functionname)
+                    m.functions[functionname] = f
+                
+                # Execute init() function from module
+                m.functions['init'](m)
+                
+                if m.name is None:
+                    raise exception.BlobException("The init(module) function must set a module name! Please use the set_name() method.")
+                  
+                logger.info("Found module '%s'" % m.name)
+                
+                return m
+        except Exception as e:
+            raise exception.BlobException("While parsing '%s': %s" % (modulefile, e))
     
     def parse_configuration(self, configfile):
         pass
@@ -72,9 +120,9 @@ def parse_configfile(filename):
 
         xmltree = xmlroot.getroot()
     except OSError as e:
-        raise ParserException(e)
+        raise exception.BlobException(e)
     except (etree.XMLSyntaxError, etree.DocumentInvalid) as e:
-        raise ParserException("ERROR while parsing xml-file '%s': %s" % (filename, e))
+        raise exception.BlobException("ERROR while parsing xml-file '%s': %s" % (filename, e))
 
     modules = []
     for modulesNode in xmltree.findall('modules'):
@@ -93,70 +141,6 @@ def parse_configfile(filename):
     }
     return config
 
-
-def search_repositories(repositories):
-    repos = []
-    for repo in repositories:
-        repofile = os.path.join(repo, REPO_FILENAME)
-        if os.path.isfile(repofile):
-            logger.debug("Search in repository '%s'" % repo)
-            repository = parse_repository(repofile)
-            
-            # look for modules inside the repository
-            for path, _, files in os.walk(repo):
-                if 'module.lb' in files:
-                    repository.appendModule(os.path.join(path, 'module.lb'))
-            
-            repos.append(repository)
-        else:
-            logger.debug("No repository configuration found '%s'" % repofile)
-    return repos
-
-def parse_modules(repositories, config):
-    modules = {}
-    for repo in repositories:
-        for modulefile in repo.getModules():
-            try:
-                module = parse_module(modulefile, config)
-                
-                # Append to the list of available modules
-                modules[module['name']] = module
-            except Exception as e:
-                raise ParserException("Invalid module configuration in '%s': %s" % (modulefile, e))
-    return modules
-
-
-def parse_module(modulefile, config):
-    with open(modulefile) as f:
-        logger.debug("Parse modulefile '%s'" % modulefile)
-        code = compile(f.read(), modulefile, 'exec')
-
-        local = {}
-        exec(code, local)
-        
-        module = {}
-        
-        module['modulepath'] = os.path.dirname(modulefile)
-        module['environment'] = blob.environment.Environment(module['modulepath'], config['__outpath'])
-        
-        configure_function = local.get('configure')
-        if configure_function is None:
-            raise ParserException("No configure() function found!")
-        
-        # Execute configure() function from module
-        configuration = configure_function(module['environment'])
-        
-        try:
-            module['name'] = configuration['name']
-            module['depends'] = configuration['depends']
-        except TypeError as e:
-            raise ParserException("configure() function must return a dict with 'name' and 'depends'")
-        
-        module['build'] = local['build']
-        
-        logger.info("Found module '%s'" % module['name'])
-        
-        return module
 
 def resolve_dependencies(config, modules):
     """Resolve dependencies by adding missing modules"""
@@ -240,6 +224,6 @@ def main():
             
             logger.info("Build module '%s'" % module['name'])
             build(module['environment'], config)
-    except ParserException as e:
+    except exception.BlobException as e:
         sys.stderr.write('%s\n' % e)
         sys.exit(1)

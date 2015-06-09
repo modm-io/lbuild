@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 #
 # Copyright (c) 2015, Fabian Greif
 # All Rights Reserved.
@@ -7,11 +8,6 @@
 # 2-clause BSD license. See the file `LICENSE.txt` for the full license
 # governing this code.
 
-from . import environment
-from . import exception
-from . import module
-from . import parser
-from . import repository
-from . import utils
 
-__all__ = ['environment', 'exception', 'module', 'parser', 'repository', 'utils']
+def listify(node):
+    return [node,] if (not isinstance(node, list)) else node

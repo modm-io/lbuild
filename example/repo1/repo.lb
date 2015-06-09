@@ -1,7 +1,0 @@
-
-def prepare(repo):
-	
-	repo.require_option("target", "Target architecture for the library.")
-
-def configure(options):
-	pass

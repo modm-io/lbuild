@@ -1,12 +1,11 @@
 
 <library>
 	<options>
-		<option name="target" value="hosted" />
+		<option name=":target" value="hosted" />
 	</options>
 
 	<modules>
-		<module>module_a</module>
-		<module>module1</module>
+		<module>repo1:other</module>
+		<module>:module1</module>
 	</modules>
 </library>
-

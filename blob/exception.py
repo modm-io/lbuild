@@ -7,11 +7,6 @@
 # 2-clause BSD license. See the file `LICENSE.txt` for the full license
 # governing this code.
 
-from . import environment
-from . import exception
-from . import module
-from . import parser
-from . import repository
-from . import utils
 
-__all__ = ['environment', 'exception', 'module', 'parser', 'repository', 'utils']
+class BlobException(Exception):
+    None

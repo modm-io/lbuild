@@ -10,46 +10,80 @@
 
 import os
 import glob
-import parser
 
-def listify(node):
-    return [node,] if (not isinstance(node, list)) else node
+from . import exception
+from . import utils
+from . import environment
+
 
 class Repository:
     
     def __init__(self, path):
         # Path to the repository file. All relative paths refer to this path.
         self.path = path
-        self.name = ""
-        self.module_files = []
+        self.name = None
+        
+        # Dict of modules, using the filename as the key
+        self.modules = {}
+        
+        self.options = {}
     
     def set_name(self, name):
+        """Set name of the repository."""
         self.name = name
     
     def _relocate(self, path):
-        # relocate relative paths to the path of the repository
-        # configuration file.
+        """
+        Relocate relative paths to the path of the repository
+        configuration file.
+        """
         if not os.path.isabs(path):
             path = os.path.join(self.path, path)
-        return path
+        return os.path.normpath(path)
     
     def glob(self, pattern):
         pattern = self._relocate(pattern)
         return glob.glob(pattern)
     
     def add_modules(self, modules):
-        module_files = listify(modules)
+        """
+        Add one or more module files.
+        
+        Args:
+            modules: List of filenames
+        """
+        module_files = utils.listify(modules)
         
         for file in module_files:
             file = self._relocate(file)
             
             if not os.path.isfile(file):
-                raise parser.ParserError("Module file not found '%s'" % file)
+                raise exception.BlobException("Module file not found '%s'" % file)
             
-            self.module_files.append(file)
+            self.modules[file] = None
     
-    def find_modules(self, modulefile="module.lb"):
-        for path, _, files in os.walk(self.path):
+    def find_modules(self, basepath="", modulefile="module.lb"):
+        """
+        Find all module files following a specific pattern.
+        
+        Args:
+            basepath   : Rootpath for the search.
+            modulefile : Filename of the module files to search
+                for (default: "module.lb").
+        """
+        basepath = self._relocate(basepath)
+        for path, _, files in os.walk(basepath):
             if modulefile in files:
-                self.module_files.append(os.path.join(path, modulefile))
+                self.modules[os.path.normpath(os.path.join(path, modulefile))] = None
 
+    def add_option(self, name, description, default=None):
+        """
+        Define new repository wide option.
+        
+        These options can be used by modules to decide whether they are
+        available and what options they provide for a specific set of
+        repository options.
+        """
+        if ":" in name:
+            raise exception.BlobException("Character ':' is not allowed in options name '%s'" % name)
+        self.options[name] = environment.Option(name, description, default)

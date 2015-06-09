@@ -1,0 +1,11 @@
+
+
+def init(module):
+	module.set_name("module4.submodule2")
+
+def prepare(module, repo):
+	module.depends(":module4")
+	return True
+
+def build(env):
+	pass

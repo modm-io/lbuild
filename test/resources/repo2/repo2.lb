@@ -1,4 +1,9 @@
 
 def prepare(repo):
-	repo.set_name("Repo2")
-	repo.find_modules()
+	repo.set_name("repo2")
+	
+	# Find all modules with the name "module.lb"
+	repo.find_modules(".")
+	
+	repo.add_option(name="target", description="Target architecture for the library.")
+	repo.add_option(name="include_tests", default=True, description="Include the unit-tests")

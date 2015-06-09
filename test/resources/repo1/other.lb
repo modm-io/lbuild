@@ -1,0 +1,19 @@
+
+def init(module):
+	module.set_name("other")
+	module.set_description("Another module")
+
+def prepare(module, repo):
+	if repo.options["target"] == "hosted":
+		module.depends(["module1", "repo2:module2"])
+	elif repo.options["target"] == "stm32":
+		module.depends(["module1"])
+	else:
+		return False
+	
+	module.add_option(name="other", default=123, description="Another option")
+	return True
+
+def build(env):
+	env.copy('src', 'src')
+	env.copy('test', 'test')
