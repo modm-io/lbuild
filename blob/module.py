@@ -10,7 +10,43 @@
 from . import environment
 from . import exception
 from . import utils
-from blob import repository
+
+class Options:
+    
+    def __init__(self, repository, module, repo_options, module_options):
+        self.repository = repository
+        self.module = module
+        self.repo_options = repo_options
+        self.module_options = module_options
+    
+    def __getitem__(self, key):
+        o = key.split(":")
+        
+        if len(o) == 2:
+            repo, option = o
+            if repo == "":
+                key = "%s:%s" % (self.repository.name, option)
+            
+            return self.repo_options[key].value
+        elif len(o) == 3:
+            repo, module, option = o
+            
+            if repo == "":
+                repo = self.repository.name
+            if module == "":
+                module = self.module.name
+            
+            key = "%s:%s:s" % (repo, module, option)
+            return self.module_options[key].value
+        else:
+            raise exception.BlobException("Option name '%s' must contain exactly one (or two) colon " \
+                                          "to separate repository(, module) and option name.")
+
+    def __repr__(self): 
+        return repr(self.options)
+
+    def __len__(self): 
+        return len(self.options)
 
 class Module:
     

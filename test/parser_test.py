@@ -9,8 +9,8 @@
 # governing this code.
 
 import os
-#import logging
 import unittest
+import testfixtures
 
 import blob
 
@@ -20,7 +20,6 @@ class ParserTest(unittest.TestCase):
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), filename)
     
     def setUp(self):
-        #logging.basicConfig(level=logging.DEBUG)
         self.parser = blob.parser.Parser()
     
     def test_shouldParseRepository1(self):
@@ -111,14 +110,14 @@ class ParserTest(unittest.TestCase):
         self.parser.parse_repository(self._getPath("resources/repo2/repo2.lb"))
         selected_modules, config_options = self.parser.parse_configuration(self._getPath("resources/test1.lb"))
         
-        options = self.parser.merge_repository_options(config_options)
-        modules = self.parser.prepare_modules(options)
+        repo_options = self.parser.merge_repository_options(config_options)
+        modules = self.parser.prepare_modules(repo_options)
         build_modules = self.parser.resolve_dependencies(modules, selected_modules)
         
-        return build_modules, config_options
+        return build_modules, config_options, repo_options
       
     def test_shouldResolveModuleDependencies(self):
-        build_modules, _ = self._get_build_modules()
+        build_modules, _, _ = self._get_build_modules()
         
         self.assertEqual(3, len(build_modules))
         
@@ -128,13 +127,19 @@ class ParserTest(unittest.TestCase):
         self.assertIn("repo2:module3", m)
 
     def test_shouldMergeBuildModuleOptions(self):
-        build_modules, config_options = self._get_build_modules()
+        build_modules, config_options, _ = self._get_build_modules()
         options = self.parser.merge_module_options(build_modules, config_options)
         
         self.assertEqual(2, len(options))
         self.assertEqual(options["repo1:other:foo"].value, "456")
         self.assertEqual(options["repo1:other:bar"].value, "768")
 
+    def test_shouldBuildModules(self):
+        build_modules, config_options, repo_options = self._get_build_modules()
+        module_options = self.parser.merge_module_options(build_modules, config_options)
+        
+        outpath = "build"
+        self.parser.build_modules(outpath, build_modules, repo_options, module_options)
 
 if __name__ == '__main__':
     unittest.main()

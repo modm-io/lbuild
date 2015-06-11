@@ -14,10 +14,11 @@ import pkgutil
 import logging.config
 from lxml import etree
 
-from . import exception
+
 import blob.module
-#from . import module
-from . import environment
+import blob.environment
+
+from . import exception
 from . import repository
 
 logger = logging.getLogger('blob.parser')
@@ -30,7 +31,13 @@ class Parser:
         self.repositories = {}
         self.modules = {}
         
-        self.environment = environment.Environment()
+        # All modules which are available with the given set of
+        # configuration options.
+        #
+        # Only available after prepare_modules() has been called.
+        # 
+        # Module name -> Module()
+        self.available_modules = {}
     
     def parse_repository(self, repofile):
         repo = repository.Repository(os.path.dirname(repofile))
@@ -209,15 +216,46 @@ class Parser:
                 
                 if available:
                     name = "%s:%s" % (repo.name, m.name)
-                    self.environment.modules[name] = m
+                    self.available_modules[name] = m
         
-        return self.environment.modules
+        return self.available_modules
+    
+    def get_available_module(self, modulename):
+        """Get the module representation from a module name.
+        
+        The name can either be fully qualified or have an empty repository
+        string. In the later case all repositories are searched for the module
+        name. An error is raised in case multiple repositories are found.
+        
+        Args:
+            modulename :  Name of the module in the format 'repository:module'.
+                          'repository' can be an empty string.
+        """
+        repopart, modulepart = modulename.split(':')
+        m = None
+        if repopart == "":
+            for name, module in self.available_modules.items():
+                _, n = name.split(':')
+                if n == modulepart:
+                    if m is not None:
+                        raise exception.BlobException("Name '%s' is ambiguous. " \
+                                                      "Please specify the repository." % modulename)
+                    m = module
+            if m is None:
+                raise exception.BlobException("Module '%s' not found." % modulename)
+            else:
+                return m
+        else:
+            try:
+                return self.available_modules[modulename]
+            except KeyError:
+                raise exception.BlobException("Module '%s' not found." % modulename)
     
     def resolve_dependencies(self, modules, requested_modules):
         """Resolve dependencies by adding missing modules"""
         selected_modules = []
         for modulename in requested_modules:
-            m = self.environment.get_module(modulename)
+            m = self.get_available_module(modulename)
             selected_modules.append(m)
         
         current = selected_modules
@@ -225,7 +263,7 @@ class Parser:
             additional = []
             for m in current:
                 for dependency_name in m.dependencies:
-                    dependency = self.environment.get_module(dependency_name)
+                    dependency = self.get_available_module(dependency_name)
                     
                     if dependency not in selected_modules and \
                             dependency not in additional:
@@ -240,6 +278,14 @@ class Parser:
         return selected_modules
     
     def merge_module_options(self, build_modules, config_options):
+        """
+        Returns the list of options used for building the selected modules.
+        
+        Raises an exception if not all options have assigned values.
+        
+        Returns:
+            Dictionary mapping the full qualified option name to the option object.
+        """
         modules_by_full_name = {}
         modules_by_name = {}
         for module in build_modules:
@@ -302,7 +348,40 @@ class Parser:
                 options[fullname] = option
         
         return options
+    
+    def build_modules(self, outpath, build_modules, repo_options, module_options):
+        for module in build_modules:
+            options = blob.module.Options(module.repository, module, repo_options, module_options)
+            env = blob.environment.Environment(options, module.path, outpath)
+            module.functions["build"](env)
 
+def configure_logger(verbosity):
+    logging.config.dictConfig({
+        'version': 1,              
+        'disable_existing_loggers': False,
+        'formatters': {
+            'full': {
+                #'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+                'format': '[%(levelname)s] %(name)s: %(message)s'
+            },
+            'simple': {
+                'format': '%(message)s'
+            },
+        },
+        'handlers': {
+            'default': {
+                'class':'logging.StreamHandler',
+                'formatter': 'full',
+            },
+        },
+        'loggers': {
+            '': {                  
+                'handlers': ['default'],
+                'level': 'DEBUG' if verbosity > 1 else ('INFO' if verbosity == 1 else 'WARNING'),
+                'propagate': True  
+            }
+        }
+    })
 
 def main():
     parser = argparse.ArgumentParser(description='Build libraries from source code repositories')
@@ -326,49 +405,10 @@ def main():
 
     args = parser.parse_args()
     
-    logging.config.dictConfig({
-        'version': 1,              
-        'disable_existing_loggers': False,
-        'formatters': {
-            'full': {
-                #'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
-                'format': '[%(levelname)s] %(name)s: %(message)s'
-            },
-            'simple': {
-                'format': '%(message)s'
-            },
-        },
-        'handlers': {
-            'default': {
-                'class':'logging.StreamHandler',
-                'formatter': 'full',
-            },
-        },
-        'loggers': {
-            '': {                  
-                'handlers': ['default'],        
-                'level': 'DEBUG' if args.verbose > 1 else ('INFO' if args.verbose == 1 else 'WARNING'),
-                'propagate': True  
-            }
-        }
-    })
+    configure_logger(args.verbose)
     
     try:
-        config = parse_configfile(args.project)
-        config['__outpath'] = args.__outpath
-    
-        repositories = search_repositories(args.repositories)
-        modules = parse_modules(repositories, config)
-    
-        resolve_dependencies(config, modules)
-    
-        # Build the project
-        for m in config['modules']:
-            module = modules[m]
-            build = module['build']
-            
-            logger.info("Build module '%s'" % module['name'])
-            build(module['environment'], config)
+        pass
     except exception.BlobException as e:
         sys.stderr.write('%s\n' % e)
         sys.exit(1)

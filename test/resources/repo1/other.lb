@@ -16,5 +16,5 @@ def prepare(module, options):
 	return True
 
 def build(env):
-	env.copy('src', 'src')
-	env.copy('test', 'test')
+	env.copy('other/src', 'src')
+	env.copy('other/test', 'test')
