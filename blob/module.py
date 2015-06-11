@@ -27,13 +27,21 @@ class Module:
         self.filename = filename
         self.path = path
         
+        # Module name without repository
         self.name = None
+        # Full qualified name ('repository:module')
         self.full_name = None
+        
         self.description = ""
         
+        # Required functions declared in the module configuration file
         self.functions = {}
+        
+        # List of module names this module depends upon
         self.dependencies = []
         
+        # Options defined in the module configuration file. These options are
+        # configurable through the project configuration file.
         self.options = {}
     
     def set_name(self, name):
@@ -51,6 +59,9 @@ class Module:
         """
         if ":" in name:
             raise exception.BlobException("Character ':' is not allowed in options name '%s'" % name)
+        if name in self.options:
+            raise exception.BlobException("Option name '%s' is already defined" % name)
+        
         self.options[name] = environment.Option(name, description, default)
     
     def depends(self, dependencies):

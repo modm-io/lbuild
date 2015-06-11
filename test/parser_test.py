@@ -81,9 +81,10 @@ class ParserTest(unittest.TestCase):
         self.assertIn("repo1:other", modules)
         self.assertIn(":module1", modules)
         
-        self.assertEqual(2, len(options))
+        self.assertEqual(3, len(options))
         self.assertEqual('hosted', options[':target'])
         self.assertEqual('456', options['repo1:other:foo'])
+        self.assertEqual('768', options['repo1::bar'])
 
     def test_shouldMergeOptions(self):
         self.parser.parse_repository(self._getPath("resources/repo1.lb"))
@@ -104,8 +105,8 @@ class ParserTest(unittest.TestCase):
         
         self.assertIn("repo1:other", modules)
         self.assertIn("repo1:module1", modules)
-        
-    def test_shouldResolveModuleDependencies(self):
+    
+    def _get_build_modules(self):
         self.parser.parse_repository(self._getPath("resources/repo1.lb"))
         self.parser.parse_repository(self._getPath("resources/repo2/repo2.lb"))
         selected_modules, config_options = self.parser.parse_configuration(self._getPath("resources/test1.lb"))
@@ -114,12 +115,26 @@ class ParserTest(unittest.TestCase):
         modules = self.parser.prepare_modules(options)
         build_modules = self.parser.resolve_dependencies(modules, selected_modules)
         
+        return build_modules, config_options
+      
+    def test_shouldResolveModuleDependencies(self):
+        build_modules, _ = self._get_build_modules()
+        
         self.assertEqual(3, len(build_modules))
         
         m = [x.full_name for x in build_modules]
         self.assertIn("repo1:other", m)
         self.assertIn("repo1:module1", m)
         self.assertIn("repo2:module3", m)
+
+    def test_shouldMergeBuildModuleOptions(self):
+        build_modules, config_options = self._get_build_modules()
+        options = self.parser.merge_module_options(build_modules, config_options)
+        
+        self.assertEqual(2, len(options))
+        self.assertEqual(options["repo1:other:foo"].value, "456")
+        self.assertEqual(options["repo1:other:bar"].value, "768")
+
 
 if __name__ == '__main__':
     unittest.main()

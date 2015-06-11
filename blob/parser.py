@@ -15,7 +15,8 @@ import logging.config
 from lxml import etree
 
 from . import exception
-from . import module
+import blob.module
+#from . import module
 from . import environment
 from . import repository
 
@@ -85,7 +86,7 @@ class Parser:
                 local = {}
                 exec(code, local)
                 
-                m = module.Module(repo, modulefile, os.path.dirname(modulefile))
+                m = blob.module.Module(repo, modulefile, os.path.dirname(modulefile))
                 
                 # Get the required global functions
                 for functionname in ['init', 'prepare', 'build']:
@@ -237,6 +238,70 @@ class Parser:
             additional = []
         
         return selected_modules
+    
+    def merge_module_options(self, build_modules, config_options):
+        modules_by_full_name = {}
+        modules_by_name = {}
+        for module in build_modules:
+            modules_by_full_name[module.full_name] = module
+        
+            # Add an additional reference to find options without
+            # the repository name but only but option name
+            module_list = modules_by_name.get(module.name, [])
+            module_list.append(module)
+            modules_by_name[module.name] = module_list
+        
+        # Overwrite the values in the options with the values provided
+        # in the configuration file
+        for config_name, value in config_options.items():
+            name = config_name.split(':')
+            if len(name) == 2:
+                # repository option -> ignore here
+                pass
+            elif len(name) == 3:
+                # module option
+                repo_name, module_name, option_name = name
+                
+                modules = []
+                # Select modules to which to apply the value
+                if module_name == "":
+                    if repo_name == "":
+                        modules = build_modules
+                    else:
+                        for module in build_modules:
+                            if module.repository.name == repo_name:
+                                modules.append(module)
+                else:
+                    if repo_name == "":
+                        modules = modules_by_name[module_name]
+                    else:
+                        modules = [modules_by_full_name["%s:%s" % (repo_name, module_name)]]
+                
+                # Search options within the selected modules
+                found = False
+                for module in modules:
+                    for option in module.options.values():
+                        if option_name == option.name:
+                            # Set new value
+                            option.value = value
+                            found = True
+                
+                if not found:
+                    raise exception.BlobException("Option '%s' not found!" % config_name)
+            else:
+                raise exception.BlobException("Invalid option '%s'" % config_name)
+        
+        options = {}
+        # Check that all option values are set
+        for module in build_modules:
+            for option in module.options.values():
+                if option.value is None:
+                    raise exception.BlobException("Unknown value for option '%s'." \
+                                                  "Please provide a value in the configuration file." % option.name)
+                fullname = "%s:%s" % (module.full_name, option.name)
+                options[fullname] = option
+        
+        return options
 
 
 def main():

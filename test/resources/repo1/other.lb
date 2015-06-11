@@ -11,7 +11,8 @@ def prepare(module, options):
 	else:
 		return False
 	
-	module.add_option(name="foo", default=123, description="Another option")
+	module.add_option(name="foo", default=123, description="A option")
+	module.add_option(name="bar", default=12, description="A second option")
 	return True
 
 def build(env):

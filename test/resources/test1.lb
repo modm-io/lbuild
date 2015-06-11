@@ -3,6 +3,7 @@
 	<options>
 		<option name=":target" value="hosted" />
 		<option name="repo1:other:foo" value="456" />
+		<option name="repo1::bar" value="768" />
 	</options>
 
 	<modules>
