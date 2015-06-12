@@ -11,6 +11,7 @@
 import os
 import unittest
 import testfixtures
+import shutil
 
 import blob
 
@@ -140,6 +141,11 @@ class ParserTest(unittest.TestCase):
         
         outpath = "build"
         self.parser.build_modules(outpath, build_modules, repo_options, module_options)
+        
+        self.assertTrue(os.path.isfile(os.path.join(outpath, "src/other.cpp")))
+        self.assertTrue(os.path.isfile(os.path.join(outpath, "test/other.cpp")))
+        
+        shutil.rmtree(outpath)
 
 if __name__ == '__main__':
     unittest.main()
