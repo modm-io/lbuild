@@ -4,7 +4,7 @@
 # Copyright (c) 2015, Fabian Greif
 # All Rights Reserved.
 #
-# The file is part of the blob project and is released under the
+# The file is part of the lbuild project and is released under the
 # 2-clause BSD license. See the file `LICENSE.txt` for the full license
 # governing this code.
 
@@ -13,7 +13,7 @@ import unittest
 import testfixtures
 import shutil
 
-import blob
+import lbuild
 
 class ParserTest(unittest.TestCase):
     
@@ -21,7 +21,7 @@ class ParserTest(unittest.TestCase):
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), filename)
     
     def setUp(self):
-        self.parser = blob.parser.Parser()
+        self.parser = lbuild.parser.Parser()
     
     def test_shouldParseRepository1(self):
         self.parser.parse_repository(self._getPath("resources/repo1.lb"))

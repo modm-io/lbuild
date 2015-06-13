@@ -3,7 +3,7 @@
 # Copyright (c) 2015, Fabian Greif
 # All Rights Reserved.
 #
-# The file is part of the blob project and is released under the
+# The file is part of the lbuild project and is released under the
 # 2-clause BSD license. See the file `LICENSE.txt` for the full license
 # governing this code.
 
@@ -15,13 +15,13 @@ import logging.config
 from lxml import etree
 
 
-import blob.module
-import blob.environment
+import lbuild.module
+import lbuild.environment
 
 from . import exception
 from . import repository
 
-logger = logging.getLogger('blob.parser')
+logger = logging.getLogger('lbuild.parser')
 
 class Parser:
     
@@ -93,7 +93,7 @@ class Parser:
                 local = {}
                 exec(code, local)
                 
-                m = blob.module.Module(repo, modulefile, os.path.dirname(modulefile))
+                m = lbuild.module.Module(repo, modulefile, os.path.dirname(modulefile))
                 
                 # Get the required global functions
                 for functionname in ['init', 'prepare', 'build']:
@@ -129,7 +129,7 @@ class Parser:
             logger.debug("Parse configuration '%s'" % configfile)
             xmlroot = etree.parse(configfile)
             
-            xmlschema = etree.fromstring(pkgutil.get_data('blob', 'resources/library.xsd'))
+            xmlschema = etree.fromstring(pkgutil.get_data('lbuild', 'resources/library.xsd'))
             
             schema = etree.XMLSchema(xmlschema)
             schema.assertValid(xmlroot)
@@ -351,8 +351,8 @@ class Parser:
     
     def build_modules(self, outpath, build_modules, repo_options, module_options):
         for module in build_modules:
-            options = blob.module.Options(module.repository, module, repo_options, module_options)
-            env = blob.environment.Environment(options, module.path, outpath)
+            options = lbuild.module.Options(module.repository, module, repo_options, module_options)
+            env = lbuild.environment.Environment(options, module.path, outpath)
             module.functions["build"](env)
 
 def configure_logger(verbosity):

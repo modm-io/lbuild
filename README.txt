@@ -2,14 +2,14 @@
 Introduction
 ============
 
-'blob' is a library builder used to generate a blob of files from a source code
+'lbuild' is a library builder used to generate a lbuild of files from a source code
 repository.
 
 
 Operation
 ---------
 
-blob gets the path to a number of repository files and a configuration file.
+lbuild gets the path to a number of repository files and a configuration file.
 The repository files define what modules and global options are available and
 where the modules are located.
 

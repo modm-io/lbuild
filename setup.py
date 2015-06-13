@@ -3,17 +3,17 @@
 # Copyright (c) 2015, Fabian Greif
 # All Rights Reserved.
 #
-# The file is part of the blob project and is released under the
+# The file is part of the lbuild project and is released under the
 # 2-clause BSD license. See the file `LICENSE.txt` for the full license
 # governing this code.
 
 from setuptools import setup, find_packages
 
 setup(
-    name = "blob",    
+    name = "lbuild",    
     version = "0.1",
     packages = find_packages(exclude=["test", "example"]),
-    scripts = ['blob'],
+    scripts = ['lbuild'],
 
     # Project uses reStructuredText, so ensure that the docutils get
     # installed or upgraded on the target machine
