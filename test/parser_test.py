@@ -11,7 +11,6 @@
 import os
 import unittest
 import testfixtures
-import shutil
 
 import lbuild
 
@@ -135,17 +134,16 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(options["repo1:other:foo"].value, "456")
         self.assertEqual(options["repo1:other:bar"].value, "768")
 
-    def test_shouldBuildModules(self):
+    @testfixtures.tempdir()
+    def test_shouldBuildModules(self, d):
         build_modules, config_options, repo_options = self._get_build_modules()
         module_options = self.parser.merge_module_options(build_modules, config_options)
         
-        outpath = "build"
+        outpath = d.path
         self.parser.build_modules(outpath, build_modules, repo_options, module_options)
         
         self.assertTrue(os.path.isfile(os.path.join(outpath, "src/other.cpp")))
         self.assertTrue(os.path.isfile(os.path.join(outpath, "test/other.cpp")))
-        
-        shutil.rmtree(outpath)
 
 if __name__ == '__main__':
     unittest.main()
