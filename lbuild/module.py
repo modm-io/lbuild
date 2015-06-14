@@ -36,7 +36,7 @@ class Options:
             if module == "":
                 module = self.module.name
             
-            key = "%s:%s:s" % (repo, module, option)
+            key = "%s:%s:%s" % (repo, module, option)
             return self.module_options[key].value
         else:
             raise exception.BlobException("Option name '%s' must contain exactly one (or two) colon " \

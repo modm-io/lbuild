@@ -12,16 +12,17 @@ from setuptools import setup, find_packages
 setup(
     name = "lbuild",    
     version = "0.1",
-    packages = find_packages(exclude=["test", "example"]),
-    scripts = ['lbuild'],
-
-    # Project uses reStructuredText, so ensure that the docutils get
-    # installed or upgraded on the target machine
+    scripts = ['scripts/lbuild'],
+    
+    packages = find_packages(exclude=["test"]),
+    
+    include_package_data = True,
+	
+	# Make sure all files are unzipped during installation
+	#zip_safe = False,
+	
     install_requires = ['lxml', 'jinja2'],
     
-    test_requires = ['testfixtures'],
-    
-    # other stuff here
     extras_require = {
         "test": ['testfixtures'],
     },
@@ -29,7 +30,8 @@ setup(
     # Metadata
     author = "Fabian Greif",
     author_email = "fabian.greif@rwth-aachen.de",
-    description = "Library builder to create a compilable library from a set of template files for different target environments",
+    description = "Library builder to create a compilable library from " \
+    			  "a set of template files for different target environments",
     license = "BSD",
     keywords = "library builder generator",
     url = "https://github.com/dergraaf/library-builder",

@@ -8,12 +8,9 @@
 # governing this code.
 
 import os
-import sys
-import argparse
 import pkgutil
-import logging.config
+import logging
 from lxml import etree
-
 
 import lbuild.module
 import lbuild.environment
@@ -192,7 +189,8 @@ class Parser:
                 # module option
                 pass
             else:
-                raise exception.BlobException("Invalid option '%s'" % config_name)
+                raise exception.BlobException("Invalid option format '%s'. Option must contain one " \
+                                              "(repository option) or two (module option) colons." % config_name)
         
         # Check that all option values are set
         for option in repo_options_by_full_name.values():
@@ -335,7 +333,8 @@ class Parser:
                 if not found:
                     raise exception.BlobException("Option '%s' not found!" % config_name)
             else:
-                raise exception.BlobException("Invalid option '%s'" % config_name)
+                raise exception.BlobException("Invalid option format '%s'. Option must contain one " \
+                                              "(repository option) or two (module option) colons." % config_name)
         
         options = {}
         # Check that all option values are set
@@ -354,61 +353,14 @@ class Parser:
             options = lbuild.module.Options(module.repository, module, repo_options, module_options)
             env = lbuild.environment.Environment(options, module.path, outpath)
             module.functions["build"](env)
-
-def configure_logger(verbosity):
-    logging.config.dictConfig({
-        'version': 1,              
-        'disable_existing_loggers': False,
-        'formatters': {
-            'full': {
-                #'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
-                'format': '[%(levelname)s] %(name)s: %(message)s'
-            },
-            'simple': {
-                'format': '%(message)s'
-            },
-        },
-        'handlers': {
-            'default': {
-                'class':'logging.StreamHandler',
-                'formatter': 'full',
-            },
-        },
-        'loggers': {
-            '': {                  
-                'handlers': ['default'],
-                'level': 'DEBUG' if verbosity > 1 else ('INFO' if verbosity == 1 else 'WARNING'),
-                'propagate': True  
-            }
-        }
-    })
-
-def main():
-    parser = argparse.ArgumentParser(description='Build libraries from source code repositories')
-    parser.add_argument('-r', '--repository',
-        dest='repositories',
-        required=True,
-        action='append',
-        help='Folder in which modules are located')
-    parser.add_argument('-p', '--project',
-        dest='project',
-        required=True,
-        help='Project/library configuration file')
-    parser.add_argument('-o', '--__outpath',
-        dest='__outpath',
-        default='.',
-        help='Output path to which the  library will be generated')
-    parser.add_argument('-v', '--verbose',
-        action='count',
-        default = 0,
-        dest='verbose')
-
-    args = parser.parse_args()
-    
-    configure_logger(args.verbose)
-    
-    try:
-        pass
-    except exception.BlobException as e:
-        sys.stderr.write('%s\n' % e)
-        sys.exit(1)
+            
+    def configure_and_build_library(self, configfile, outpath):
+        selected_modules, config_options = self.parse_configuration(configfile)
+        
+        repo_options = self.merge_repository_options(config_options)
+        modules = self.prepare_modules(repo_options)
+        
+        build_modules = self.resolve_dependencies(modules, selected_modules)
+        module_options = self.merge_module_options(build_modules, config_options)
+        
+        self.build_modules(outpath, build_modules, repo_options, module_options)
