@@ -9,6 +9,7 @@
 
 import os
 import pkgutil
+import shutil
 import logging
 from lxml import etree
 
@@ -87,7 +88,7 @@ class Parser:
                 logger.debug("Parse modulefile '%s'" % modulefile)
                 code = compile(f.read(), modulefile, 'exec')
         
-                local = {}
+                local = {'ignore_patterns': shutil.ignore_patterns}
                 exec(code, local)
                 
                 m = lbuild.module.Module(repo, modulefile, os.path.dirname(modulefile))
@@ -184,7 +185,7 @@ class Parser:
                     for option in repo_options_by_option_name[option_name]:
                         option.value = value
                 else:
-                    repo_options_by_full_name[name].value = value
+                    repo_options_by_full_name[config_name].value = value
             elif len(name) == 3:
                 # module option
                 pass

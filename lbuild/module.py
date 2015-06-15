@@ -43,10 +43,10 @@ class Options:
                                           "to separate repository(, module) and option name.")
 
     def __repr__(self): 
-        return repr(self.options)
+        return repr(self.module_options)
 
     def __len__(self): 
-        return len(self.options)
+        return len(self.module_options) + len(self.repo_options)
 
 class Module:
     
