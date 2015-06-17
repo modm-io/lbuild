@@ -50,9 +50,9 @@ class BooleanOption(Option):
             return value
         elif isinstance(value, bool):
             return value
-        elif value in ['True', 'true', 'Yes', 'yes', '1', 1]:
+        elif str(value).lower() in ['true', 'yes', '1']:
             return True
-        elif value in ['False', 'false', 'No', 'no', '0', 0]:
+        elif str(value).lower() in ['false', 'no', '0']:
             return False
         
         raise exception.BlobException("Value '%s' (%s) of option '%s' must be boolean" % 
