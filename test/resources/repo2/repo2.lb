@@ -6,4 +6,4 @@ def prepare(repo):
 	repo.find_modules(".")
 	
 	repo.add_option(name="target", description="Target architecture for the library.")
-	repo.add_option(name="include_tests", default="true", description="Include the unit-tests")
+	repo.add_boolean_option(name="include_tests", default=True, description="Include the unit-tests")

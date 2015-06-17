@@ -108,6 +108,17 @@ class Repository:
         available and what options they provide for a specific set of
         repository options.
         """
-        if ":" in name:
-            raise exception.BlobException("Character ':' is not allowed in option name '%s'" % name)
+        self._check_for_duplicates(name)
         self.options[name] = environment.Option(name, description, default)
+    
+    def add_boolean_option(self, name, description, default=None):
+        self._check_for_duplicates(name)
+        self.options[name] = environment.BooleanOption(name, description, default)
+    
+    def add_numeric_option(self, name, description, default=None):
+        self._check_for_duplicates(name)
+        self.options[name] = environment.NumericOption(name, description, default)
+    
+    def _check_for_duplicates(self, name):
+        if name in self.options:
+            raise exception.BlobException("Option name '%s' is already defined" % name)

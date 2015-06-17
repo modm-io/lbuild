@@ -15,9 +15,78 @@ from . import exception
 class Option:
     
     def __init__(self, name, description, value):
+        if ":" in name:
+            raise exception.BlobException("Character ':' is not allowed in options name '%s'" % name)
+        
         self.name = name
         self.description = description
-        self.value = value
+        self._value = value
+    
+    def _get_value(self):
+        return self._value
+
+    def _set_value(self, value):
+        self._value = value
+    
+    value = property(_get_value, _set_value)
+
+
+class BooleanOption(Option):
+    
+    def __init__(self, name, description, value):
+        self._validate_value(value)
+        Option.__init__(self, name, description, value)
+    
+    def _get_value(self):
+        return self._value
+
+    def _set_value(self, value):
+        self._value = self._validate_value(value)
+    
+    value = property(_get_value, _set_value)
+
+    def _validate_value(self, value):
+        if value is None:
+            return value
+        elif isinstance(value, bool):
+            return value
+        elif value in ['True', 'true', 'Yes', 'yes', '1', 1]:
+            return True
+        elif value in ['False', 'false', 'No', 'no', '0', 0]:
+            return False
+        
+        raise exception.BlobException("Value '%s' (%s) of option '%s' must be boolean" % 
+                                      (value, type(value).__name__, self.name))
+
+
+class NumericOption(Option):
+    
+    def __init__(self, name, description, value):
+        self._validate_value(value)
+        Option.__init__(self, name, description, value)
+    
+    def _get_value(self):
+        return self._value
+
+    def _set_value(self, value):
+        self._value = self._validate_value(value)
+    
+    value = property(_get_value, _set_value)
+
+    def _validate_value(self, value):
+        if value is None:
+            return value
+        elif isinstance(value, (int, float)):
+            return value
+        elif isinstance(value, str):
+            try:
+                return int(value, 0)
+            except:
+                pass
+        
+        raise exception.BlobException("Value '%s' (%s) of option '%s' must be numeric" % 
+                                      (value, type(value).__name__, self.name))
+
 
 def _copytree(src, dst, ignore=None):
     """
