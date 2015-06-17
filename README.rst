@@ -2,7 +2,7 @@
 Introduction
 ============
 
-'lbuild' is a library builder used to generate a blob of files from a source
+*lbuild* is a library builder used to generate a blob of files from a source
 code repository.
 
 
@@ -23,7 +23,7 @@ Module:
   repository options.
 
 Repository file:
-  Python script used to declare the name of the repositry, the location of
+  Python script used to declare the name of the repository, the location of
   the module files within the repository and repository options.
   
   Must declare the following functions::
@@ -32,7 +32,7 @@ Repository file:
         ...
 
 Module file:
-  Python script defining a module. A module gets the repostiory options to
+  Python script defining a module. A module gets the repository options to
   select whether it can be build with selection of options and which other
   modules are needed.
   
@@ -66,8 +66,8 @@ Configuration file:
   modules should be build.
   
   Defining options in the configuration file follow the same naming schema for
-  repository and module options. The only difference beeing that when the
-  repository or module name is left blank all options matching the remaing
+  repository and module options. The only difference being that when the
+  repository or module name is left blank all options matching the remaining
   fields are set.
   
   E.g. defining a value for `abc::xyz` will set the given value for all modules
@@ -77,7 +77,7 @@ Configuration file:
 Operation
 ---------
 
-lbuild gets the path to a number of repository files and a configuration file.
+*lbuild* gets the path to a number of repository files and a configuration file.
 The repository files define what modules and global options are available and
 where the modules are located.
 
