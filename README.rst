@@ -45,8 +45,8 @@ Module file:
         ...
     def prepare(module, options):
         ...
-	def build(env):
-	    ...
+    def build(env):
+        ...
 
 Options:
   There are two kind of options: repository and module options. The repository
@@ -70,8 +70,8 @@ Configuration file:
   repository or module name is left blank all options matching the remaining
   fields are set.
   
-  E.g. defining a value for `abc::xyz` will set the given value for all modules
-  in the `abc` repository which define an option with the name `xyz`.
+  E.g. defining a value for ``abc::xyz`` will set the given value for all modules
+  in the ``abc`` repository which define an option with the name ``xyz``.
 
 
 Operation
