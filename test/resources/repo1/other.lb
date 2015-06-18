@@ -5,7 +5,7 @@ def init(module):
 
 def prepare(module, options):
 	if options[":target"] == "hosted":
-		module.depends([":module1", "repo2:module3"])
+		module.depends([":module1", "repo2:module4"])
 	elif options[":target"] == "stm32":
 		module.depends(":module1")
 	else:

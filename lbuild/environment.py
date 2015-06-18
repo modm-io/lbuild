@@ -8,15 +8,18 @@
 # governing this code.
 
 import os
+import time
+import jinja2
 import shutil
+import textwrap
 
-from . import exception
+from .exception import BlobException
 
 class Option:
     
     def __init__(self, name, description, value):
         if ":" in name:
-            raise exception.BlobException("Character ':' is not allowed in options name '%s'" % name)
+            raise BlobException("Character ':' is not allowed in options name '%s'" % name)
         
         self.name = name
         self.description = description
@@ -55,8 +58,8 @@ class BooleanOption(Option):
         elif str(value).lower() in ['false', 'no', '0']:
             return False
         
-        raise exception.BlobException("Value '%s' (%s) of option '%s' must be boolean" % 
-                                      (value, type(value).__name__, self.name))
+        raise BlobException("Value '%s' (%s) of option '%s' must be boolean" % 
+                            (value, type(value).__name__, self.name))
 
 
 class NumericOption(Option):
@@ -84,8 +87,8 @@ class NumericOption(Option):
             except:
                 pass
         
-        raise exception.BlobException("Value '%s' (%s) of option '%s' must be numeric" % 
-                                      (value, type(value).__name__, self.name))
+        raise BlobException("Value '%s' (%s) of option '%s' must be numeric" % 
+                            (value, type(value).__name__, self.name))
 
 
 def _copytree(src, dst, ignore=None):
@@ -132,11 +135,83 @@ class Environment:
         else:
             shutil.copy2(srcpath, destpath)
     
-    def template(self, src, dest, subsititutions={}):
+    def template(self, src, dest, substitutions={}):
         """
         Uses the Jinja2 template engine to generate files.
         """
-        pass
+        global_substitutions = {
+            'time': time.strftime("%d %b %Y, %H:%M:%S", time.localtime()),
+            'options': self.options,
+        }
+        
+        def filter_wordwrap(value, width=79):
+            return '\n\n'.join([textwrap.fill(s, width) for s in value.split('\n\n')])
+    
+        def filter_indent(value, level=0):
+            return ('\n' + '\t' * level).join(value.split('\n'))
+    
+        def filter_pad(value, min_width):
+            tab_width = 4
+            tab_count =  (min_width/tab_width - len(value)/tab_width) + 1
+            return value + ('\t' * tab_count)
+    
+        def filter_split(value, delimiter):
+            return value.split(delimiter)
+
+        def filter_values(lst, key):
+            """
+            Goes through the list of dictionaries and
+            adds all the values of a certain key
+            to a list which is thus returned
+            """
+            values = []
+            for item in lst:
+                if isinstance(item, dict) and key in item:
+                    if item[key] not in values:
+                        values.append(item[key])
+            return values
+    
+        # Overwrite jinja2 Environment in order to enable relative paths
+        # since this runs locally that should not be a security concern
+        # Code from:
+        # http://stackoverflow.com/questions/8512677/how-to-include-a-template-with-relative-path-in-jinja2
+        class RelEnvironment(jinja2.Environment):
+            """Override join_path() to enable relative template paths.
+            Take care of paths. Jinja seems to use '/' as path separator in
+            templates.
+            """
+            def join_path(self, template, parent):
+                d = os.path.join(os.path.dirname(parent), template)
+                return os.path.normpath(d)
+
+        loader = RelEnvironment(loader=jinja2.FileSystemLoader(self.__modulepath),
+                                                               extensions=['jinja2.ext.do'])
+        
+        loader.filters['xpcc.wordwrap'] = filter_wordwrap
+        loader.filters['xpcc.indent'] = filter_indent
+        loader.filters['xpcc.pad'] = filter_pad
+        loader.filters['xpcc.values'] = filter_values
+        loader.filters['split'] = filter_split
+        
+        # Jinja2 Line Statements
+        loader.line_statement_prefix = '%%'
+        loader.line_comment_prefix = '%#'
+        
+        try:
+            template = loader.get_template(src, globals=global_substitutions)
+        except jinja2.TemplateNotFound as e:
+            raise BlobException('Failed to retrieve Template: %s' % e)
+    
+        output = template.render(substitutions)
+        
+        outfile = self.outpath(dest)
+        
+        # Create folder structure if it doesn't exists
+        if not os.path.exists(os.path.dirname(outfile)):
+            os.makedirs(os.path.dirname(outfile))
+        
+        with open(outfile, 'w') as f:
+            f.write(output)
     
     def modulepath(self, *path):
         """Relocate given path to the path of the module file."""

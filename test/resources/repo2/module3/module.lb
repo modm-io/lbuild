@@ -4,7 +4,9 @@ def init(module):
 	module.set_name("module3")
 
 def prepare(module, options):
+	module.depends("repo1:other")
+	module.add_option(name="text", default="Hello World!", description="")
 	return True
 
 def build(env):
-	pass
+	env.template("src/module3.cpp.in", "src/module3.cpp")

@@ -133,7 +133,7 @@ class ParserTest(unittest.TestCase):
         m = [x.full_name for x in build_modules]
         self.assertIn("repo1:other", m)
         self.assertIn("repo1:module1", m)
-        self.assertIn("repo2:module3", m)
+        self.assertIn("repo2:module4", m)
 
     def test_shouldMergeBuildModuleOptions(self):
         build_modules, config_options, _ = self._get_build_modules()
@@ -158,15 +158,29 @@ class ParserTest(unittest.TestCase):
     
     @testfixtures.tempdir()
     def test_shouldBuildJinja2Modules(self, tempdir):
-#         build_modules, config_options, repo_options = self._get_build_modules()
-#         module_options = self.parser.merge_module_options(build_modules, config_options)
-#         
-#         outpath = tempdir.path
-#         self.parser.build_modules(outpath, build_modules, repo_options, module_options)
-#         
-#         self.assertTrue(os.path.isfile(os.path.join(outpath, "src/other.cpp")))
-#         self.assertTrue(os.path.isfile(os.path.join(outpath, "test/other.cpp")))
-        pass
+        self.parser.parse_repository(self._getPath("resources/repo1.lb"))
+        self.parser.parse_repository(self._getPath("resources/repo2/repo2.lb"))
+        
+        selected_modules = ["repo2:module3"]
+        config_options = {
+            ':target': 'hosted',
+            ':other:xyz': 'No',
+            'repo1::bar': '768',
+            'repo1:other:foo': '456',
+            '::abc': 'Hello World!',
+        }
+        
+        repo_options = self.parser.merge_repository_options(config_options)
+        modules = self.parser.prepare_modules(repo_options)
+        build_modules = self.parser.resolve_dependencies(modules, selected_modules)
+        module_options = self.parser.merge_module_options(build_modules, config_options)
+        
+        outpath = tempdir.path
+        self.parser.build_modules(outpath, build_modules, repo_options, module_options)
+        
+        self.assertTrue(os.path.isfile(os.path.join(outpath, "src/module3.cpp")))
+        
+        testfixtures.compare(tempdir.read("src/module3.cpp"), b"Hello World!")
 
 if __name__ == '__main__':
     unittest.main()
