@@ -9,8 +9,12 @@
 # governing this code.
 
 import os
+import sys
 import unittest
 import testfixtures
+
+# Hack to support the usage of `coverage`
+sys.path.append(os.path.abspath("."))
 
 import lbuild
 
@@ -80,10 +84,14 @@ class ParserTest(unittest.TestCase):
         self.assertIn("repo1:other", modules)
         self.assertIn(":module1", modules)
         
-        self.assertEqual(3, len(options))
+        self.assertEqual(6, len(options))
         self.assertEqual('hosted', options[':target'])
+        self.assertEqual('43', options['repo1:foo'])
+        
         self.assertEqual('456', options['repo1:other:foo'])
         self.assertEqual('768', options['repo1::bar'])
+        self.assertEqual('No', options[':other:xyz'])
+        self.assertEqual('Hello World!', options['::abc'])
 
     def test_shouldMergeOptions(self):
         self.parser.parse_repository(self._getPath("resources/repo1.lb"))
@@ -92,6 +100,7 @@ class ParserTest(unittest.TestCase):
         
         options = self.parser.merge_repository_options(config_options)
         self.assertEqual("hosted", options["repo1:target"].value)
+        self.assertEqual(43, options["repo1:foo"].value)
         self.assertEqual("hosted", options["repo2:target"].value)
         self.assertEqual(True, options["repo2:include_tests"].value)
     
@@ -130,20 +139,34 @@ class ParserTest(unittest.TestCase):
         build_modules, config_options, _ = self._get_build_modules()
         options = self.parser.merge_module_options(build_modules, config_options)
         
-        self.assertEqual(2, len(options))
+        self.assertEqual(4, len(options))
         self.assertEqual(456, options["repo1:other:foo"].value)
         self.assertEqual(768, options["repo1:other:bar"].value)
+        self.assertEqual(False, options["repo1:other:xyz"].value)
+        self.assertEqual("Hello World!", options["repo1:other:abc"].value)
 
     @testfixtures.tempdir()
-    def test_shouldBuildModules(self, d):
+    def test_shouldBuildModules(self, tempdir):
         build_modules, config_options, repo_options = self._get_build_modules()
         module_options = self.parser.merge_module_options(build_modules, config_options)
         
-        outpath = d.path
+        outpath = tempdir.path
         self.parser.build_modules(outpath, build_modules, repo_options, module_options)
         
         self.assertTrue(os.path.isfile(os.path.join(outpath, "src/other.cpp")))
         self.assertTrue(os.path.isfile(os.path.join(outpath, "test/other.cpp")))
+    
+    @testfixtures.tempdir()
+    def test_shouldBuildJinja2Modules(self, tempdir):
+#         build_modules, config_options, repo_options = self._get_build_modules()
+#         module_options = self.parser.merge_module_options(build_modules, config_options)
+#         
+#         outpath = tempdir.path
+#         self.parser.build_modules(outpath, build_modules, repo_options, module_options)
+#         
+#         self.assertTrue(os.path.isfile(os.path.join(outpath, "src/other.cpp")))
+#         self.assertTrue(os.path.isfile(os.path.join(outpath, "test/other.cpp")))
+        pass
 
 if __name__ == '__main__':
     unittest.main()

@@ -2,8 +2,12 @@
 <library>
 	<options>
 		<option name=":target" value="hosted" />
+		<option name="repo1:foo" value="43" />
+		
 		<option name="repo1:other:foo" value="456" />
 		<option name="repo1::bar" value="768" />
+		<option name=":other:xyz" value="No" />
+		<option name="::abc" value="Hello World!" />
 	</options>
 
 	<modules>

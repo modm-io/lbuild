@@ -11,11 +11,11 @@
 import os
 import glob
 
-from . import exception
+from .exception import BlobException
 from . import utils
 from . import environment
 
-class Options:
+class OptionNameResolver:
     
     def __init__(self, repository, options):
         self.repository = repository
@@ -24,13 +24,16 @@ class Options:
     def __getitem__(self, key):
         o = key.split(":")
         if len(o) != 2:
-            raise exception.BlobException("Option name '%s' must contain exactly one colon " \
-                                          "to separate repository and option name.")
+            raise BlobException("Option name '%s' must contain exactly one colon " \
+                                "to separate repository and option name.")
         repo, option = o
         if repo == "":
             key = "%s:%s" % (self.repository.name, option)
         
-        return self.options[key].value
+        try:
+            return self.options[key].value
+        except KeyError:
+            raise BlobException("Unknown option name '%s'" % key)
         
     def __repr__(self): 
         return repr(self.options)
@@ -82,7 +85,7 @@ class Repository:
             file = self._relocate(file)
             
             if not os.path.isfile(file):
-                raise exception.BlobException("Module file not found '%s'" % file)
+                raise BlobException("Module file not found '%s'" % file)
             
             self.modules[file] = None
     
@@ -121,4 +124,4 @@ class Repository:
     
     def _check_for_duplicates(self, name):
         if name in self.options:
-            raise exception.BlobException("Option name '%s' is already defined" % name)
+            raise BlobException("Option name '%s' is already defined" % name)

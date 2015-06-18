@@ -13,6 +13,8 @@ def prepare(module, options):
 	
 	module.add_numeric_option(name="foo", default=123, description="A option")
 	module.add_numeric_option(name="bar", default=12, description="A second option")
+	module.add_boolean_option(name="xyz", default=False, description="Bla")
+	module.add_option(name="abc", description="Blub")
 	return True
 
 def build(env):

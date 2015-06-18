@@ -2,6 +2,11 @@
 test:
 	@python3 -m unittest discover -p *test.py
 
+coverage:
+	@coverage run --source=lbuild -m unittest discover -p *test.py
+	@coverage report
+	@coverage html -d build/coverage
+
 dist:
 	@python3 setup.py sdist --formats=zip
 

@@ -16,7 +16,7 @@ from lxml import etree
 import lbuild.module
 import lbuild.environment
 
-from . import exception
+from .exception import BlobException
 from . import repository
 
 logger = logging.getLogger('lbuild.parser')
@@ -47,19 +47,19 @@ class Parser:
                 
                 prepare = local.get('prepare')
                 if prepare is None:
-                    raise exception.BlobException("No prepare() function found!")
+                    raise BlobException("No prepare() function found!")
                 
                 # Execution prepare() function. In this function modules and
                 # options are added. 
                 prepare(repo)
                 
                 if repo.name is None:
-                    raise exception.BlobException("The prepare(repo) function must set a repo name! " \
-                                                  "Please use the set_name() method.")
+                    raise BlobException("The prepare(repo) function must set a repo name! " \
+                                        "Please use the set_name() method.")
         
         except Exception as e:
-            raise exception.BlobException("Invalid repository configuration file '%s': %s" % 
-                                            (repofile, e))
+            raise BlobException("Invalid repository configuration file '%s': %s" % 
+                                 (repofile, e))
         
         # Parse the modules inside the repository
         for modulefile, m in repo.modules.items():
@@ -71,7 +71,7 @@ class Parser:
                 self.modules["%s:%s" % (repo.name, m.name)] = m
         
         if repo.name in self.repositories:
-            raise exception.BlobException("Repository name '%s' is ambiguous. Name must be unique." % repo.name)
+            raise BlobException("Repository name '%s' is ambiguous. Name must be unique." % repo.name)
         
         self.repositories[repo.name] = repo
         return repo
@@ -97,21 +97,21 @@ class Parser:
                 for functionname in ['init', 'prepare', 'build']:
                     f = local.get(functionname)
                     if f is None:
-                        raise exception.BlobException("No function '%s' found!" % functionname)
+                        raise BlobException("No function '%s' found!" % functionname)
                     m.functions[functionname] = f
                 
                 # Execute init() function from module to get module name
                 m.functions['init'](m)
                 
                 if m.name is None:
-                    raise exception.BlobException("The init(module) function must set a module name! " \
-                                                  "Please use the set_name() method.")
+                    raise BlobException("The init(module) function must set a module name! " \
+                                        "Please use the set_name() method.")
                   
                 logger.info("Found module '%s'" % m.name)
                 
                 return m
         except Exception as e:
-            raise exception.BlobException("While parsing '%s': %s" % (modulefile, e))
+            raise BlobException("While parsing '%s': %s" % (modulefile, e))
     
     def parse_configuration(self, configfile):
         """
@@ -134,9 +134,9 @@ class Parser:
     
             xmltree = xmlroot.getroot()
         except OSError as e:
-            raise exception.BlobException(e)
+            raise BlobException(e)
         except (etree.XMLSyntaxError, etree.DocumentInvalid) as e:
-            raise exception.BlobException("Error while parsing xml-file '%s': %s" % (configfile, e))
+            raise BlobException("Error while parsing xml-file '%s': %s" % (configfile, e))
     
         requested_modules = []
         for modules_node in xmltree.findall('modules'):
@@ -144,8 +144,8 @@ class Parser:
                 modulename = module_node.text
                 m = modulename.split(":")
                 if len(m) != 2:
-                    raise exception.BlobException("Modulename '%s' must contain exactly one ':' as " \
-                                                  "separator between repository and module name" % modulename)
+                    raise BlobException("Modulename '%s' must contain exactly one ':' as " \
+                                        "separator between repository and module name" % modulename)
                 
                 logger.debug("- require module '%s'" % modulename)
                 requested_modules.append(modulename)
@@ -190,14 +190,14 @@ class Parser:
                 # module option
                 pass
             else:
-                raise exception.BlobException("Invalid option format '%s'. Option must contain one " \
-                                              "(repository option) or two (module option) colons." % config_name)
+                raise BlobException("Invalid option format '%s'. Option must contain one " \
+                                    "(repository option) or two (module option) colons." % config_name)
         
         # Check that all option values are set
         for option in repo_options_by_full_name.values():
             if option.value is None:
-                raise exception.BlobException("Unknown value for option '%s'." \
-                                              "Please provide a value in the configuration file." % option.name)
+                raise BlobException("Unknown value for option '%s'." \
+                                    "Please provide a value in the configuration file." % option.name)
         
         return repo_options_by_full_name
 
@@ -211,7 +211,7 @@ class Parser:
         """
         for repo in self.repositories.values():
             for m in repo.modules.values():
-                available = m.functions["prepare"](m, repository.Options(repo, options))
+                available = m.functions["prepare"](m, repository.OptionNameResolver(repo, options))
                 
                 if available:
                     name = "%s:%s" % (repo.name, m.name)
@@ -237,18 +237,18 @@ class Parser:
                 _, n = name.split(':')
                 if n == modulepart:
                     if m is not None:
-                        raise exception.BlobException("Name '%s' is ambiguous. " \
-                                                      "Please specify the repository." % modulename)
+                        raise BlobException("Name '%s' is ambiguous. " \
+                                            "Please specify the repository." % modulename)
                     m = module
             if m is None:
-                raise exception.BlobException("Module '%s' not found." % modulename)
+                raise BlobException("Module '%s' not found." % modulename)
             else:
                 return m
         else:
             try:
                 return self.available_modules[modulename]
             except KeyError:
-                raise exception.BlobException("Module '%s' not found." % modulename)
+                raise BlobException("Module '%s' not found." % modulename)
     
     def resolve_dependencies(self, modules, requested_modules):
         """Resolve dependencies by adding missing modules"""
@@ -332,18 +332,18 @@ class Parser:
                             found = True
                 
                 if not found:
-                    raise exception.BlobException("Option '%s' not found!" % config_name)
+                    raise BlobException("Option '%s' not found!" % config_name)
             else:
-                raise exception.BlobException("Invalid option format '%s'. Option must contain one " \
-                                              "(repository option) or two (module option) colons." % config_name)
+                raise BlobException("Invalid option format '%s'. Option must contain one " \
+                                    "(repository option) or two (module option) colons." % config_name)
         
         options = {}
         # Check that all option values are set
         for module in build_modules:
             for option in module.options.values():
                 if option.value is None:
-                    raise exception.BlobException("Unknown value for option '%s'." \
-                                                  "Please provide a value in the configuration file." % option.name)
+                    raise BlobException("Unknown value for option '%s'." \
+                                        "Please provide a value in the configuration file." % option.name)
                 fullname = "%s:%s" % (module.full_name, option.name)
                 options[fullname] = option
         
@@ -351,7 +351,7 @@ class Parser:
     
     def build_modules(self, outpath, build_modules, repo_options, module_options):
         for module in build_modules:
-            options = lbuild.module.Options(module.repository, module, repo_options, module_options)
+            options = lbuild.module.OptionNameResolver(module.repository, module, repo_options, module_options)
             env = lbuild.environment.Environment(options, module.path, outpath)
             module.functions["build"](env)
             

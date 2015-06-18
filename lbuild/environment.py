@@ -34,8 +34,8 @@ class Option:
 class BooleanOption(Option):
     
     def __init__(self, name, description, value):
-        self._validate_value(value)
         Option.__init__(self, name, description, value)
+        self._set_value(value)
     
     def _get_value(self):
         return self._value
@@ -62,8 +62,8 @@ class BooleanOption(Option):
 class NumericOption(Option):
     
     def __init__(self, name, description, value):
-        self._validate_value(value)
         Option.__init__(self, name, description, value)
+        self._set_value(value)
     
     def _get_value(self):
         return self._value

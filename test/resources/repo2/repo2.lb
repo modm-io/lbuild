@@ -5,5 +5,11 @@ def prepare(repo):
 	# Find all modules with the name "module.lb"
 	repo.find_modules(".")
 	
-	repo.add_option(name="target", description="Target architecture for the library.")
-	repo.add_boolean_option(name="include_tests", default=True, description="Include the unit-tests")
+	repo.add_option(
+		name="target",
+		description="Target architecture for the library.")
+	
+	repo.add_boolean_option(
+		name="include_tests",
+		default=True,
+		description="Include the unit-tests")

@@ -8,10 +8,10 @@
 # governing this code.
 
 from . import environment
-from . import exception
+from .exception import BlobException
 from . import utils
 
-class Options:
+class OptionNameResolver:
     
     def __init__(self, repository, module, repo_options, module_options):
         self.repository = repository
@@ -22,31 +22,39 @@ class Options:
     def __getitem__(self, key):
         o = key.split(":")
         
-        if len(o) == 2:
-            repo, option = o
-            if repo == "":
-                key = "%s:%s" % (self.repository.name, option)
-            
-            return self.repo_options[key].value
-        elif len(o) == 3:
-            repo, module, option = o
-            
-            if repo == "":
-                repo = self.repository.name
-            if module == "":
-                module = self.module.name
-            
-            key = "%s:%s:%s" % (repo, module, option)
-            return self.module_options[key].value
-        else:
-            raise exception.BlobException("Option name '%s' must contain exactly one (or two) colon " \
-                                          "to separate repository(, module) and option name.")
+        try:
+            if len(o) == 2:
+                repo, option = o
+                if repo == "":
+                    key = "%s:%s" % (self.repository.name, option)
+                
+                return self.repo_options[key].value
+            elif len(o) == 3:
+                repo, module, option = o
+                
+                if repo == "":
+                    repo = self.repository.name
+                if module == "":
+                    module = self.module.name
+                
+                key = "%s:%s:%s" % (repo, module, option)
+                return self.module_options[key].value
+            else:
+                raise BlobException("Option name '%s' must contain exactly one (or two) colon " \
+                                    "to separate repository(, module) and option name.")
+        except KeyError:
+            raise BlobException("Unknown option name '%s'" % key)
 
-    def __repr__(self): 
-        return repr(self.module_options)
+    def __repr__(self):
+        # Create representation of merged module and repository options
+        o = self.module_options.copy()
+        o.update(self.repo_options)
+        
+        return repr(o)
 
     def __len__(self): 
         return len(self.module_options) + len(self.repo_options)
+
 
 class Module:
     
@@ -76,7 +84,7 @@ class Module:
         # List of module names this module depends upon
         self.dependencies = []
         
-        # Options defined in the module configuration file. These options are
+        # OptionNameResolver defined in the module configuration file. These options are
         # configurable through the project configuration file.
         self.options = {}
     
@@ -106,11 +114,11 @@ class Module:
     
     def _check_for_duplicates(self, name):
         if name in self.options:
-            raise exception.BlobException("Option name '%s' is already defined" % name)
+            raise BlobException("Option name '%s' is already defined" % name)
     
     def depends(self, dependencies):
         for dependency in utils.listify(dependencies):
             if len(dependency.split(':')) != 2:
-                raise exception.BlobException("Modulename '%s' must contain exactly one ':' as " \
-                                              "separator between repository and module name" % dependency)
+                raise BlobException("Modulename '%s' must contain exactly one ':' as " \
+                                    "separator between repository and module name" % dependency)
             self.dependencies.append(dependency)
