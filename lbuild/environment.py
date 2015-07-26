@@ -121,8 +121,7 @@ class Environment:
         self.__outpath = outpath
     
     def copy(self, src, dest, ignore=None):
-        """
-        Copy file or directory from the modulepath to the buildpath.
+        """ Copy file or directory from the modulepath to the buildpath.
         
         If src or dest is a relative path it will be relocated to the
         module/buildpath. Absolute paths are not changed.
@@ -135,10 +134,11 @@ class Environment:
         else:
             shutil.copy2(srcpath, destpath)
     
+    def ignore_files(self, *files):
+        return shutil.ignore_patterns(*files)
+    
     def template(self, src, dest, substitutions={}):
-        """
-        Uses the Jinja2 template engine to generate files.
-        """
+        """ Uses the Jinja2 template engine to generate files. """
         global_substitutions = {
             'time': time.strftime("%d %b %Y, %H:%M:%S", time.localtime()),
             'options': self.options,
@@ -159,10 +159,8 @@ class Environment:
             return value.split(delimiter)
 
         def filter_values(lst, key):
-            """
-            Goes through the list of dictionaries and
-            adds all the values of a certain key
-            to a list which is thus returned
+            """ Go through the list of dictionaries and add all the values of
+            a certain key to a list.
             """
             values = []
             for item in lst:

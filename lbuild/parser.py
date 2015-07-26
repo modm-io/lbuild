@@ -77,8 +77,7 @@ class Parser:
         return repo
     
     def _parse_module(self, repo, modulefile):
-        """
-        Parse a specific module file.
+        """ Parse a specific module file.
         
         Returns:
             Module() module definition object.
@@ -114,8 +113,7 @@ class Parser:
             raise BlobException("While parsing '%s': %s" % (modulefile, e))
     
     def parse_configuration(self, configfile):
-        """
-        Parse the configuration file.
+        """ Parse the configuration file.
     
         This file contains information about which modules should be included
         and how they are configured.
@@ -190,7 +188,7 @@ class Parser:
                 # module option
                 pass
             else:
-                raise BlobException("Invalid option format '%s'. Option must contain one " \
+                raise BlobException("Invalid option format '%s' in configuration file. Option must contain one " \
                                     "(repository option) or two (module option) colons." % config_name)
         
         # Check that all option values are set
@@ -202,8 +200,7 @@ class Parser:
         return repo_options_by_full_name
 
     def prepare_modules(self, options):
-        """
-        Prepare and select modules which are available given the set of
+        """ Prepare and select modules which are available given the set of
         repository options.
         
         Returns:
@@ -220,7 +217,7 @@ class Parser:
         return self.available_modules
     
     def get_available_module(self, modulename):
-        """Get the module representation from a module name.
+        """ Get the module representation from a module name.
         
         The name can either be fully qualified or have an empty repository
         string. In the later case all repositories are searched for the module
@@ -251,7 +248,7 @@ class Parser:
                 raise BlobException("Module '%s' not found." % modulename)
     
     def resolve_dependencies(self, modules, requested_modules):
-        """Resolve dependencies by adding missing modules"""
+        """ Resolve dependencies by adding missing modules. """
         selected_modules = []
         for modulename in requested_modules:
             m = self.get_available_module(modulename)
@@ -277,8 +274,7 @@ class Parser:
         return selected_modules
     
     def merge_module_options(self, build_modules, config_options):
-        """
-        Returns the list of options used for building the selected modules.
+        """ Return the list of options used for building the selected modules.
         
         Raises an exception if not all options have assigned values.
         
@@ -353,8 +349,9 @@ class Parser:
         for module in build_modules:
             options = lbuild.module.OptionNameResolver(module.repository, module, repo_options, module_options)
             env = lbuild.environment.Environment(options, module.path, outpath)
+            # TODO add exception handling
             module.functions["build"](env)
-            
+
     def configure_and_build_library(self, configfile, outpath):
         selected_modules, config_options = self.parse_configuration(configfile)
         
