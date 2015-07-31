@@ -48,7 +48,7 @@ class Repository:
         # Path to the repository file. All relative paths refer to this path.
         self.path = path
         self.name = None
-        
+
         # Dict of modules, using the filename as the key
         self.modules = {}
         
@@ -69,7 +69,7 @@ class Repository:
         return os.path.normpath(path)
     
     def glob(self, pattern):
-        pattern = self._relocate(pattern)
+        pattern = os.path.abspath(self._relocate(pattern))
         return glob.glob(pattern)
     
     def add_modules(self, modules):
@@ -80,7 +80,7 @@ class Repository:
             modules: List of filenames
         """
         module_files = utils.listify(modules)
-        
+
         for file in module_files:
             file = self._relocate(file)
             
