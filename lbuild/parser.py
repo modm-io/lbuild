@@ -154,7 +154,7 @@ class Parser:
         
         return (requested_modules, config_options)
     
-    def merge_repository_options(self, config_options):
+    def merge_repository_options(self, config_options, cmd_options={}):
         repo_options_by_full_name = {}
         repo_options_by_option_name = {}
         
@@ -174,6 +174,25 @@ class Parser:
         # Overwrite the values in the options with the values provided
         # in the configuration file
         for config_name, value in config_options.items():
+            name = config_name.split(':')
+            if len(name) == 2:
+                # repository option
+                repo_name, option_name = name
+                
+                if repo_name == "":
+                    for option in repo_options_by_option_name[option_name]:
+                        option.value = value
+                else:
+                    repo_options_by_full_name[config_name].value = value
+            elif len(name) == 3:
+                # module option
+                pass
+            else:
+                raise BlobException("Invalid option format '%s' in configuration file. Option must contain one " \
+                                    "(repository option) or two (module option) colons." % config_name)
+        
+        # Overwrite again with the values for the command line.
+        for config_name, value in cmd_options.items():
             name = config_name.split(':')
             if len(name) == 2:
                 # repository option
@@ -352,10 +371,18 @@ class Parser:
             # TODO add exception handling
             module.functions["build"](env)
 
-    def configure_and_build_library(self, configfile, outpath):
+    def format_commandline_options(self, cmd_options):
+        cmd = {}
+        for option in cmd_options:
+            o = option.split('=')
+            cmd[o[0]] = o[1]
+        return cmd
+
+    def configure_and_build_library(self, configfile, outpath, cmd_options=[]):
         selected_modules, config_options = self.parse_configuration(configfile)
         
-        repo_options = self.merge_repository_options(config_options)
+        commandline_options = self.format_commandline_options(cmd_options)
+        repo_options = self.merge_repository_options(config_options, commandline_options)
         modules = self.prepare_modules(repo_options)
         
         build_modules = self.resolve_dependencies(modules, selected_modules)
