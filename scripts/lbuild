@@ -66,6 +66,7 @@ if __name__ == '__main__':
         dest='options',
         action='append',
         type=str,
+        default=[],
         help='Additional options. Options given here will be merged with options from the configuration file.')
     parser.add_argument('-v', '--verbose',
         action='count',
