@@ -74,6 +74,62 @@ Configuration file:
   in the ``abc`` repository which define an option with the name ``xyz``.
 
 
+API Overview
+------------
+
+Repository description ('repo.lb')::
+
+	def prepare(repo):
+		repo.set_name("..")
+		
+		repo.add_modules(repo.glob("*/*.lb"))
+		repo.add_modules("..")
+		
+		repo.find_modules
+		
+		repo.add_option(name="..", description="..")
+		repo.add_boolean_option()
+		repo.add_numeric_option()
+
+
+Module description ('module.lb')::
+
+	def init(module):
+		module.set_name("..")
+		module.set_description("..")
+		
+		module.add_option(name, description, default)
+		module.add_boolean_option(name, description, default)
+		module.add_numeric_option(name, description, default)
+
+	def prepare(module, options):
+		option_value = options[".."]
+		
+		module.depends([".."])
+
+	def build(env):
+		env.copy(src, dest, ignore=env.ignore_files("main.*"))
+		env.template(src, dest, substitutions)
+		
+		modulepath  = env.modulepath(local_path)
+		output_path = env.output(local_path)
+		
+		option_value = env[".."]
+
+Project configuration ('project.xml')::
+	
+	<library>
+	  <options>
+		<option name=".." value=".." />
+		...
+	  </options>
+	  <modules>
+		<module>..</module>
+		...
+	  </modules>
+	</library>
+
+
 Operation
 ---------
 
@@ -100,5 +156,3 @@ The functions in the python files are called in the following order::
     
   for all modules selected in configuration file or through dependency
     module:build()
-
-
