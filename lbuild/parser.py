@@ -357,7 +357,7 @@ class Parser:
         for module in build_modules:
             for option in module.options.values():
                 if option.value is None:
-                    raise BlobException("Unknown value for option '%s'." \
+                    raise BlobException("Unknown value for option '%s'. " \
                                         "Please provide a value in the configuration file." % option.name)
                 fullname = "%s:%s" % (module.full_name, option.name)
                 options[fullname] = option
