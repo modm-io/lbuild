@@ -1,0 +1,11 @@
+
+<library>
+  <options>
+    <option name=":target" value="hosted" />
+    <option name=":module3:counter" value="100" />
+  </options>
+  <modules>
+    <module>:module1</module>
+    <module>:module3</module>
+  </modules>
+</library>

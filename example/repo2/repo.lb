@@ -1,0 +1,9 @@
+
+def prepare(repo):
+	repo.set_name("repo2")
+	
+	repo.add_modules(repo.glob("*/module.lb"))
+	
+	repo.add_option(
+		name="target",
+		description="Target architecture for the library.")

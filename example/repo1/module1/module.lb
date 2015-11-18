@@ -1,0 +1,13 @@
+
+def init(module):
+	module.set_name("module1")
+
+def prepare(module, options):
+	if options[":target"] == "hosted":
+		module.depends(":module2")
+		return True
+	else:
+		return False
+
+def build(env):
+	env.copy('src', 'src')
