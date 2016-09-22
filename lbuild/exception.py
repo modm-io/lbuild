@@ -9,4 +9,17 @@
 
 
 class BlobException(Exception):
-    None
+    """
+    Base class for exception thrown by lbuild.
+    """
+    pass
+
+class OptionFormatException(BlobException):
+    """
+    Exception for all invalid option names.
+    """
+    def __init__(self, name):
+        BlobException.__init__(self,
+            "Invalid option format for '{}'. Option must contain "
+            "one (repository option) or two (module option) "
+            "colons.".format(name))

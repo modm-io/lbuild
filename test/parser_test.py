@@ -20,53 +20,53 @@ import lbuild
 
 class ParserTest(unittest.TestCase):
     
-    def _getPath(self, filename):
+    def _get_path(self, filename):
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), filename)
     
     def setUp(self):
         self.parser = lbuild.parser.Parser()
     
-    def test_shouldParseRepository1(self):
-        self.parser.parse_repository(self._getPath("resources/repo1.lb"))
+    def test_should_parse_repository_1(self):
+        self.parser.parse_repository(self._get_path("resources/repo1.lb"))
         self.assertEqual(1, len(self.parser.repositories))
     
-    def test_shouldFindFilesInRepository1(self):
-        repo = self.parser.parse_repository(self._getPath("resources/repo1.lb"))
+    def test_should_find_files_in_repository_1(self):
+        repo = self.parser.parse_repository(self._get_path("resources/repo1.lb"))
         
         self.assertEqual(3, len(repo.modules))
-        self.assertIn(self._getPath("resources/repo1/other.lb"), repo.modules)
-        self.assertIn(self._getPath("resources/repo1/module1/module.lb"), repo.modules)
-        self.assertIn(self._getPath("resources/repo1/module2/module.lb"), repo.modules)
+        self.assertIn(self._get_path("resources/repo1/other.lb"), repo.modules)
+        self.assertIn(self._get_path("resources/repo1/module1/module.lb"), repo.modules)
+        self.assertIn(self._get_path("resources/repo1/module2/module.lb"), repo.modules)
 
-    def test_shouldFindFilesInRepository2(self):
-        repo = self.parser.parse_repository(self._getPath("resources/repo2/repo2.lb"))
+    def test_should_find_files_in_repository_2(self):
+        repo = self.parser.parse_repository(self._get_path("resources/repo2/repo2.lb"))
         self.assertEqual(1, len(self.parser.repositories))
         
         self.assertEqual(4, len(repo.modules))
-        self.assertIn(self._getPath("resources/repo2/module3/module.lb"), repo.modules)
-        self.assertIn(self._getPath("resources/repo2/module4/module.lb"), repo.modules)
-        self.assertIn(self._getPath("resources/repo2/module4/submodule1/module.lb"), repo.modules)
-        self.assertIn(self._getPath("resources/repo2/module4/submodule2/module.lb"), repo.modules)
+        self.assertIn(self._get_path("resources/repo2/module3/module.lb"), repo.modules)
+        self.assertIn(self._get_path("resources/repo2/module4/module.lb"), repo.modules)
+        self.assertIn(self._get_path("resources/repo2/module4/submodule1/module.lb"), repo.modules)
+        self.assertIn(self._get_path("resources/repo2/module4/submodule2/module.lb"), repo.modules)
 
-    def testRepository2HasOptions(self):
-        repo = self.parser.parse_repository(self._getPath("resources/repo2/repo2.lb"))
+    def test_repository_2_has_options(self):
+        repo = self.parser.parse_repository(self._get_path("resources/repo2/repo2.lb"))
         
         self.assertIn("target", repo.options)
         self.assertIn("include_tests", repo.options)
         
         self.assertEqual(True, repo.options["include_tests"].value)
 
-    def test_shouldParseModules(self):
-        self.parser.parse_repository(self._getPath("resources/repo1.lb"))
+    def test_should_parse_modules(self):
+        self.parser.parse_repository(self._get_path("resources/repo1.lb"))
         
         self.assertEqual(3, len(self.parser.modules))
         self.assertIn("repo1:module1", self.parser.modules)
         self.assertIn("repo1:module2", self.parser.modules)
         self.assertIn("repo1:other", self.parser.modules)
 
-    def test_shouldParseModulesFromMultipleRepositories(self):
-        self.parser.parse_repository(self._getPath("resources/repo1.lb"))
-        self.parser.parse_repository(self._getPath("resources/repo2/repo2.lb"))
+    def test_should_parse_modules_from_multiple_repositories(self):
+        self.parser.parse_repository(self._get_path("resources/repo1.lb"))
+        self.parser.parse_repository(self._get_path("resources/repo2/repo2.lb"))
         
         self.assertEqual(7, len(self.parser.modules))
         self.assertIn("repo1:module1", self.parser.modules)
@@ -77,8 +77,8 @@ class ParserTest(unittest.TestCase):
         self.assertIn("repo2:module4.submodule1", self.parser.modules)
         self.assertIn("repo2:module4.submodule2", self.parser.modules)
     
-    def test_shouldParseConfigurationFile(self):
-        modules, options = self.parser.parse_configuration(self._getPath("resources/test1.lb"))
+    def test_should_parse_configuration_file(self):
+        modules, options = self.parser.parse_configuration(self._get_path("resources/test1.lb"))
         
         self.assertEqual(2, len(modules))
         self.assertIn("repo1:other", modules)
@@ -93,10 +93,10 @@ class ParserTest(unittest.TestCase):
         self.assertEqual('No', options[':other:xyz'])
         self.assertEqual('Hello World!', options['::abc'])
 
-    def test_shouldMergeOptions(self):
-        self.parser.parse_repository(self._getPath("resources/repo1.lb"))
-        self.parser.parse_repository(self._getPath("resources/repo2/repo2.lb"))
-        _, config_options = self.parser.parse_configuration(self._getPath("resources/test1.lb"))
+    def test_should_merge_options(self):
+        self.parser.parse_repository(self._get_path("resources/repo1.lb"))
+        self.parser.parse_repository(self._get_path("resources/repo2/repo2.lb"))
+        _, config_options = self.parser.parse_configuration(self._get_path("resources/test1.lb"))
         
         options = self.parser.merge_repository_options(config_options)
         self.assertEqual("hosted", options["repo1:target"].value)
@@ -104,9 +104,9 @@ class ParserTest(unittest.TestCase):
         self.assertEqual("hosted", options["repo2:target"].value)
         self.assertEqual(True, options["repo2:include_tests"].value)
     
-    def test_shouldSelectAvailableModules(self):
-        self.parser.parse_repository(self._getPath("resources/repo1.lb"))
-        _, config_options = self.parser.parse_configuration(self._getPath("resources/test1.lb"))
+    def test_should_select_available_modules(self):
+        self.parser.parse_repository(self._get_path("resources/repo1.lb"))
+        _, config_options = self.parser.parse_configuration(self._get_path("resources/test1.lb"))
         
         options = self.parser.merge_repository_options(config_options)
         modules = self.parser.prepare_modules(options)
@@ -115,9 +115,9 @@ class ParserTest(unittest.TestCase):
         self.assertIn("repo1:module1", modules)
     
     def _get_build_modules(self):
-        self.parser.parse_repository(self._getPath("resources/repo1.lb"))
-        self.parser.parse_repository(self._getPath("resources/repo2/repo2.lb"))
-        selected_modules, config_options = self.parser.parse_configuration(self._getPath("resources/test1.lb"))
+        self.parser.parse_repository(self._get_path("resources/repo1.lb"))
+        self.parser.parse_repository(self._get_path("resources/repo2/repo2.lb"))
+        selected_modules, config_options = self.parser.parse_configuration(self._get_path("resources/test1.lb"))
         
         repo_options = self.parser.merge_repository_options(config_options)
         modules = self.parser.prepare_modules(repo_options)
@@ -125,7 +125,7 @@ class ParserTest(unittest.TestCase):
         
         return build_modules, config_options, repo_options
       
-    def test_shouldResolveModuleDependencies(self):
+    def test_should_resolve_module_dependencies(self):
         build_modules, _, _ = self._get_build_modules()
         
         self.assertEqual(3, len(build_modules))
@@ -135,7 +135,7 @@ class ParserTest(unittest.TestCase):
         self.assertIn("repo1:module1", m)
         self.assertIn("repo2:module4", m)
 
-    def test_shouldMergeBuildModuleOptions(self):
+    def test_should_merge_build_module_options(self):
         build_modules, config_options, _ = self._get_build_modules()
         options = self.parser.merge_module_options(build_modules, config_options)
         
@@ -146,7 +146,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual("Hello World!", options["repo1:other:abc"].value)
 
     @testfixtures.tempdir()
-    def test_shouldBuildModules(self, tempdir):
+    def test_should_build_modules(self, tempdir):
         build_modules, config_options, repo_options = self._get_build_modules()
         module_options = self.parser.merge_module_options(build_modules, config_options)
         
@@ -157,9 +157,9 @@ class ParserTest(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(outpath, "test/other.cpp")))
     
     @testfixtures.tempdir()
-    def test_shouldBuildJinja2Modules(self, tempdir):
-        self.parser.parse_repository(self._getPath("resources/repo1.lb"))
-        self.parser.parse_repository(self._getPath("resources/repo2/repo2.lb"))
+    def test_should_build_jinja_2_modules(self, tempdir):
+        self.parser.parse_repository(self._get_path("resources/repo1.lb"))
+        self.parser.parse_repository(self._get_path("resources/repo2/repo2.lb"))
         
         selected_modules = ["repo2:module3"]
         config_options = {

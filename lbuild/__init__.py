@@ -10,8 +10,9 @@
 from . import environment
 from . import exception
 from . import module
+from . import option
 from . import parser
 from . import repository
 from . import utils
 
-__all__ = ['environment', 'exception', 'module', 'parser', 'repository', 'utils']
+__all__ = ['environment', 'exception', 'module', 'option', 'parser', 'repository', 'utils']
