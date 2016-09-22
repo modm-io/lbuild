@@ -7,6 +7,9 @@ coverage:
 	@coverage report
 	@coverage html -d build/coverage
 
+pylint-gui:
+	@cd lbuild; pylint-gui
+
 dist:
 	@python3 setup.py sdist --formats=zip
 
@@ -15,6 +18,10 @@ install:
 
 install-user:
 	@python3 setup.py install --user
+
+install-prerequisites:
+	# Required for the tests
+	pip3 install testfixtures coverage
 
 # TODO: Also remove folder
 uninstall:
