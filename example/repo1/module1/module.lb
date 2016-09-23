@@ -3,8 +3,9 @@ def init(module):
 	module.set_name("module1")
 
 def prepare(module, options):
-	module.add_boolean_option(name="build-tests",
-							  description="Include tests in output")
+	module.add_option(
+		BooleanOption(name="build-tests",
+					  description="Include tests in output"))
 	
 	if options[":target"] == "hosted":
 		module.depends(":module2")

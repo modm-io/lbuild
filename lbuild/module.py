@@ -122,32 +122,17 @@ class Module:
     def set_description(self, description):
         self.description = description
 
-    def add_option(self, name, description, default=None):
+    def add_option(self, option):
         """
         Define new option for this module.
 
         The module options only influence the build process but not the
         selection and dependencies of modules.
         """
-        self._check_for_duplicates(name)
-        option = lbuild.option.Option(name, description, default)
+        self._check_for_duplicates(option.name)
         option.repository = self.repository
         option.module = self
-        self.options[name] = option
-
-    def add_boolean_option(self, name, description, default=None):
-        self._check_for_duplicates(name)
-        option = lbuild.option.BooleanOption(name, description, default)
-        option.repository = self.repository
-        option.module = self
-        self.options[name] = option
-
-    def add_numeric_option(self, name, description, default=None):
-        self._check_for_duplicates(name)
-        option = lbuild.option.NumericOption(name, description, default)
-        option.repository = self.repository
-        option.module = self
-        self.options[name] = option
+        self.options[option.name] = option
 
     def _check_for_duplicates(self, name):
         if name in self.options:

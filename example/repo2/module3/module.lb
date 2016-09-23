@@ -3,7 +3,13 @@ def init(module):
 	module.set_name("module3")
 
 def prepare(module, options):
-	module.add_numeric_option(name='counter', description='Counter', default=1)
+	module.add_option(
+	   NumericOption(name='counter', description='Counter', default=1))
+	module.add_option(
+	   EnumerationOption(name="device",
+	                     description="Target device family",
+	                     enumeration=["hosted", "avr", "stm32"],
+	                     default="avr"))
 	return True
 
 def build(env):

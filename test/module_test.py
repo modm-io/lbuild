@@ -43,15 +43,15 @@ class ModuleTest(unittest.TestCase):
 
     def test_resolver_should_resolve_option_names(self):
         repo_options = {
-            "repo1:target": lbuild.option.Option("target", "", value="hosted"),
-            "repo1:foo": lbuild.option.NumericOption("foo", "", value=43),
+            "repo1:target": lbuild.option.Option("target", "", default="hosted"),
+            "repo1:foo": lbuild.option.NumericOption("foo", "", default=43),
         }
 
         module_options = {
-            "repo1:other:foo": lbuild.option.NumericOption("foo", "", value=456),
-            "repo1:other:bar": lbuild.option.NumericOption("bar", "", value=768),
-            "repo1:other:xyz": lbuild.option.BooleanOption("bar", "", value="Yes"),
-            "repo1:other:abc": lbuild.option.Option("abc", "", value="Hello World!"),
+            "repo1:other:foo": lbuild.option.NumericOption("foo", "", default=456),
+            "repo1:other:bar": lbuild.option.NumericOption("bar", "", default=768),
+            "repo1:other:xyz": lbuild.option.BooleanOption("bar", "", default="Yes"),
+            "repo1:other:abc": lbuild.option.Option("abc", "", default="Hello World!"),
         }
 
         resolver = lbuild.module.OptionNameResolver(self.repo, self.module, repo_options, module_options)

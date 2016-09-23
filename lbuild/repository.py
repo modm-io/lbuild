@@ -115,7 +115,7 @@ class Repository:
             if modulefile in files:
                 self.modules[os.path.normpath(os.path.join(path, modulefile))] = None
 
-    def add_option(self, name, description, default=None):
+    def add_option(self, option):
         """
         Define new repository wide option.
 
@@ -123,22 +123,10 @@ class Repository:
         available and what options they provide for a specific set of
         repository options.
         """
-        self._check_for_duplicates(name)
-        option = lbuild.option.Option(name, description, default)
+        self._check_for_duplicates(option.name)
         option.repository = self
-        self.options[name] = option
-
-    def add_boolean_option(self, name, description, default=None):
-        self._check_for_duplicates(name)
-        option = lbuild.option.BooleanOption(name, description, default)
-        option.repository = self
-        self.options[name] = option
-
-    def add_numeric_option(self, name, description, default=None):
-        self._check_for_duplicates(name)
-        option = lbuild.option.NumericOption(name, description, default)
-        option.repository = self
-        self.options[name] = option
+        option.module = None
+        self.options[option.name] = option
 
     def _check_for_duplicates(self, name):
         if name in self.options:

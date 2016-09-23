@@ -48,7 +48,7 @@ class OptionTest(unittest.TestCase):
 
         option = lbuild.option.EnumerationOption("test",
                                                  "description",
-                                                 value=TestEnum.value1,
+                                                 default=TestEnum.value1,
                                                  enumeration=TestEnum)
         self.assertEqual("value1", option.value.name)
         self.assertEqual(1, option.value.value)
@@ -60,7 +60,7 @@ class OptionTest(unittest.TestCase):
         }
         option = lbuild.option.EnumerationOption("test",
                                                  "description",
-                                                 value="value1",
+                                                 default="value1",
                                                  enumeration=enum_dict)
         self.assertEqual("value1", option.value.name)
         self.assertEqual(1, option.value.value)

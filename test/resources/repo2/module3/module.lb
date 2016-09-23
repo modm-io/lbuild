@@ -5,7 +5,8 @@ def init(module):
 
 def prepare(module, options):
 	module.depends("repo1:other")
-	module.add_option(name="text", default="Hello World!", description="")
+	module.add_option(
+	    StringOption(name="text", default="Hello World!", description=""))
 	return True
 
 def build(env):

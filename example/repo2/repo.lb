@@ -5,5 +5,5 @@ def prepare(repo):
 	repo.add_modules(repo.glob("*/module.lb"))
 	
 	repo.add_option(
-		name="target",
-		description="Target architecture for the library.")
+		StringOption(name="target",
+					 description="Target architecture for the library."))

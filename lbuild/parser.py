@@ -14,6 +14,7 @@ import logging
 from lxml import etree
 
 import lbuild.module
+import lbuild.option
 import lbuild.environment
 
 from .exception import BlobException
@@ -50,7 +51,12 @@ class Parser:
         try:
             with open(repofilename) as repofile:
                 code = compile(repofile.read(), repofilename, 'exec')
-                local = {}
+                local = {
+                    'StringOption': lbuild.option.Option,
+                    'BooleanOption': lbuild.option.BooleanOption,
+                    'NumericOption': lbuild.option.NumericOption,
+                    'EnumerationOption': lbuild.option.EnumerationOption,
+                }
                 exec(code, local)
 
                 prepare = local.get('prepare')
@@ -98,7 +104,14 @@ class Parser:
                 LOGGER.debug("Parse module_filename '%s'", module_filename)
                 code = compile(f.read(), module_filename, 'exec')
 
-                local = {'ignore_patterns': shutil.ignore_patterns}
+                local = {
+                    'ignore_patterns': shutil.ignore_patterns,
+
+                    'StringOption': lbuild.option.Option,
+                    'BooleanOption': lbuild.option.BooleanOption,
+                    'NumericOption': lbuild.option.NumericOption,
+                    'EnumerationOption': lbuild.option.EnumerationOption,
+                }
                 exec(code, local)
 
                 module = lbuild.module.Module(repo,

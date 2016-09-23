@@ -18,7 +18,7 @@ class Option:
 
     Can be used for string based options.
     """
-    def __init__(self, name, description, value=None):
+    def __init__(self, name, description, default=None):
         if ":" in name:
             raise BlobException("Character ':' is not allowed in options "
                                 "name '{}'".format(name))
@@ -32,7 +32,7 @@ class Option:
         # option and not a module option.
         self.module = None
 
-        self._value = value
+        self._value = default
 
     @property
     def value(self):
@@ -61,10 +61,10 @@ class Option:
 
 class BooleanOption(Option):
 
-    def __init__(self, name, description, value=False):
+    def __init__(self, name, description, default=False):
         Option.__init__(self, name, description)
-        if value is not None:
-            self.value = value
+        if default is not None:
+            self.value = default
 
     @property
     def value(self):
@@ -90,17 +90,17 @@ class BooleanOption(Option):
 
     def __str__(self):
         if self.value is None:
-            return "{}=[True|False]".format(self.name)
+            return "{}=[True|False]".format(self.full_name)
         else:
             return "{}={}".format(self.full_name, self.value)
 
 
 class NumericOption(Option):
 
-    def __init__(self, name, description, value=None):
+    def __init__(self, name, description, default=None):
         Option.__init__(self, name, description)
-        if value is not None:
-            self.value = value
+        if default is not None:
+            self.value = default
 
     @property
     def value(self):
@@ -131,14 +131,14 @@ class NumericOption(Option):
 
 class EnumerationOption(Option):
 
-    def __init__(self, name, description, enumeration, value=None):
+    def __init__(self, name, description, enumeration, default=None):
         Option.__init__(self, name, description)
         if inspect.isclass(enumeration) and issubclass(enumeration, enum.Enum):
             self._enumeration = enumeration
         else:
             self._enumeration = enum.Enum(name, enumeration)
-        if value is not None:
-            self.value = value
+        if default is not None:
+            self.value = default
 
     @property
     def value(self):
