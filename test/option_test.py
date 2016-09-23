@@ -17,12 +17,29 @@ import unittest
 sys.path.append(os.path.abspath("."))
 
 import lbuild.option
+from lbuild.repository import Repository
+from lbuild.module import Module
 
 class OptionTest(unittest.TestCase):
 
+    def setUp(self):
+        self.default_repository = Repository("path", name="repo")
+        self.default_module = Module(self.default_repository, "filename", "path", name="module")
+
     def test_should_provide_string_representation_for_base_option(self):
         option = lbuild.option.Option("test", "description", "value")
-        self.assertEqual("test = value", str(option))
+        self.assertEqual("test=value", str(option))
+
+    def test_should_provide_string_representation_for_base_option_with_repo(self):
+        option = lbuild.option.Option("test", "description", "value")
+        option.repository = self.default_repository
+        self.assertEqual("repo:test=value", str(option))
+
+    def test_should_provide_string_representation_for_base_option_full(self):
+        option = lbuild.option.Option("test", "description", "value")
+        option.repository = self.default_repository
+        option.module = self.default_module
+        self.assertEqual("repo:module:test=value", str(option))
 
     def test_should_be_constructable_from_enum(self):
         class TestEnum(enum.Enum):

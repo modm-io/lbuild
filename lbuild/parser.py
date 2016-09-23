@@ -85,7 +85,8 @@ class Parser:
         return repo
 
     @staticmethod
-    def parse_module(repo, module_filename: str) -> lbuild.module.Module:
+    def parse_module(repo: repository.Repository,
+                     module_filename: str) -> lbuild.module.Module:
         """
         Parse a specific module file.
 

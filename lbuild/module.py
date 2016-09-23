@@ -7,8 +7,10 @@
 # 2-clause BSD license. See the file `LICENSE.txt` for the full license
 # governing this code.
 
-from . import option
+import lbuild.option
+
 from . import utils
+from .repository import Repository
 
 from .exception import BlobException
 from .exception import OptionFormatException
@@ -75,7 +77,11 @@ class OptionNameResolver:
 
 class Module:
 
-    def __init__(self, repository, filename, path):
+    def __init__(self,
+                 repository: Repository,
+                 filename: str,
+                 path: str,
+                 name: str=None):
         """
         Create new module definition.
 
@@ -89,10 +95,13 @@ class Module:
         self.filename = filename
         self.path = path
 
-        # Module name without repository
-        self.name = None
-        # Full qualified name ('repository:module')
-        self.full_name = None
+        if name is None:
+            # Module name without repository
+            self.name = None
+            # Full qualified name ('repository:module')
+            self.full_name = None
+        else:
+            self.set_name(name)
 
         self.description = ""
 
@@ -121,15 +130,24 @@ class Module:
         selection and dependencies of modules.
         """
         self._check_for_duplicates(name)
-        self.options[name] = option.Option(name, description, default)
+        option = lbuild.option.Option(name, description, default)
+        option.repository = self.repository
+        option.module = self
+        self.options[name] = option
 
     def add_boolean_option(self, name, description, default=None):
         self._check_for_duplicates(name)
-        self.options[name] = option.BooleanOption(name, description, default)
+        option = lbuild.option.BooleanOption(name, description, default)
+        option.repository = self.repository
+        option.module = self
+        self.options[name] = option
 
     def add_numeric_option(self, name, description, default=None):
         self._check_for_duplicates(name)
-        self.options[name] = option.NumericOption(name, description, default)
+        option = lbuild.option.NumericOption(name, description, default)
+        option.repository = self.repository
+        option.module = self
+        self.options[name] = option
 
     def _check_for_duplicates(self, name):
         if name in self.options:
@@ -145,3 +163,12 @@ class Module:
         for dependency in utils.listify(dependencies):
             verify_module_name(dependency)
             self.dependencies.append(dependency)
+
+    def __lt__(self, other):
+        return self.full_name.__lt__(other.full_name)
+
+    def __repr__(self):
+        return "Module({})".format(self.full_name)
+
+    def __str__(self):
+        return self.full_name

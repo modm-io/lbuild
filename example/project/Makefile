@@ -14,6 +14,7 @@ discover:
 	$(LBUILD)-discover $(REPOS) --discover=repository:options
 	$(LBUILD)-discover $(REPOS) --discover=repository:options -D":target=hosted"
 	$(LBUILD)-discover $(REPOS) --discover=modules -D":target=hosted"
+	$(LBUILD)-discover $(REPOS) --discover=module:options -D":target=hosted"
 	$(LBUILD)-discover $(REPOS) --discover=module:options -D":target=hosted" -m":module3"
 
 clean:

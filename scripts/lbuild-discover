@@ -67,24 +67,24 @@ if __name__ == '__main__':
         repo_options = parser.merge_repository_options(config_options, commandline_options)
 
         if args.discover == 'repository:options':
-            for name, option in repo_options.items():
-                print(name, option)
-            # for reponame, repository in parser.repositories.items():
-            #    print("Repository '{}'".format(reponame))
-            #    for option in repository.options.values():
-            #        print("-", option)
+            for option in sorted(list(repo_options.values())):
+                print(option)
         elif args.discover == 'modules':
             modules = parser.prepare_modules(repo_options)
-            for module in modules:
+            for module in sorted(list(modules.values())):
                 print(module)
         elif args.discover == 'module:options':
             modules = parser.prepare_modules(repo_options)
 
-            build_modules = parser.resolve_dependencies(modules, args.modules)
+            if len(args.modules) == 0:
+                selected_modules = modules
+            else:
+                selected_modules = args.modules
+            build_modules = parser.resolve_dependencies(modules, selected_modules)
             module_options = parser.merge_module_options(build_modules, config_options)
 
-            for name, option in module_options.items():
-                print(name, option)
+            for option in sorted(list(module_options.values())):
+                print(option)
         else:
             raise lbuild.exception.BlobException("Unknown discovery "
                                                  "option '{}'".format(args.discover))

@@ -25,6 +25,13 @@ class Option:
 
         self.name = name
         self.description = description
+
+        # Parent repository for this option
+        self.repository = None
+        # Parent module. Is set to none if the option is a repository
+        # option and not a module option.
+        self.module = None
+
         self._value = value
 
     @property
@@ -35,8 +42,21 @@ class Option:
     def value(self, value):
         self._value = value
 
+    @property
+    def full_name(self):
+        name = []
+        if self.repository is not None:
+            name.append(self.repository.name)
+        if self.module is not None:
+            name.append(self.module.name)
+        name.append(self.name)
+        return ':'.join(name)
+
+    def __lt__(self, other):
+        return self.full_name.__lt__(other.full_name)
+
     def __str__(self):
-        return "{}={}".format(self.name, self.value)
+        return "{}={}".format(self.full_name, self.value)
 
 
 class BooleanOption(Option):
@@ -72,7 +92,7 @@ class BooleanOption(Option):
         if self.value is None:
             return "{}=[True|False]".format(self.name)
         else:
-            return "{}={}".format(self.name, self.value)
+            return "{}={}".format(self.full_name, self.value)
 
 
 class NumericOption(Option):
@@ -106,7 +126,7 @@ class NumericOption(Option):
                             (value, type(value).__name__))
 
     def __str__(self):
-        return "{}={}".format(self.name, self.value)
+        return "{}={}".format(self.full_name, self.value)
 
 
 class EnumerationOption(Option):
@@ -136,4 +156,4 @@ class EnumerationOption(Option):
             return self._enumeration[value]
 
     def __str__(self):
-        return "{}={}".format(self.name, self.value)
+        return "{}={}".format(self.full_name, self.value)

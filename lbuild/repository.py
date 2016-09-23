@@ -11,9 +11,10 @@
 import os
 import glob
 
+import lbuild.option
+
 from .exception import BlobException
 from . import utils
-from . import option
 
 class OptionNameResolver:
     """
@@ -55,10 +56,10 @@ class Repository:
     """
     A repository is a set of modules.
     """
-    def __init__(self, path):
+    def __init__(self, path, name=None):
         # Path to the repository file. All relative paths refer to this path.
         self.path = path
-        self.name = None
+        self.name = name
 
         # Dict of modules, using the filename as the key
         self.modules = {}
@@ -123,16 +124,26 @@ class Repository:
         repository options.
         """
         self._check_for_duplicates(name)
-        self.options[name] = option.Option(name, description, default)
+        option = lbuild.option.Option(name, description, default)
+        option.repository = self
+        self.options[name] = option
 
     def add_boolean_option(self, name, description, default=None):
         self._check_for_duplicates(name)
-        self.options[name] = option.BooleanOption(name, description, default)
+        option = lbuild.option.BooleanOption(name, description, default)
+        option.repository = self
+        self.options[name] = option
 
     def add_numeric_option(self, name, description, default=None):
         self._check_for_duplicates(name)
-        self.options[name] = option.NumericOption(name, description, default)
+        option = lbuild.option.NumericOption(name, description, default)
+        option.repository = self
+        self.options[name] = option
 
     def _check_for_duplicates(self, name):
         if name in self.options:
             raise BlobException("Option name '%s' is already defined" % name)
+
+    def __lt__(self, other):
+        return self.name.__cmp__(other.name)
+
