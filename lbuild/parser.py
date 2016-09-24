@@ -52,6 +52,7 @@ class Parser:
             with open(repofilename) as repofile:
                 code = compile(repofile.read(), repofilename, 'exec')
                 local = {
+                    '__file__': repofilename,
                     'StringOption': lbuild.option.Option,
                     'BooleanOption': lbuild.option.BooleanOption,
                     'NumericOption': lbuild.option.NumericOption,

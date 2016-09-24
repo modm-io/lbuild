@@ -156,4 +156,11 @@ class EnumerationOption(Option):
             return self._enumeration[value]
 
     def __str__(self):
-        return "{}={}".format(self.full_name, self.value)
+        if self.value is None:
+            values = []
+            for value in self._enumeration:
+                values.append(value.name)
+            values.sort()
+            return "{}={}".format(self.full_name, "\n".join(values))
+        else:
+            return "{}={}".format(self.full_name, self.value)

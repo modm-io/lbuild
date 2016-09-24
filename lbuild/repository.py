@@ -115,7 +115,7 @@ class Repository:
             if modulefile in files:
                 self.modules[os.path.normpath(os.path.join(path, modulefile))] = None
 
-    def add_option(self, option):
+    def add_option(self, option: lbuild.option.Option):
         """
         Define new repository wide option.
 
