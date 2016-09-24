@@ -12,6 +12,9 @@ import inspect
 
 from .exception import BlobException
 
+from .environment import filter_indent
+from .environment import filter_wordwrap
+
 class Option:
     """
     Base class for repository and module options.
@@ -90,9 +93,9 @@ class BooleanOption(Option):
 
     def __str__(self):
         if self.value is None:
-            return "{}=[True|False]".format(self.full_name)
+            return "{} = True | False".format(self.full_name)
         else:
-            return "{}={}".format(self.full_name, self.value)
+            return "{} = {}".format(self.full_name, self.value)
 
 
 class NumericOption(Option):
@@ -126,7 +129,7 @@ class NumericOption(Option):
                             (value, type(value).__name__))
 
     def __str__(self):
-        return "{}={}".format(self.full_name, self.value)
+        return "{} = {}".format(self.full_name, self.value)
 
 
 class EnumerationOption(Option):
@@ -161,6 +164,8 @@ class EnumerationOption(Option):
             for value in self._enumeration:
                 values.append(value.name)
             values.sort()
-            return "{}={}".format(self.full_name, "\n".join(values))
+            name = self.full_name + " = "
+            output = filter_indent(filter_wordwrap(", ".join(values), 120 - len(name)), len(name))
+            return name + output
         else:
-            return "{}={}".format(self.full_name, self.value)
+            return "{} = {}".format(self.full_name, self.value)

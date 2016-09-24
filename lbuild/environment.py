@@ -41,7 +41,7 @@ def filter_wordwrap(value, width=79):
     return '\n\n'.join([textwrap.fill(s, width) for s in value.split('\n\n')])
 
 def filter_indent(value, level=0):
-    return ('\n' + '\t' * level).join(value.split('\n'))
+    return ('\n' + ' ' * level).join(value.split('\n'))
 
 def filter_pad(value, min_width):
     tab_width = 4
@@ -115,11 +115,11 @@ class Environment:
         loader = RelEnvironment(loader=jinja2.FileSystemLoader(self.__modulepath),
                                                                extensions=['jinja2.ext.do'])
 
-        loader.filters['xpcc.wordwrap'] = filter_wordwrap
-        loader.filters['xpcc.indent'] = filter_indent
-        loader.filters['xpcc.pad'] = filter_pad
-        loader.filters['xpcc.values'] = filter_values
-        loader.filters['split'] = filter_split
+        loader.filters['modm.wordwrap'] = filter_wordwrap
+        loader.filters['modm.indent'] = filter_indent
+        loader.filters['modm.pad'] = filter_pad
+        loader.filters['modm.values'] = filter_values
+        loader.filters['modm.split'] = filter_split
 
         # Jinja2 Line Statements
         loader.line_statement_prefix = '%%'
