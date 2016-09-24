@@ -24,6 +24,14 @@ from . import repository
 
 LOGGER = logging.getLogger('lbuild.parser')
 
+class Localpath:
+
+    def __init__(self, repository_file):
+        self.basepath = os.path.dirname(os.path.realpath(repository_file))
+
+    def __call__(self, *args):
+        return os.path.join(self.basepath, *args)
+
 class Parser:
 
     def __init__(self):
@@ -53,6 +61,11 @@ class Parser:
                 code = compile(repofile.read(), repofilename, 'exec')
                 local = {
                     '__file__': repofilename,
+
+                    # The localpath(...) function can be used to create
+                    # a local path form the folder of the repository file.
+                    'localpath': Localpath(repofilename),
+
                     'StringOption': lbuild.option.Option,
                     'BooleanOption': lbuild.option.BooleanOption,
                     'NumericOption': lbuild.option.NumericOption,
@@ -106,6 +119,10 @@ class Parser:
                 code = compile(f.read(), module_filename, 'exec')
 
                 local = {
+                    # The localpath(...) function can be used to create
+                    # a local path form the folder of the repository file.
+                    'localpath': Localpath(module_filename),
+
                     'ignore_patterns': shutil.ignore_patterns,
 
                     'StringOption': lbuild.option.Option,
