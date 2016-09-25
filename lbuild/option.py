@@ -46,8 +46,8 @@ class Option:
         self._value = value
 
     @staticmethod
-    def values():
-        return None
+    def values_hint():
+        return "String"
 
     @property
     def full_name(self):
@@ -63,7 +63,11 @@ class Option:
         return self.full_name.__lt__(other.full_name)
 
     def __str__(self):
-        return "{}={}".format(self.full_name, self.value)
+        values = self.values_hint()
+        if self.value is None:
+            return "{} = [{}]".format(self.full_name, values)
+        else:
+            return "{} = {}  [{}]".format(self.full_name, self._value, values)
 
 
 class BooleanOption(Option):
@@ -82,8 +86,8 @@ class BooleanOption(Option):
         self._value = self.as_boolean(value)
 
     @staticmethod
-    def values():
-        return ['True', 'False']
+    def values_hint():
+        return "True, False"
 
     @staticmethod
     def as_boolean(value):
@@ -99,17 +103,15 @@ class BooleanOption(Option):
         raise BlobException("Value '%s' (%s) must be boolean" %
                             (value, type(value).__name__))
 
-    def __str__(self):
-        if self.value is None:
-            return "{} = True | False".format(self.full_name)
-        else:
-            return "{} = {}".format(self.full_name, self.value)
-
 
 class NumericOption(Option):
 
-    def __init__(self, name, description, default=None):
+    def __init__(self, name, description, minimum=None, maximum=None, default=None):
         Option.__init__(self, name, description)
+        
+        self.minimum = minimum
+        self.maximum = maximum
+        
         if default is not None:
             self.value = default
 
@@ -119,12 +121,16 @@ class NumericOption(Option):
 
     @value.setter
     def value(self, value):
-        self._value = self.as_numeric_value(value)
+        numeric_value = self.as_numeric_value(value)
+        if self.minimum is not None and numeric_value < self.minimum:
+            BlobException("Value '{}' must be smaller than '{}'".format(self.name, self.minimum))
+        if self.maximum is not None and numeric_value < self.maximum:
+            BlobException("Value '{}' must be greater than '{}'".format(self.name, self.maximum))
+        self._value = numeric_value
 
-    @staticmethod
-    def values():
-        # FIXME min and max value
-        return None
+    def values_hint(self):
+        return "{} ... {}".format("-Inf" if self.minimum is None else str(self.minimum),
+                                  "+Inf" if self.maximum is None else str(self.maximum))
 
     @staticmethod
     def as_numeric_value(value):
@@ -141,12 +147,11 @@ class NumericOption(Option):
         raise BlobException("Value '%s' (%s) must be numeric" %
                             (value, type(value).__name__))
 
-    def __str__(self):
-        return "{} = {}".format(self.full_name, self.value)
-
 
 class EnumerationOption(Option):
-
+    
+    LINEWITH = 120
+    
     def __init__(self, name, description, enumeration, default=None):
         Option.__init__(self, name, description)
         if inspect.isclass(enumeration) and issubclass(enumeration, enum.Enum):
@@ -164,12 +169,12 @@ class EnumerationOption(Option):
     def value(self, value):
         self._value = self.as_enumeration(value)
 
-    def values(self):
+    def values_hint(self):
         values = []
         for value in self._enumeration:
             values.append(value.name)
         values.sort()
-        return values
+        return ", ".join(values)
 
     def as_enumeration(self, value):
         try:
@@ -179,13 +184,20 @@ class EnumerationOption(Option):
             return self._enumeration[value]
 
     def __str__(self):
+        name = self.full_name + " = "
         if self.value is None:
-            values = []
-            for value in self._enumeration:
-                values.append(value.name)
-            values.sort()
-            name = self.full_name + " = "
-            output = filter_indent(filter_wordwrap(", ".join(values), 120 - len(name)), len(name))
-            return name + output
+            values = self.values_hint()
+            # This +1 is for the first square brackets 
+            output = filter_indent(filter_wordwrap(values,
+                                                   self.LINEWITH - len(name) - 1),
+                                   len(name) + 1)
+            return "{}[{}]".format(name, output)
         else:
-            return "{} = {}".format(self.full_name, self.value)
+            values = self.values_hint()
+            # The +4 is for the spacing and the two square brackets
+            overhead = len(name) + 4
+            if len(values) + overhead > self.LINEWITH:
+                mark = " ..."
+                max_length = self.LINEWITH - overhead - len(mark)
+                values = values[0:max_length] + mark
+            return "{}{}  [{}]".format(name, self.value.name, values)
