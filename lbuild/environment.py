@@ -69,20 +69,30 @@ class Environment:
         self.options = options
         self.__modulepath = modulepath
         self.__outpath = outpath
+        
+        self.outbasepath = None
 
-    def copy(self, src, dest, ignore=None):
+    def copy(self, src, dest=None, ignore=None):
         """
         Copy file or directory from the modulepath to the buildpath.
 
         If src or dest is a relative path it will be relocated to the
         module/buildpath. Absolute paths are not changed.
+        
+        If dest is empty the same name as src is used (relocated to
+        the output path).
         """
-        srcpath = src if os.path.isabs(src) else os.path.join(self.__modulepath, src)
-        destpath = dest if os.path.isabs(dest) else os.path.join(self.__outpath, dest)
+        if dest is None:
+            dest = src
+        
+        srcpath = src if os.path.isabs(src) else self.modulepath(src)
+        destpath = dest if os.path.isabs(dest) else self.outpath(dest)
 
         if os.path.isdir(srcpath):
             _copytree(srcpath, destpath, ignore)
         else:
+            if not os.path.exists(os.path.dirname(destpath)):
+                os.makedirs(os.path.dirname(destpath))
             shutil.copy2(srcpath, destpath)
 
     @staticmethod
@@ -146,7 +156,7 @@ class Environment:
 
     def outpath(self, *path):
         """Relocate given path to the output path."""
-        return os.path.join(self.__outpath, *path)
+        return os.path.join(self.__outpath, self.outbasepath, *path)
 
 
     def __getitem__(self, key):
