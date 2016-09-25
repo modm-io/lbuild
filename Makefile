@@ -21,7 +21,7 @@ install-user:
 
 install-prerequisites:
 	# Required for the tests
-	pip3 install testfixtures coverage
+	sudo -H pip3 install testfixtures coverage
 
 # TODO: Also remove folder
 uninstall:
