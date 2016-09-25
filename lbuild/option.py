@@ -45,6 +45,10 @@ class Option:
     def value(self, value):
         self._value = value
 
+    @staticmethod
+    def values():
+        return None
+
     @property
     def full_name(self):
         name = []
@@ -76,6 +80,10 @@ class BooleanOption(Option):
     @value.setter
     def value(self, value):
         self._value = self.as_boolean(value)
+
+    @staticmethod
+    def values():
+        return ['True', 'False']
 
     @staticmethod
     def as_boolean(value):
@@ -114,6 +122,11 @@ class NumericOption(Option):
         self._value = self.as_numeric_value(value)
 
     @staticmethod
+    def values():
+        # FIXME min and max value
+        return None
+
+    @staticmethod
     def as_numeric_value(value):
         if value is None:
             return value
@@ -150,6 +163,13 @@ class EnumerationOption(Option):
     @value.setter
     def value(self, value):
         self._value = self.as_enumeration(value)
+
+    def values(self):
+        values = []
+        for value in self._enumeration:
+            values.append(value.name)
+        values.sort()
+        return values
 
     def as_enumeration(self, value):
         try:

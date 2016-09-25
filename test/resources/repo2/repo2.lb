@@ -1,9 +1,6 @@
 
-def prepare(repo):
+def init(repo):
 	repo.set_name("repo2")
-	
-	# Find all modules with the name "module.lb"
-	repo.find_modules(".")
 	
 	repo.add_option(
 	    StringOption(name="target",
@@ -13,3 +10,7 @@ def prepare(repo):
 	    BooleanOption(name="include_tests",
 		              default=True,
 		              description="Include the unit-tests"))
+
+def prepare(repo, options):
+	# Find all modules with the name "module.lb"
+	repo.find_modules(".")

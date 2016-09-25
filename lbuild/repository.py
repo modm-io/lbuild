@@ -61,6 +61,8 @@ class Repository:
         self.path = path
         self.name = name
 
+        self.functions = None
+
         # Dict of modules, using the filename as the key
         self.modules = {}
 

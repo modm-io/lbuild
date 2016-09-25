@@ -48,6 +48,19 @@ class Parser:
         # Module name -> Module()
         self.available_modules = {}
 
+    @staticmethod
+    def _get_global_functions(local, names):
+        """
+        Get global functions from the environment.
+        """
+        functions = {}
+        for functionname in names:
+            f = local.get(functionname)
+            if f is None:
+                raise BlobException("No function '{}' found!".format(functionname))
+            functions[functionname] = f
+        return functions
+
     def parse_repository(self, repofilename: str) -> repository.Repository:
         """
         Parse the given repository file.
@@ -73,33 +86,22 @@ class Parser:
                 }
                 exec(code, local)
 
-                prepare = local.get('prepare')
-                if prepare is None:
-                    raise BlobException("No prepare() function found!")
+                repo.functions = self._get_global_functions(local, ['init', 'prepare'])
 
-                # Execution prepare() function. In this function modules and
-                # options are added.
-                prepare(repo)
+                # Execution init() function. In this function options are added.
+                repo.functions['init'](repo)
 
                 if repo.name is None:
-                    raise BlobException("The prepare(repo) function must set a repo name! " \
+                    raise BlobException("The init(repo) function must set a repository name! "
                                         "Please use the set_name() method.")
 
         except Exception as error:
-            raise BlobException("Invalid repository configuration file '%s': %s" %
-                                 (repofilename, error))
-
-        # Parse the modules inside the repository
-        for modulefile, module in repo.modules.items():
-            # Parse all modules which are not yet updated
-            if module is None:
-                module = self.parse_module(repo, modulefile)
-                repo.modules[modulefile] = module
-
-                self.modules["%s:%s" % (repo.name, module.name)] = module
+            raise BlobException("Invalid repository configuration file '{}': "
+                                "{}".format(repofilename, error))
 
         if repo.name in self.repositories:
-            raise BlobException("Repository name '%s' is ambiguous. Name must be unique." % repo.name)
+            raise BlobException("Repository name '{}' is ambiguous. "
+                                "Name must be unique.".format(repo.name))
 
         self.repositories[repo.name] = repo
         return repo
@@ -137,11 +139,7 @@ class Parser:
                                               os.path.dirname(module_filename))
 
                 # Get the required global functions
-                for functionname in ['init', 'prepare', 'build']:
-                    f = local.get(functionname)
-                    if f is None:
-                        raise BlobException("No function '%s' found!" % functionname)
-                    module.functions[functionname] = f
+                module.functions = Parser._get_global_functions(local, ['init', 'prepare', 'build'])
 
                 # Execute init() function from module to get module name
                 module.functions['init'](module)
@@ -253,6 +251,24 @@ class Parser:
                     raise OptionFormatException(config_name)
 
         return repo_options_by_full_name
+
+    def prepare_repositories(self,
+                             repo_options):
+        self.verify_options_are_defined(repo_options)
+        for repo in self.repositories.values():
+            repo.functions["prepare"](repo,
+                                      repository.OptionNameResolver(repo,
+                                                                    repo_options))
+
+            # Parse the modules inside the repository
+            for modulefile, module in repo.modules.items():
+                # Parse all modules which are not yet updated
+                if module is None:
+                    module = self.parse_module(repo, modulefile)
+                    repo.modules[modulefile] = module
+
+                    self.modules["%s:%s" % (repo.name, module.name)] = module
+
 
     def prepare_modules(self, repo_options):
         """ Prepare and select modules which are available given the set of
@@ -439,6 +455,8 @@ class Parser:
 
         commandline_options = self.format_commandline_options(cmd_options)
         repo_options = self.merge_repository_options(config_options, commandline_options)
+
+        self.prepare_repositories(repo_options)
         modules = self.prepare_modules(repo_options)
 
         build_modules = self.resolve_dependencies(modules, selected_modules)

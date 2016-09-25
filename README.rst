@@ -79,17 +79,16 @@ API Overview
 
 Repository description ('repo.lb')::
 
-	def prepare(repo):
+	def init(repo):
 		repo.set_name("..")
-		
+
+		repo.add_option(StringOption(name="..", description=".."))
+
+	def prepare(repo, options):
 		repo.add_modules(repo.glob("*/*.lb"))
 		repo.add_modules("..")
-		
+
 		repo.find_modules
-		
-		repo.add_option(name="..", description="..")
-		repo.add_boolean_option()
-		repo.add_numeric_option()
 
 
 Module description ('module.lb')::
@@ -98,9 +97,7 @@ Module description ('module.lb')::
 		module.set_name("..")
 		module.set_description("..")
 		
-		module.add_option(name, description, default)
-		module.add_boolean_option(name, description, default)
-		module.add_numeric_option(name, description, default)
+		module.add_option(StringOption(name, description, default))
 
 	def prepare(module, options):
 		option_value = options[".."]

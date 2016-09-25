@@ -1,9 +1,6 @@
 
-def prepare(repo):
+def init(repo):
 	repo.set_name("repo1")
-	
-	repo.add_modules(repo.glob("repo1/*/module.lb"))
-	repo.add_modules("repo1/other.lb")
 	
 	repo.add_option(
 	    StringOption(name="target",
@@ -12,3 +9,7 @@ def prepare(repo):
 		NumericOption(name="foo",
 		              default=76,
 		              description="Something"))
+
+def prepare(repo, options):
+	repo.add_modules(repo.glob("repo1/*/module.lb"))
+	repo.add_modules("repo1/other.lb")
