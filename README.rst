@@ -27,8 +27,10 @@ Repository file:
   the module files within the repository and repository options.
   
   Must declare the following functions::
-  
-    def prepare(repo):
+    
+    def init(repo):
+        ....
+    def prepare(repo, options):
         ...
 
 Module file:
