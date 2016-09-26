@@ -10,9 +10,9 @@
 import os
 import time
 import shutil
-import textwrap
 import jinja2
 
+from . import filter
 from .exception import BlobException
 
 def _copytree(src, dst, ignore=None):
@@ -37,30 +37,6 @@ def _copytree(src, dst, ignore=None):
                 if not os.path.exists(d) or os.stat(src).st_mtime - os.stat(dst).st_mtime > 1:
                     shutil.copy2(s, d)
 
-def filter_wordwrap(value, width=79):
-    return '\n\n'.join([textwrap.fill(s, width) for s in value.split('\n\n')])
-
-def filter_indent(value, level=0):
-    return ('\n' + ' ' * level).join(value.split('\n'))
-
-def filter_pad(value, min_width):
-    tab_width = 4
-    tab_count = (min_width / tab_width - len(value) / tab_width) + 1
-    return value + ('\t' * tab_count)
-
-def filter_split(value, delimiter):
-    return value.split(delimiter)
-
-def filter_values(lst, key):
-    """ Go through the list of dictionaries and add all the values of
-    a certain key to a list.
-    """
-    values = []
-    for item in lst:
-        if isinstance(item, dict) and key in item:
-            if item[key] not in values:
-                values.append(item[key])
-    return values
 
 
 class Environment:
@@ -125,11 +101,12 @@ class Environment:
         loader = RelEnvironment(loader=jinja2.FileSystemLoader(self.__modulepath),
                                                                extensions=['jinja2.ext.do'])
 
-        loader.filters['modm.wordwrap'] = filter_wordwrap
-        loader.filters['modm.indent'] = filter_indent
-        loader.filters['modm.pad'] = filter_pad
-        loader.filters['modm.values'] = filter_values
-        loader.filters['modm.split'] = filter_split
+        loader.filters['modm.wordwrap'] = filter.wordwrap
+        loader.filters['modm.indent'] = filter.indent
+        loader.filters['modm.pad'] = filter.pad
+        loader.filters['modm.values'] = filter.values
+        loader.filters['modm.split'] = filter.split
+        loader.filters['modm.listify'] = filter.listify
 
         # Jinja2 Line Statements
         loader.line_statement_prefix = '%%'

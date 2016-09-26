@@ -11,9 +11,7 @@ import enum
 import inspect
 
 from .exception import BlobException
-
-from .environment import filter_indent
-from .environment import filter_wordwrap
+from . import filter
 
 class Option:
     """
@@ -188,7 +186,7 @@ class EnumerationOption(Option):
         if self.value is None:
             values = self.values_hint()
             # This +1 is for the first square brackets 
-            output = filter_indent(filter_wordwrap(values,
+            output = filter.indent(filter.wordwrap(values,
                                                    self.LINEWITH - len(name) - 1),
                                    len(name) + 1)
             return "{}[{}]".format(name, output)
