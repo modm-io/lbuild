@@ -154,6 +154,11 @@ class EnumerationOption(Option):
         Option.__init__(self, name, description)
         if inspect.isclass(enumeration) and issubclass(enumeration, enum.Enum):
             self._enumeration = enumeration
+        elif (isinstance(enumeration, list) or isinstance(enumeration, tuple)) and \
+                len(enumeration) == len(set(enumeration)):
+            # If the argument is a list and the items in the list are unqiue,
+            # convert it so that the value of the enum equals its name.
+            self._enumeration = enum.Enum(name, dict(zip(enumeration, enumeration)))
         else:
             self._enumeration = enum.Enum(name, enumeration)
         if default is not None:
@@ -161,7 +166,10 @@ class EnumerationOption(Option):
 
     @property
     def value(self):
-        return self._value
+        if self._value is None:
+            return None
+        else:
+            return self._value.value
 
     @value.setter
     def value(self, value):
@@ -183,7 +191,7 @@ class EnumerationOption(Option):
 
     def __str__(self):
         name = self.full_name + " = "
-        if self.value is None:
+        if self._value is None:
             values = self.values_hint()
             # This +1 is for the first square brackets 
             output = filter.indent(filter.wordwrap(values,
@@ -198,4 +206,4 @@ class EnumerationOption(Option):
                 mark = " ..."
                 max_length = self.LINEWITH - overhead - len(mark)
                 values = values[0:max_length] + mark
-            return "{}{}  [{}]".format(name, self.value.name, values)
+            return "{}{}  [{}]".format(name, self._value.value, values)
