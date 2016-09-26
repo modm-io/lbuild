@@ -95,9 +95,11 @@ class Parser:
                     raise BlobException("The init(repo) function must set a repository name! "
                                         "Please use the set_name() method.")
 
-        except Exception as error:
-            raise BlobException("Invalid repository configuration file '{}': "
-                                "{}".format(repofilename, error))
+        except KeyError as error:
+            raise BlobException("Invalid repository configuration file '{}':\n"
+                                " {}: {}".format(repofilename,
+                                                 error.__class__.__name__,
+                                                 error))
 
         if repo.name in self.repositories:
             raise BlobException("Repository name '{}' is ambiguous. "

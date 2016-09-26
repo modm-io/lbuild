@@ -75,7 +75,7 @@ class Environment:
     def ignore_files(*files):
         return shutil.ignore_patterns(*files)
 
-    def template(self, src, dest, substitutions=None):
+    def template(self, src, dest, substitutions=None, filters=None):
         """ Uses the Jinja2 template engine to generate files. """
         if substitutions is None:
             substitutions = {}
@@ -90,7 +90,9 @@ class Environment:
         # Code from:
         # http://stackoverflow.com/questions/8512677/how-to-include-a-template-with-relative-path-in-jinja2
         class RelEnvironment(jinja2.Environment):
-            """Override join_path() to enable relative template paths.
+            """
+            Override join_path() to enable relative template paths.
+
             Take care of paths. Jinja seems to use '/' as path separator in
             templates.
             """
@@ -98,26 +100,42 @@ class Environment:
                 d = os.path.join(os.path.dirname(parent), template)
                 return os.path.normpath(d)
 
-        loader = RelEnvironment(loader=jinja2.FileSystemLoader(self.__modulepath),
-                                                               extensions=['jinja2.ext.do'])
+        environment = RelEnvironment(loader=jinja2.FileSystemLoader(self.__modulepath),
+                                                                    extensions=['jinja2.ext.do'])
 
-        loader.filters['modm.wordwrap'] = filter.wordwrap
-        loader.filters['modm.indent'] = filter.indent
-        loader.filters['modm.pad'] = filter.pad
-        loader.filters['modm.values'] = filter.values
-        loader.filters['modm.split'] = filter.split
-        loader.filters['modm.listify'] = filter.listify
+        environment.filters['modm.wordwrap'] = filter.wordwrap
+        environment.filters['modm.indent'] = filter.indent
+        environment.filters['modm.pad'] = filter.pad
+        environment.filters['modm.values'] = filter.values
+        environment.filters['modm.split'] = filter.split
+        environment.filters['modm.listify'] = filter.listify
+
+        if filters is not None:
+            environment.filters.update(filters)
 
         # Jinja2 Line Statements
-        loader.line_statement_prefix = '%%'
-        loader.line_comment_prefix = '%#'
+        environment.line_statement_prefix = '%%'
+        environment.line_comment_prefix = '%#'
 
         try:
-            template = loader.get_template(src, globals=global_substitutions)
-        except jinja2.TemplateNotFound as e:
-            raise BlobException('Failed to retrieve Template: %s' % e)
+            template = environment.get_template(src, globals=global_substitutions)
+            output = template.render(substitutions)
+        except jinja2.TemplateNotFound as error:
+            raise BlobException('Failed to retrieve Template: %s' % error)
+        except (jinja2.exceptions.TemplateAssertionError,
+                jinja2.exceptions.TemplateSyntaxError) as error:
+            raise BlobException("Error in template '{}:{}':\n"
+                                " {}: {}".format(error.filename,
+                                                 error.lineno,
+                                                 error.__class__.__name__,
+                                                 error))
+        except jinja2.exceptions.UndefinedError as error:
+            raise BlobException("Error in template '{}':\n"
+                                " {}: {}".format(self.modulepath(src),
+                                                 error.__class__.__name__,
+                                                 error))
+            print(dir(error))
 
-        output = template.render(substitutions)
         outfile = self.outpath(dest)
 
         # Create folder structure if it doesn't exists
