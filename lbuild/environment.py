@@ -103,12 +103,12 @@ class Environment:
         environment = RelEnvironment(loader=jinja2.FileSystemLoader(self.__modulepath),
                                                                     extensions=['jinja2.ext.do'])
 
-        environment.filters['modm.wordwrap'] = filter.wordwrap
-        environment.filters['modm.indent'] = filter.indent
-        environment.filters['modm.pad'] = filter.pad
-        environment.filters['modm.values'] = filter.values
-        environment.filters['modm.split'] = filter.split
-        environment.filters['modm.listify'] = filter.listify
+        environment.filters['lbuild.wordwrap'] = filter.wordwrap
+        environment.filters['lbuild.indent'] = filter.indent
+        environment.filters['lbuild.pad'] = filter.pad
+        environment.filters['lbuild.values'] = filter.values
+        environment.filters['lbuild.split'] = filter.split
+        environment.filters['lbuild.listify'] = filter.listify
 
         if filters is not None:
             environment.filters.update(filters)
