@@ -75,10 +75,18 @@ class Environment:
     def ignore_files(*files):
         return shutil.ignore_patterns(*files)
 
-    def template(self, src, dest, substitutions=None, filters=None):
-        """ Uses the Jinja2 template engine to generate files. """
+    def template(self, src, dest=None, substitutions=None, filters=None):
+        """
+        Uses the Jinja2 template engine to generate files.
+
+        If dest is empty the same name as src is used (relocated to
+        the output path).
+        """
         if substitutions is None:
             substitutions = {}
+
+        if dest is None:
+            dest = src
 
         global_substitutions = {
             'time': time.strftime("%d %b %Y, %H:%M:%S", time.localtime()),

@@ -97,12 +97,11 @@ class Module:
 
         if name is None:
             # Module name without repository
-            self.name = None
+            self._name = None
             # Full qualified name ('repository:module')
             self.full_name = None
         else:
-            self.set_name(name)
-
+            self.name = name
         self.description = ""
 
         # Required functions declared in the module configuration file
@@ -115,10 +114,20 @@ class Module:
         # configurable through the project configuration file.
         self.options = {}
 
-    def set_name(self, name):
-        self.name = name
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        self._name = name
         self.full_name = "%s:%s" % (self.repository.name, name)
 
+    # FIXME remove
+    def set_name(self, name):
+        self.name = name
+
+    # FIXME remove
     def set_description(self, description):
         self.description = description
 
