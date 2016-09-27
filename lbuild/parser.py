@@ -16,6 +16,7 @@ from lxml import etree
 import lbuild.module
 import lbuild.option
 import lbuild.environment
+import lbuild.filter
 
 from .exception import BlobException
 from .exception import OptionFormatException
@@ -78,6 +79,7 @@ class Parser:
                     # The localpath(...) function can be used to create
                     # a local path form the folder of the repository file.
                     'localpath': Localpath(repofilename),
+                    'listify': lbuild.filter.listify,
 
                     'StringOption': lbuild.option.Option,
                     'BooleanOption': lbuild.option.BooleanOption,
@@ -126,7 +128,7 @@ class Parser:
                     # The localpath(...) function can be used to create
                     # a local path form the folder of the repository file.
                     'localpath': Localpath(module_filename),
-
+                    'listify': lbuild.filter.listify,
                     'ignore_patterns': shutil.ignore_patterns,
 
                     'StringOption': lbuild.option.Option,
