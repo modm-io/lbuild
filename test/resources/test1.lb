@@ -1,13 +1,13 @@
 
 <library>
 	<options>
-		<option name=":target" value="hosted" />
-		<option name="repo1:foo" value="43" />
+		<option name=":target">hosted</option>
+		<option name="repo1:foo">43</option>
 		
-		<option name="repo1:other:foo" value="456" />
-		<option name="repo1::bar" value="768" />
-		<option name=":other:xyz" value="No" />
-		<option name="::abc" value="Hello World!" />
+		<option name="repo1:other:foo">456</option>
+		<option name="repo1::bar">768</option>
+		<option name=":other:xyz">No</option>
+		<option name="::abc">Hello World!</option>
 	</options>
 
 	<modules>

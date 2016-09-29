@@ -195,7 +195,10 @@ class Parser:
 
         config_options = {}
         for option_node in xmltree.find('options').findall('option'):
-            config_options[option_node.attrib['name']] = option_node.attrib['value']
+            try:
+                config_options[option_node.attrib['name']] = option_node.attrib['value']
+            except KeyError:
+                config_options[option_node.attrib['name']] = option_node.text
 
         return (requested_modules, config_options)
 
