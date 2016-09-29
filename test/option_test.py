@@ -56,8 +56,7 @@ class OptionTest(unittest.TestCase):
                                                  "description",
                                                  default=TestEnum.value1,
                                                  enumeration=TestEnum)
-        self.assertEqual("value1", option.value.name)
-        self.assertEqual(1, option.value.value)
+        self.assertEqual(1, option.value)
 
     def test_should_be_constructable_from_dict(self):
         enum_dict = {
@@ -68,8 +67,18 @@ class OptionTest(unittest.TestCase):
                                                  "description",
                                                  default="value1",
                                                  enumeration=enum_dict)
-        self.assertEqual("value1", option.value.name)
-        self.assertEqual(1, option.value.value)
+        self.assertEqual(1, option.value)
+
+    def test_should_be_constructable_from_list(self):
+        enum_list = [
+            "value1",
+            "value2",
+        ]
+        option = lbuild.option.EnumerationOption("test",
+                                                 "description",
+                                                 default="value1",
+                                                 enumeration=enum_list)
+        self.assertEqual("value1", option.value)
 
 if __name__ == '__main__':
     unittest.main()
