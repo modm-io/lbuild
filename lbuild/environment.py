@@ -159,7 +159,10 @@ class Environment:
 
     def outpath(self, *path):
         """Relocate given path to the output path."""
-        return os.path.join(self.__outpath, self.outbasepath, *path)
+        if self.outbasepath is None:
+            return os.path.join(self.__outpath, *path)
+        else:
+            return os.path.join(self.__outpath, self.outbasepath, *path)
 
 
     def __getitem__(self, key):
