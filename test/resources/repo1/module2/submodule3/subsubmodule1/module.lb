@@ -2,6 +2,12 @@
 
 def init(module):
     module.name = "subsubmodule1"
+    
+    module.add_option(
+        NumericOption(name="price",
+                      description="Something",
+                      default=12,
+                      maximum=10000))
 
 def prepare(module, options):
     return True

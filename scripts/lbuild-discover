@@ -80,6 +80,7 @@ if __name__ == '__main__':
                 selected_modules = modules
             else:
                 selected_modules = args.modules
+
             build_modules = parser.resolve_dependencies(modules, selected_modules)
             module_options = parser.merge_module_options(build_modules, config_options)
 
@@ -88,6 +89,6 @@ if __name__ == '__main__':
         else:
             raise lbuild.exception.BlobException("Unknown discovery "
                                                  "option '{}'".format(args.discover))
-    except lbuild.exception.BlobException as e:
-        sys.stderr.write('%s\n' % e)
+    except lbuild.exception.BlobException as error:
+        sys.stderr.write('%s\n' % error)
         sys.exit(1)
