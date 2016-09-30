@@ -1,10 +1,28 @@
 
 
+class Submodule(Module):
+    def init(self, module):
+        module.name = "subsubmodule2"
+        module.description = ""
+        
+        module.add_option(BooleanOption(name="option1",
+                                        description="",
+                                        default=True))
+
+    def prepare(self, module, options):
+        return True
+
+    def build(self, env):
+        value = env["::::option1"]
+
 def init(module):
     module.name = "submodule3"
 
 def prepare(module, options):
     module.add_submodule("subsubmodule1/module.lb")
+    module.add_submodule(Submodule())
+    
+    module.depends(":::subsubmodule2")
     return True
 
 def build(env):

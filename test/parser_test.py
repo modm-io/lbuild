@@ -36,12 +36,13 @@ class ParserTest(unittest.TestCase):
         repo_options = self.parser.merge_repository_options({})
         self.parser.prepare_repositories(repo_options)
 
-        self.assertEqual(5, len(repo.modules))
+        self.assertEqual(6, len(repo.modules))
         self.assertIn("repo1:other", repo.modules)
         self.assertIn("repo1:module1", repo.modules)
         self.assertIn("repo1:module2", repo.modules)
         self.assertIn("repo1:module2:submodule3", repo.modules)
         self.assertIn("repo1:module2:submodule3:subsubmodule1", repo.modules)
+        self.assertIn("repo1:module2:submodule3:subsubmodule2", repo.modules)
 
     def test_should_find_files_in_repository_2(self):
         repo = self.parser.parse_repository(self._get_path("resources/repo2/repo2.lb"))
@@ -68,12 +69,13 @@ class ParserTest(unittest.TestCase):
         repo_options = self.parser.merge_repository_options({})
         self.parser.prepare_repositories(repo_options)
 
-        self.assertEqual(5, len(self.parser.modules))
+        self.assertEqual(6, len(self.parser.modules))
         self.assertIn("repo1:module1", self.parser.modules)
         self.assertIn("repo1:module2", self.parser.modules)
         self.assertIn("repo1:other", self.parser.modules)
         self.assertIn("repo1:module2:submodule3", self.parser.modules)
         self.assertIn("repo1:module2:submodule3:subsubmodule1", self.parser.modules)
+        self.assertIn("repo1:module2:submodule3:subsubmodule2", self.parser.modules)
 
     def test_should_parse_modules_from_multiple_repositories(self):
         self.parser.parse_repository(self._get_path("resources/repo1.lb"))
@@ -81,11 +83,12 @@ class ParserTest(unittest.TestCase):
         repo_options = self.parser.merge_repository_options({})
         self.parser.prepare_repositories(repo_options)
 
-        self.assertEqual(9, len(self.parser.modules))
+        self.assertEqual(10, len(self.parser.modules))
         self.assertIn("repo1:module1", self.parser.modules)
         self.assertIn("repo1:module2", self.parser.modules)
         self.assertIn("repo1:module2:submodule3", self.parser.modules)
         self.assertIn("repo1:module2:submodule3:subsubmodule1", self.parser.modules)
+        self.assertIn("repo1:module2:submodule3:subsubmodule2", self.parser.modules)
         self.assertIn("repo1:other", self.parser.modules)
         self.assertIn("repo2:module3", self.parser.modules)
         self.assertIn("repo2:module4", self.parser.modules)
@@ -95,10 +98,11 @@ class ParserTest(unittest.TestCase):
     def test_should_parse_configuration_file(self):
         modules, options = self.parser.parse_configuration(self._get_path("resources/test1.lb"))
 
-        self.assertEqual(3, len(modules))
+        self.assertEqual(4, len(modules))
         self.assertIn("repo1:other", modules)
         self.assertIn(":module1", modules)
         self.assertIn("::submodule3:subsubmodule1", modules)
+        self.assertIn("::submodule3", modules)
 
         self.assertEqual(7, len(options))
         self.assertEqual('hosted', options[':target'])
@@ -146,24 +150,27 @@ class ParserTest(unittest.TestCase):
     def test_should_resolve_module_dependencies(self):
         build_modules, _, _ = self._get_build_modules()
 
-        self.assertEqual(4, len(build_modules))
+        self.assertEqual(6, len(build_modules))
 
         m = [x.fullname for x in build_modules]
         self.assertIn("repo1:other", m)
         self.assertIn("repo1:module1", m)
         self.assertIn("repo2:module4", m)
+        self.assertIn("repo1:module2:submodule3", m)
         self.assertIn("repo1:module2:submodule3:subsubmodule1", m)
+        self.assertIn("repo1:module2:submodule3:subsubmodule2", m)
 
     def test_should_merge_build_module_options(self):
         build_modules, config_options, _ = self._get_build_modules()
         options = self.parser.merge_module_options(build_modules, config_options)
 
-        self.assertEqual(5, len(options))
+        self.assertEqual(6, len(options))
         self.assertEqual(456, options["repo1:other:foo"].value)
         self.assertEqual(768, options["repo1:other:bar"].value)
         self.assertEqual(False, options["repo1:other:xyz"].value)
         self.assertEqual("Hello World!", options["repo1:other:abc"].value)
         self.assertEqual(15, options["repo1:module2:submodule3:subsubmodule1:price"].value)
+        self.assertEqual(True, options["repo1:module2:submodule3:subsubmodule2:option1"].value)
 
     @testfixtures.tempdir()
     def test_should_build_modules(self, tempdir):

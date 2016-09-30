@@ -15,5 +15,6 @@
 		<module>repo1:other</module>
 		<module>:module1</module>
 		<module>::submodule3:subsubmodule1</module>
+		<module>::submodule3</module>
 	</modules>
 </library>

@@ -39,6 +39,18 @@ def verify_module_name(modulename):
                             "names".format(modulename))
 
 
+class ModuleBase:
+
+    def init(self, module):
+        pass
+
+    def prepare(self, module, options):
+        pass
+
+    def build(self, env):
+        pass
+
+
 class OptionNameResolver:
     """
     Option name resolver for module options.
@@ -117,6 +129,8 @@ class Module:
                     'listify': lbuild.filter.listify,
                     'ignore_patterns': shutil.ignore_patterns,
 
+                    'Module': ModuleBase,
+
                     'StringOption': lbuild.option.Option,
                     'BooleanOption': lbuild.option.BooleanOption,
                     'NumericOption': lbuild.option.NumericOption,
@@ -130,15 +144,7 @@ class Module:
 
                 # Get the required global functions
                 module.functions = Repository._get_global_functions(local, ['init', 'prepare', 'build'])
-
-                # Execute init() function from module to get module name
-                module.functions['init'](module)
-
-                if module.name is None:
-                    raise BlobException("The init(module) function must set a module name! " \
-                                        "Please set the 'name' attribute.")
-
-                LOGGER.info("Found module '%s'", module.name)
+                module.init()
 
                 return module
         except Exception as error:
@@ -208,6 +214,16 @@ class Module:
     def fullname(self):
         return self._fullname
 
+    def init(self):
+        # Execute init() function from module to get module name
+        self.functions['init'](self)
+    
+        if self.name is None:
+            raise BlobException("The init(module) function must set a module name! " \
+                                "Please set the 'name' attribute.")
+    
+        LOGGER.info("Found module '%s'", self.name)
+
     def register_module(self):
         """
         Update the fullname attribute and register module at its repository.
@@ -242,15 +258,29 @@ class Module:
         if is_available:
             available_modules[self.fullname] = self
 
-        if len(self._submodules) > 0:
-            for submodule in self._submodules:
-                module = Module.parse_module(self.repository,
-                                             os.path.join(self.path, submodule))
-                if self._parent:
-                    module.parent = "{}:{}".format(self._parent, self._name)
-                else:
-                    module.parent = self._name
-                available_modules.update(module.prepare(repo_options))
+        for submodule in self._submodules:
+            if isinstance(submodule, ModuleBase):
+                module = Module(repository=self.repository,
+                                filename=None,
+                                path=self.path)
+                
+                module.functions = {
+                    'init': submodule.init,
+                    'prepare': submodule.prepare,
+                    'build': submodule.build,
+                }
+                module.init()
+            else:
+                module = Module.parse_module(repository=self.repository,
+                                             module_filename=os.path.join(self.path,
+                                                                          submodule))
+            
+            # Set parent for new module
+            if self._parent:
+                module.parent = "{}:{}".format(self._parent, self._name)
+            else:
+                module.parent = self._name
+            available_modules.update(module.prepare(repo_options))
 
         return available_modules
 
