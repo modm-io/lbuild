@@ -1,6 +1,6 @@
 
 def init(module):
-	module.set_name("module4.submodule1")
+	module.name = "module4.submodule1"
 
 def prepare(module, options):
 	module.depends(":module4")

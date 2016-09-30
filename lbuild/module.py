@@ -122,14 +122,6 @@ class Module:
         self._name = name
         self.full_name = "%s:%s" % (self.repository.name, name)
 
-    # FIXME remove
-    def set_name(self, name):
-        self.name = name
-
-    # FIXME remove
-    def set_description(self, description):
-        self.description = description
-
     def add_option(self, option):
         """
         Define new option for this module.

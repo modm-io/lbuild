@@ -70,10 +70,6 @@ class Repository:
         # Name -> Option()
         self.options = {}
 
-    def set_name(self, name):
-        """Set name of the repository."""
-        self.name = name
-
     def _relocate(self, path):
         """
         Relocate relative paths to the path of the repository
@@ -116,7 +112,8 @@ class Repository:
         basepath = self._relocate(basepath)
         for path, _, files in os.walk(basepath):
             if modulefile in files:
-                self.modules[os.path.normpath(os.path.join(path, modulefile))] = None
+                modulepath = os.path.normpath(os.path.join(path, modulefile))
+                self.modules[modulepath] = None
 
     def add_option(self, option: lbuild.option.Option):
         """

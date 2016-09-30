@@ -123,7 +123,8 @@ class ParserTest(unittest.TestCase):
     def _get_build_modules(self):
         self.parser.parse_repository(self._get_path("resources/repo1.lb"))
         self.parser.parse_repository(self._get_path("resources/repo2/repo2.lb"))
-        selected_modules, config_options = self.parser.parse_configuration(self._get_path("resources/test1.lb"))
+        selected_modules, config_options = \
+            self.parser.parse_configuration(self._get_path("resources/test1.lb"))
 
         repo_options = self.parser.merge_repository_options(config_options)
         self.parser.prepare_repositories(repo_options)

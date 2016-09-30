@@ -1,6 +1,6 @@
 
 def init(repo):
-	repo.set_name("repo1")
+	repo.name = "repo1"
 	
 	repo.add_option(
 		StringOption(name="target",

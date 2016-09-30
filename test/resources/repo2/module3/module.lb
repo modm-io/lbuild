@@ -1,7 +1,7 @@
 
 
 def init(module):
-	module.set_name("module3")
+	module.name = "module3"
 
 def prepare(module, options):
 	module.depends("repo1:other")

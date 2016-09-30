@@ -1,6 +1,6 @@
 
 def init(module):
-	module.set_name("module4")
+	module.name = "module4"
 
 def prepare(module, options):
 	return True
