@@ -18,6 +18,7 @@ sys.path.append(os.path.abspath("."))
 
 import lbuild
 
+
 class ParserTest(unittest.TestCase):
 
     def _get_path(self, filename):

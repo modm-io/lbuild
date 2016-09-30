@@ -20,6 +20,7 @@ import lbuild.option
 from lbuild.repository import Repository
 from lbuild.module import Module
 
+
 class OptionTest(unittest.TestCase):
 
     def setUp(self):
@@ -28,14 +29,14 @@ class OptionTest(unittest.TestCase):
 
     def test_should_provide_string_representation_for_base_option(self):
         option = lbuild.option.Option("test", "description", "value")
-        
+
         self.assertTrue(str(option).startswith("test"))
         self.assertTrue("value" in str(option))
 
     def test_should_provide_string_representation_for_base_option_with_repo(self):
         option = lbuild.option.Option("test", "description", "value")
         option.repository = self.default_repository
-        
+
         self.assertTrue(str(option).startswith("repo:test"))
         self.assertTrue("value" in str(option))
 
@@ -43,7 +44,7 @@ class OptionTest(unittest.TestCase):
         option = lbuild.option.Option("test", "description", "value")
         option.repository = self.default_repository
         option.module = self.default_module
-        
+
         self.assertTrue(str(option).startswith("repo:module:test"))
         self.assertTrue("value" in str(option))
 

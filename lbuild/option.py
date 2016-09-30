@@ -10,8 +10,9 @@
 import enum
 import inspect
 
+import lbuild.filter
 from .exception import BlobException
-from . import filter
+
 
 class Option:
     """
@@ -106,10 +107,10 @@ class NumericOption(Option):
 
     def __init__(self, name, description, minimum=None, maximum=None, default=None):
         Option.__init__(self, name, description)
-        
+
         self.minimum = minimum
         self.maximum = maximum
-        
+
         if default is not None:
             self.value = default
 
@@ -147,9 +148,9 @@ class NumericOption(Option):
 
 
 class EnumerationOption(Option):
-    
+
     LINEWITH = 120
-    
+
     def __init__(self, name, description, enumeration, default=None):
         Option.__init__(self, name, description)
         if inspect.isclass(enumeration) and issubclass(enumeration, enum.Enum):
@@ -193,10 +194,10 @@ class EnumerationOption(Option):
         name = self.full_name + " = "
         if self._value is None:
             values = self.values_hint()
-            # This +1 is for the first square brackets 
-            output = filter.indent(filter.wordwrap(values,
-                                                   self.LINEWITH - len(name) - 1),
-                                   len(name) + 1)
+            # This +1 is for the first square brackets
+            output = lbuild.filter.indent(lbuild.filter.wordwrap(values,
+                                                                 self.LINEWITH - len(name) - 1),
+                                          len(name) + 1)
             return "{}[{}]".format(name, output)
         else:
             values = self.values_hint()

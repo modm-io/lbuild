@@ -9,30 +9,37 @@
 
 import textwrap
 
+TAB_WIDTH = 4
+
+
 def wordwrap(value, width=79):
     return '\n\n'.join([textwrap.fill(s, width) for s in value.split('\n\n')])
+
 
 def indent(value, level=0):
     return ('\n' + ' ' * level).join(value.split('\n'))
 
+
 def pad(value, min_width):
-    tab_width = 4
-    tab_count = (min_width / tab_width - len(value) / tab_width) + 1
+    tab_count = (min_width / TAB_WIDTH - len(value) / TAB_WIDTH) + 1
     return value + ('\t' * int(tab_count))
+
 
 def split(value, delimiter):
     return value.split(delimiter)
 
+
 def values(lst, key):
-    """ Go through the list of dictionaries and add all the values of
+    """ Go through the list of dictionaries and add all the value_list of
     a certain key to a list.
     """
-    values = []
+    value_list = []
     for item in lst:
         if isinstance(item, dict) and key in item:
-            if item[key] not in values:
-                values.append(item[key])
-    return values
+            if item[key] not in value_list:
+                value_list.append(item[key])
+    return value_list
+
 
 def listify(node):
     if isinstance(node, list) or isinstance(node, tuple):

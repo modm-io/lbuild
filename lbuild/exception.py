@@ -14,12 +14,13 @@ class BlobException(Exception):
     """
     pass
 
+
 class OptionFormatException(BlobException):
     """
     Exception for all invalid option names.
     """
     def __init__(self, name):
         BlobException.__init__(self,
-            "Invalid option format for '{}'. Option must contain "
-            "one (repository option) or two (module option) "
-            "colons.".format(name))
+                               "Invalid option format for '{}'. Option must "
+                               "options are one (repository option) or "
+                               "two and more (module option) colons.".format(name))

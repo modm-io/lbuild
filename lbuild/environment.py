@@ -12,8 +12,10 @@ import time
 import shutil
 import jinja2
 
-from . import filter
+import lbuild.filter
+
 from .exception import BlobException
+
 
 def _copytree(src, dst, ignore=None):
     """
@@ -27,16 +29,16 @@ def _copytree(src, dst, ignore=None):
         ignored = ignore(src, files)
     else:
         ignored = set()
-    for f in files:
-        if f not in ignored:
-            s = os.path.join(src, f)
-            d = os.path.join(dst, f)
-            if os.path.isdir(s):
-                _copytree(s, d, ignore)
+    for filename in files:
+        if filename not in ignored:
+            sourcepath = os.path.join(src, filename)
+            destpath = os.path.join(dst, filename)
+            if os.path.isdir(sourcepath):
+                _copytree(sourcepath, destpath, ignore)
             else:
-                if not os.path.exists(d) or os.stat(src).st_mtime - os.stat(dst).st_mtime > 1:
-                    shutil.copy2(s, d)
-
+                time_diff = os.stat(src).st_mtime - os.stat(dst).st_mtime
+                if not os.path.exists(destpath) or time_diff > 1:
+                    shutil.copy2(sourcepath, destpath)
 
 
 class Environment:
@@ -45,7 +47,7 @@ class Environment:
         self.options = options
         self.__modulepath = modulepath
         self.__outpath = outpath
-        
+
         self.outbasepath = None
 
     def copy(self, src, dest=None, ignore=None):
@@ -54,13 +56,13 @@ class Environment:
 
         If src or dest is a relative path it will be relocated to the
         module/buildpath. Absolute paths are not changed.
-        
+
         If dest is empty the same name as src is used (relocated to
         the output path).
         """
         if dest is None:
             dest = src
-        
+
         srcpath = src if os.path.isabs(src) else self.modulepath(src)
         destpath = dest if os.path.isabs(dest) else self.outpath(dest)
 
@@ -105,18 +107,18 @@ class Environment:
             templates.
             """
             def join_path(self, template, parent):
-                d = os.path.join(os.path.dirname(parent), template)
-                return os.path.normpath(d)
+                path = os.path.join(os.path.dirname(parent), template)
+                return os.path.normpath(path)
 
         environment = RelEnvironment(loader=jinja2.FileSystemLoader(self.__modulepath),
-                                                                    extensions=['jinja2.ext.do'])
+                                     extensions=['jinja2.ext.do'])
 
-        environment.filters['lbuild.wordwrap'] = filter.wordwrap
-        environment.filters['lbuild.indent'] = filter.indent
-        environment.filters['lbuild.pad'] = filter.pad
-        environment.filters['lbuild.values'] = filter.values
-        environment.filters['lbuild.split'] = filter.split
-        environment.filters['lbuild.listify'] = filter.listify
+        environment.filters['lbuild.wordwrap'] = lbuild.filter.wordwrap
+        environment.filters['lbuild.indent'] = lbuild.filter.indent
+        environment.filters['lbuild.pad'] = lbuild.filter.pad
+        environment.filters['lbuild.values'] = lbuild.filter.values
+        environment.filters['lbuild.split'] = lbuild.filter.split
+        environment.filters['lbuild.listify'] = lbuild.filter.listify
 
         if filters is not None:
             environment.filters.update(filters)
@@ -142,16 +144,15 @@ class Environment:
                                 " {}: {}".format(self.modulepath(src),
                                                  error.__class__.__name__,
                                                  error))
-            print(dir(error))
 
-        outfile = self.outpath(dest)
+        outfile_name = self.outpath(dest)
 
         # Create folder structure if it doesn't exists
-        if not os.path.exists(os.path.dirname(outfile)):
-            os.makedirs(os.path.dirname(outfile))
+        if not os.path.exists(os.path.dirname(outfile_name)):
+            os.makedirs(os.path.dirname(outfile_name))
 
-        with open(outfile, 'w') as f:
-            f.write(output)
+        with open(outfile_name, 'w') as outfile:
+            outfile.write(output)
 
     def modulepath(self, *path):
         """Relocate given path to the path of the module file."""
@@ -163,7 +164,6 @@ class Environment:
             return os.path.join(self.__outpath, *path)
         else:
             return os.path.join(self.__outpath, self.outbasepath, *path)
-
 
     def __getitem__(self, key):
         return self.options[key]

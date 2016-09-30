@@ -25,6 +25,7 @@ from . import repository
 
 LOGGER = logging.getLogger('lbuild.parser')
 
+
 class Localpath:
 
     def __init__(self, repository_file):
@@ -32,6 +33,7 @@ class Localpath:
 
     def __call__(self, *args):
         return os.path.join(self.basepath, *args)
+
 
 class Parser:
 
@@ -56,10 +58,10 @@ class Parser:
         """
         functions = {}
         for functionname in names:
-            f = local.get(functionname)
-            if f is None:
+            function = local.get(functionname)
+            if function is None:
                 raise BlobException("No function '{}' found!".format(functionname))
-            functions[functionname] = f
+            functions[functionname] = function
         return functions
 
     def parse_repository(self, repofilename: str) -> repository.Repository:
@@ -120,9 +122,9 @@ class Parser:
             Module() module definition object.
         """
         try:
-            with open(module_filename) as f:
+            with open(module_filename) as module_file:
                 LOGGER.debug("Parse module_filename '%s'", module_filename)
-                code = compile(f.read(), module_filename, 'exec')
+                code = compile(module_file.read(), module_filename, 'exec')
 
                 local = {
                     # The localpath(...) function can be used to create
@@ -155,10 +157,11 @@ class Parser:
                 LOGGER.info("Found module '%s'", module.name)
 
                 return module
-        except Exception as e:
-            raise BlobException("While parsing '%s': %s" % (module_filename, e))
+        except Exception as error:
+            raise BlobException("While parsing '%s': %s" % (module_filename, error))
 
-    def parse_configuration(self, configfile):
+    @staticmethod
+    def parse_configuration(configfile):
         """
         Parse the configuration file.
 
@@ -276,7 +279,6 @@ class Parser:
 
                     self.modules["%s:%s" % (repo.name, module.name)] = module
 
-
     def prepare_modules(self, repo_options):
         """ Prepare and select modules which are available given the set of
         repository repo_options.
@@ -298,7 +300,8 @@ class Parser:
 
         return self.available_modules
 
-    def get_available_module(self, modulename):
+    @staticmethod
+    def find_module(modules, modulename):
         """ Get the module representation from a module name.
 
         The name can either be fully qualified or have an empty repository
@@ -306,13 +309,14 @@ class Parser:
         name. An error is raised in case multiple repositories are found.
 
         Args:
-            modulename :  Name of the module in the format 'repository:available_module'.
+            modulename :  Name of the module in the format
+                          'repository:available_module'.
                           'repository' can be an empty string.
         """
         repopart, modulepart = modulename.split(':')
         found_module = None
         if repopart == "":
-            for name, available_module in self.available_modules.items():
+            for name, available_module in modules.items():
                 _, available_modulepart = name.split(':')
                 if available_modulepart == modulepart:
                     if found_module is not None:
@@ -328,25 +332,26 @@ class Parser:
                 return found_module
         else:
             try:
-                return self.available_modules[modulename]
+                return modules[modulename]
             except KeyError:
                 raise BlobException("Module '%s' not found." % modulename)
 
-    def resolve_dependencies(self, modules, requested_modules):
+    @staticmethod
+    def resolve_dependencies(modules, requested_module_names):
         """
         Resolve dependencies by adding missing modules.
         """
         selected_modules = []
-        for modulename in requested_modules:
-            m = self.get_available_module(modulename)
-            selected_modules.append(m)
+        for modulename in requested_module_names:
+            module = Parser.find_module(modules, modulename)
+            selected_modules.append(module)
 
         current = selected_modules
         while 1:
             additional = []
-            for m in current:
-                for dependency_name in m.dependencies:
-                    dependency = self.get_available_module(dependency_name)
+            for module in current:
+                for dependency_name in module.dependencies:
+                    dependency = Parser.find_module(modules, dependency_name)
 
                     if dependency not in selected_modules and \
                             dependency not in additional:
@@ -365,7 +370,8 @@ class Parser:
         Return the list of options used for building the selected modules.
 
         Returns:
-            Dictionary mapping the full qualified option name to the option object.
+            Dictionary mapping the full qualified option name to the option
+            object.
         """
         modules_by_full_name = {}
         modules_by_name = {}
@@ -426,7 +432,8 @@ class Parser:
 
         return options
 
-    def verify_options_are_defined(self, options):
+    @staticmethod
+    def verify_options_are_defined(options):
         """
         Check that all given options have an assigned value.
         """
@@ -436,11 +443,12 @@ class Parser:
                                     "a value in the configuration file or on the "
                                     "command line.".format(fullname))
 
-    def build_modules(self, outpath, build_modules, repo_options, module_options):
+    @staticmethod
+    def build_modules(outpath, build_modules, repo_options, module_options):
         """
         Go through all to build and call their 'build' function.
         """
-        self.verify_options_are_defined(module_options)
+        Parser.verify_options_are_defined(module_options)
         for module in build_modules:
             option_resolver = lbuild.module.OptionNameResolver(module.repository,
                                                                module,
@@ -450,14 +458,17 @@ class Parser:
             # TODO add exception handling
             module.functions["build"](env)
 
-    def format_commandline_options(self, cmd_options):
+    @staticmethod
+    def format_commandline_options(cmd_options):
         cmd = {}
         for option in cmd_options:
-            o = option.split('=')
-            cmd[o[0]] = o[1]
+            parts = option.split('=')
+            cmd[parts[0]] = parts[1]
         return cmd
 
-    def configure_and_build_library(self, configfile, outpath, cmd_options=[]):
+    def configure_and_build_library(self, configfile, outpath, cmd_options=None):
+        cmd_options = [] if cmd_options is None else cmd_options
+
         selected_modules, config_options = self.parse_configuration(configfile)
 
         commandline_options = self.format_commandline_options(cmd_options)

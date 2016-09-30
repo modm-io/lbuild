@@ -17,6 +17,7 @@ sys.path.append(os.path.abspath("."))
 
 import lbuild
 
+
 class ModuleTest(unittest.TestCase):
 
     def setUp(self):

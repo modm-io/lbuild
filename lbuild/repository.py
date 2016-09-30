@@ -16,6 +16,7 @@ import lbuild.option
 from .exception import BlobException
 from . import utils
 
+
 class OptionNameResolver:
     """
     Option name resolver for repository options.
@@ -32,11 +33,11 @@ class OptionNameResolver:
         self.options = options
 
     def __getitem__(self, key):
-        o = key.split(":")
-        if len(o) != 2:
-            raise BlobException("Option name '%s' must contain exactly one colon " \
-                                "to separate repository and option name.")
-        repo, option = o
+        parts = key.split(":")
+        if len(parts) != 2:
+            raise BlobException("Option name '%s' must contain exactly one "
+                                "colon to separate repository and option name.")
+        repo, option = parts
         if repo == "":
             key = "%s:%s" % (self.repository.name, option)
 

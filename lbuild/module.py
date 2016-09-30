@@ -7,13 +7,12 @@
 # 2-clause BSD license. See the file `LICENSE.txt` for the full license
 # governing this code.
 
-import lbuild.option
-
 from . import utils
 from .repository import Repository
 
 from .exception import BlobException
 from .exception import OptionFormatException
+
 
 def verify_module_name(modulename):
     """
@@ -66,10 +65,10 @@ class OptionNameResolver:
 
     def __repr__(self):
         # Create representation of merged module and repository options
-        o = self.module_options.copy()
-        o.update(self.repo_options)
+        options = self.module_options.copy()
+        options.update(self.repo_options)
 
-        return repr(o)
+        return repr(options)
 
     def __len__(self):
         return len(self.module_options) + len(self.repo_options)
@@ -110,8 +109,8 @@ class Module:
         # List of module names this module depends upon
         self.dependencies = []
 
-        # OptionNameResolver defined in the module configuration file. These options are
-        # configurable through the project configuration file.
+        # OptionNameResolver defined in the module configuration file. These
+        # options are configurable through the project configuration file.
         self.options = {}
 
     @property
