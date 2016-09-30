@@ -10,11 +10,24 @@
 
 import os
 import glob
+import logging
 
 import lbuild.option
+import lbuild.filter
 
 from .exception import BlobException
 from . import utils
+
+LOGGER = logging.getLogger('lbuild.repository')
+
+
+class Localpath:
+
+    def __init__(self, repository_file):
+        self.basepath = os.path.dirname(os.path.realpath(repository_file))
+
+    def __call__(self, *args):
+        return os.path.join(self.basepath, *args)
 
 
 class OptionNameResolver:
@@ -44,7 +57,7 @@ class OptionNameResolver:
         try:
             return self.options[key].value
         except KeyError:
-            raise BlobException("Unknown option name '%s'" % key)
+            raise BlobException("Unknown option name '{}'".format(key))
 
     def __repr__(self):
         return repr(self.options)
@@ -64,7 +77,11 @@ class Repository:
 
         self.functions = None
 
-        # Dict of modules, using the filename as the key
+        # List of module filenames which are later transfered into
+        # module objects
+        self._module_files = []
+
+        # List of module objects
         self.modules = {}
 
         # Name -> Option()
@@ -98,9 +115,9 @@ class Repository:
             if not os.path.isfile(file):
                 raise BlobException("Module file not found '%s'" % file)
 
-            self.modules[file] = None
+            self._module_files.append(file)
 
-    def find_modules(self, basepath="", modulefile="module.lb"):
+    def find_modules_recursive(self, basepath="", modulefile="module.lb"):
         """
         Find all module files following a specific pattern.
 
@@ -112,8 +129,8 @@ class Repository:
         basepath = self._relocate(basepath)
         for path, _, files in os.walk(basepath):
             if modulefile in files:
-                modulepath = os.path.normpath(os.path.join(path, modulefile))
-                self.modules[modulepath] = None
+                modulefilepath = os.path.normpath(os.path.join(path, modulefile))
+                self._module_files.append(modulefilepath)
 
     def add_option(self, option: lbuild.option.Option):
         """
@@ -131,6 +148,56 @@ class Repository:
     def _check_for_duplicates(self, name):
         if name in self.options:
             raise BlobException("Option name '%s' is already defined" % name)
+
+    @staticmethod
+    def _get_global_functions(local, names):
+        """
+        Get global functions from the environment.
+        """
+        functions = {}
+        for functionname in names:
+            function = local.get(functionname)
+            if function is None:
+                raise BlobException("No function '{}' found!".format(functionname))
+            functions[functionname] = function
+        return functions
+
+    @staticmethod
+    def parse_repository(repofilename: str):
+        repo = Repository(os.path.dirname(repofilename))
+        try:
+            with open(repofilename) as repofile:
+                code = compile(repofile.read(), repofilename, 'exec')
+                local = {
+                    '__file__': repofilename,
+
+                    # The localpath(...) function can be used to create
+                    # a local path form the folder of the repository file.
+                    'localpath': Localpath(repofilename),
+                    'listify': lbuild.filter.listify,
+
+                    'StringOption': lbuild.option.Option,
+                    'BooleanOption': lbuild.option.BooleanOption,
+                    'NumericOption': lbuild.option.NumericOption,
+                    'EnumerationOption': lbuild.option.EnumerationOption,
+                }
+                exec(code, local)
+
+                repo.functions = Repository._get_global_functions(local, ['init', 'prepare'])
+
+                # Execution init() function. In this function options are added.
+                repo.functions['init'](repo)
+
+                if repo.name is None:
+                    raise BlobException("The init(repo) function must set a repository name! "
+                                        "Please use the set_name() method.")
+
+        except KeyError as error:
+            raise BlobException("Invalid repository configuration file '{}':\n"
+                                " {}: {}".format(repofilename,
+                                                 error.__class__.__name__,
+                                                 error))
+        return repo
 
     def __lt__(self, other):
         return self.name.__cmp__(other.name)

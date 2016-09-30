@@ -70,13 +70,11 @@ if __name__ == '__main__':
             for option in sorted(list(repo_options.values())):
                 print(option)
         elif args.discover == 'modules':
-            parser.prepare_repositories(repo_options)
-            modules = parser.prepare_modules(repo_options)
+            modules = parser.prepare_repositories(repo_options)
             for module in sorted(list(modules.values())):
                 print(module)
         elif args.discover == 'module:options':
-            parser.prepare_repositories(repo_options)
-            modules = parser.prepare_modules(repo_options)
+            modules = parser.prepare_repositories(repo_options)
 
             if len(args.modules) == 0:
                 selected_modules = modules

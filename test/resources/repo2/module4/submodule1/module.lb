@@ -1,10 +1,11 @@
 
 def init(module):
-	module.name = "module4.submodule1"
+    module.name = "submodule1"
+    module.parent = "module4"
 
 def prepare(module, options):
-	module.depends(":module4")
-	return True
+    module.depends(":module4")
+    return True
 
 def build(env):
-	pass
+    pass

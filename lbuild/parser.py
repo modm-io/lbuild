@@ -7,32 +7,19 @@
 # 2-clause BSD license. See the file `LICENSE.txt` for the full license
 # governing this code.
 
-import os
 import pkgutil
-import shutil
 import logging
 from lxml import etree
 
 import lbuild.module
-import lbuild.option
 import lbuild.environment
-import lbuild.filter
 
 from .exception import BlobException
-from .exception import OptionFormatException
+from .exception import BlobOptionFormatException
 
 from . import repository
 
 LOGGER = logging.getLogger('lbuild.parser')
-
-
-class Localpath:
-
-    def __init__(self, repository_file):
-        self.basepath = os.path.dirname(os.path.realpath(repository_file))
-
-    def __call__(self, *args):
-        return os.path.join(self.basepath, *args)
 
 
 class Parser:
@@ -51,19 +38,6 @@ class Parser:
         # Module name -> Module()
         self.available_modules = {}
 
-    @staticmethod
-    def _get_global_functions(local, names):
-        """
-        Get global functions from the environment.
-        """
-        functions = {}
-        for functionname in names:
-            function = local.get(functionname)
-            if function is None:
-                raise BlobException("No function '{}' found!".format(functionname))
-            functions[functionname] = function
-        return functions
-
     def parse_repository(self, repofilename: str) -> repository.Repository:
         """
         Parse the given repository file.
@@ -71,94 +45,14 @@ class Parser:
         Executes the 'prepare' function to populate the repository
         structure.
         """
-        repo = repository.Repository(os.path.dirname(repofilename))
-        try:
-            with open(repofilename) as repofile:
-                code = compile(repofile.read(), repofilename, 'exec')
-                local = {
-                    '__file__': repofilename,
-
-                    # The localpath(...) function can be used to create
-                    # a local path form the folder of the repository file.
-                    'localpath': Localpath(repofilename),
-                    'listify': lbuild.filter.listify,
-
-                    'StringOption': lbuild.option.Option,
-                    'BooleanOption': lbuild.option.BooleanOption,
-                    'NumericOption': lbuild.option.NumericOption,
-                    'EnumerationOption': lbuild.option.EnumerationOption,
-                }
-                exec(code, local)
-
-                repo.functions = self._get_global_functions(local, ['init', 'prepare'])
-
-                # Execution init() function. In this function options are added.
-                repo.functions['init'](repo)
-
-                if repo.name is None:
-                    raise BlobException("The init(repo) function must set a repository name! "
-                                        "Please use the set_name() method.")
-
-        except KeyError as error:
-            raise BlobException("Invalid repository configuration file '{}':\n"
-                                " {}: {}".format(repofilename,
-                                                 error.__class__.__name__,
-                                                 error))
+        repo = repository.Repository.parse_repository(repofilename)
 
         if repo.name in self.repositories:
             raise BlobException("Repository name '{}' is ambiguous. "
                                 "Name must be unique.".format(repo.name))
-
-        self.repositories[repo.name] = repo
+        else:
+            self.repositories[repo.name] = repo
         return repo
-
-    @staticmethod
-    def parse_module(repo: repository.Repository,
-                     module_filename: str) -> lbuild.module.Module:
-        """
-        Parse a specific module file.
-
-        Returns:
-            Module() module definition object.
-        """
-        try:
-            with open(module_filename) as module_file:
-                LOGGER.debug("Parse module_filename '%s'", module_filename)
-                code = compile(module_file.read(), module_filename, 'exec')
-
-                local = {
-                    # The localpath(...) function can be used to create
-                    # a local path form the folder of the repository file.
-                    'localpath': Localpath(module_filename),
-                    'listify': lbuild.filter.listify,
-                    'ignore_patterns': shutil.ignore_patterns,
-
-                    'StringOption': lbuild.option.Option,
-                    'BooleanOption': lbuild.option.BooleanOption,
-                    'NumericOption': lbuild.option.NumericOption,
-                    'EnumerationOption': lbuild.option.EnumerationOption,
-                }
-                exec(code, local)
-
-                module = lbuild.module.Module(repo,
-                                              module_filename,
-                                              os.path.dirname(module_filename))
-
-                # Get the required global functions
-                module.functions = Parser._get_global_functions(local, ['init', 'prepare', 'build'])
-
-                # Execute init() function from module to get module name
-                module.functions['init'](module)
-
-                if module.name is None:
-                    raise BlobException("The init(module) function must set a module name! " \
-                                        "Please use the set_name() method.")
-
-                LOGGER.info("Found module '%s'", module.name)
-
-                return module
-        except Exception as error:
-            raise BlobException("While parsing '%s': %s" % (module_filename, error))
 
     @staticmethod
     def parse_configuration(configfile):
@@ -239,7 +133,7 @@ class Parser:
                 # module option
                 pass
             else:
-                raise OptionFormatException(config_name)
+                raise BlobOptionFormatException(config_name)
 
         # Overwrite again with the values for the command line.
         if cmd_options is not None:
@@ -258,28 +152,12 @@ class Parser:
                     # module option
                     pass
                 else:
-                    raise OptionFormatException(config_name)
+                    raise BlobOptionFormatException(config_name)
 
         return repo_options_by_full_name
 
     def prepare_repositories(self,
                              repo_options):
-        self.verify_options_are_defined(repo_options)
-        for repo in self.repositories.values():
-            repo.functions["prepare"](repo,
-                                      repository.OptionNameResolver(repo,
-                                                                    repo_options))
-
-            # Parse the modules inside the repository
-            for modulefile, module in repo.modules.items():
-                # Parse all modules which are not yet updated
-                if module is None:
-                    module = self.parse_module(repo, modulefile)
-                    repo.modules[modulefile] = module
-
-                    self.modules["%s:%s" % (repo.name, module.name)] = module
-
-    def prepare_modules(self, repo_options):
         """ Prepare and select modules which are available given the set of
         repository repo_options.
 
@@ -288,15 +166,21 @@ class Parser:
         """
         self.verify_options_are_defined(repo_options)
         for repo in self.repositories.values():
-            for module in repo.modules.values():
-                prepare = module.functions["prepare"]
-                available = prepare(module,
-                                    repository.OptionNameResolver(repo,
-                                                                  repo_options))
+            repo.functions["prepare"](repo,
+                                      repository.OptionNameResolver(repo,
+                                                                    repo_options))
 
-                if available:
-                    name = "%s:%s" % (repo.name, module.name)
-                    self.available_modules[name] = module
+            # Parse the modules inside this repository
+            for modulefile in repo._module_files:
+                module = lbuild.module.Module.parse_module(repo, modulefile)
+                available = module.prepare(repo_options)
+                self.available_modules.update(available)
+
+        # Update the list of modules. Must be done after the prepare loop,
+        # because submodules are only added there.
+        for repo in self.repositories.values():
+            for module in repo.modules.values():
+                self.modules[module.fullname] = module
 
         return self.available_modules
 
@@ -310,31 +194,39 @@ class Parser:
 
         Args:
             modulename :  Name of the module in the format
-                          'repository:available_module'.
-                          'repository' can be an empty string.
+                          'repository:module:submodule:...'.
+                          Each part but the last can be an empty string.
         """
-        repopart, modulepart = modulename.split(':')
-        found_module = None
-        if repopart == "":
-            for name, available_module in modules.items():
-                _, available_modulepart = name.split(':')
-                if available_modulepart == modulepart:
-                    if found_module is not None:
-                        # Found at least an other module in a different
-                        # repository with the same name.
-                        raise BlobException("Name '{}' is ambiguous. "
-                                            "Please specify the repository.".format(modulename))
-                    found_module = available_module
+        canidates = []
 
-            if found_module is None:
-                raise BlobException("Module '{}' not found.".format(modulename))
+        target_parts = modulename.split(":")
+        target_depth = len(target_parts)
+        if target_depth < 2:
+            raise BlobException("Invalid module name '{}'.".format(modulename))
+
+        for module in modules.values():
+            parts = module.fullname.split(":")
+            depth = len(parts)
+            if depth == target_depth:
+                canidates.append((parts, module))
+
+        found = []
+        for parts, module in canidates:
+            for target, canidate in zip(target_parts, parts):
+                if target == "" or target == "*":
+                    continue
+                elif target != canidate:
+                    break
             else:
-                return found_module
-        else:
-            try:
-                return modules[modulename]
-            except KeyError:
-                raise BlobException("Module '%s' not found." % modulename)
+                found.append(module)
+
+        if len(found) == 0:
+            raise BlobException("Module '{}' not found.".format(modulename))
+        elif len(found) > 1:
+            raise BlobException("Name '{}' is ambiguous "
+                                "between '{}'.".format(modulename,
+                                                       "', '".join(found)))
+        return found[0]
 
     @staticmethod
     def resolve_dependencies(modules, requested_module_names):
@@ -376,7 +268,7 @@ class Parser:
         modules_by_full_name = {}
         modules_by_name = {}
         for module in build_modules:
-            modules_by_full_name[module.full_name] = module
+            modules_by_full_name[module.fullname] = module
 
             # Add an additional reference to find options without
             # the repository name but only but option name
@@ -422,12 +314,12 @@ class Parser:
                 if not found:
                     raise BlobException("Option '%s' not found!" % config_name)
             else:
-                raise OptionFormatException(config_name)
+                raise BlobOptionFormatException(config_name)
 
         options = {}
         for module in build_modules:
             for option in module.options.values():
-                fullname = "%s:%s" % (module.full_name, option.name)
+                fullname = "%s:%s" % (module.fullname, option.name)
                 options[fullname] = option
 
         return options
@@ -439,9 +331,9 @@ class Parser:
         """
         for fullname, option in options.items():
             if option.value is None:
-                raise BlobException("Unknown value for option '{}'. Please provide "
-                                    "a value in the configuration file or on the "
-                                    "command line.".format(fullname))
+                raise BlobException("Unknown value for option '{}'. Please "
+                                    "provide a value in the configuration file "
+                                    "or on the command line.".format(fullname))
 
     @staticmethod
     def build_modules(outpath, build_modules, repo_options, module_options):
@@ -474,9 +366,7 @@ class Parser:
         commandline_options = self.format_commandline_options(cmd_options)
         repo_options = self.merge_repository_options(config_options, commandline_options)
 
-        self.prepare_repositories(repo_options)
-        modules = self.prepare_modules(repo_options)
-
+        modules = self.prepare_repositories(repo_options)
         build_modules = self.resolve_dependencies(modules, selected_modules)
         module_options = self.merge_module_options(build_modules, config_options)
 

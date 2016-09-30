@@ -15,7 +15,7 @@ class BlobException(Exception):
     pass
 
 
-class OptionFormatException(BlobException):
+class BlobOptionFormatException(BlobException):
     """
     Exception for all invalid option names.
     """
@@ -24,3 +24,10 @@ class OptionFormatException(BlobException):
                                "Invalid option format for '{}'. Option must "
                                "options are one (repository option) or "
                                "two and more (module option) colons.".format(name))
+
+
+class BlobAttributeException(BlobException):
+    def __init__(self, name):
+        BlobException.__init__(self,
+                               ("The attribute {} may only be changed in "
+                                "the init(...) method".format(name)))

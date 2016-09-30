@@ -1,12 +1,13 @@
 
 def init(module):
-	module.name = "module2"
+    module.name = "module2"
 
 def prepare(module, options):
-	if options[":target"] == "hosted":
-		return False
-	else:
-		return True
+    module.add_submodule("submodule3/module.lb")
+    if options[":target"] == "hosted":
+        return False
+    else:
+        return True
 
 def build(env):
-	pass
+    pass

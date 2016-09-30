@@ -49,7 +49,7 @@ class Option:
         return "String"
 
     @property
-    def full_name(self):
+    def fullname(self):
         name = []
         if self.repository is not None:
             name.append(self.repository.name)
@@ -59,14 +59,14 @@ class Option:
         return ':'.join(name)
 
     def __lt__(self, other):
-        return self.full_name.__lt__(other.full_name)
+        return self.fullname.__lt__(other.fullname)
 
     def __str__(self):
         values = self.values_hint()
         if self.value is None:
-            return "{} = [{}]".format(self.full_name, values)
+            return "{} = [{}]".format(self.fullname, values)
         else:
-            return "{} = {}  [{}]".format(self.full_name, self._value, values)
+            return "{} = {}  [{}]".format(self.fullname, self._value, values)
 
 
 class BooleanOption(Option):
@@ -191,7 +191,7 @@ class EnumerationOption(Option):
             return self._enumeration[value]
 
     def __str__(self):
-        name = self.full_name + " = "
+        name = self.fullname + " = "
         if self._value is None:
             values = self.values_hint()
             # This +1 is for the first square brackets
