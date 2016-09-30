@@ -94,7 +94,8 @@ class OptionNameResolver:
                 name.append(option_name)
                 return self.module_options[":".join(name)].value
         except KeyError:
-            raise BlobException("Unknown option name '%s'" % key)
+            raise BlobException("Unknown option name '{}' in "
+                                "module '{}'".format(key, self.module.fullname))
 
     def __repr__(self):
         # Create representation of merged module and repository options
