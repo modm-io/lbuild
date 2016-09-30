@@ -10,6 +10,7 @@
 import os
 import shutil
 import logging
+import itertools
 
 import lbuild.filter
 import lbuild.option
@@ -32,9 +33,10 @@ def verify_module_name(modulename):
 
     Raises an exception if the name is not valid.
     """
-    if len(modulename.split(":")) != 2:
-        raise BlobException("Modulename '%s' must contain exactly one ':' as "
-                            "separator between repository and module name" % modulename)
+    if len(modulename.split(":")) < 2:
+        raise BlobException("Modulename '{}' must contain one or more ':' as "
+                            "separator between repository and module "
+                            "names".format(modulename))
 
 
 class OptionNameResolver:
@@ -51,27 +53,34 @@ class OptionNameResolver:
         option_parts = key.split(":")
 
         try:
-            if len(option_parts) == 2:
+            depth = len(option_parts)
+            if depth < 2:
+                raise exception.BlobOptionFormatException(key)
+            if depth == 2:
                 # Repository option
                 repo, option = option_parts
                 if repo == "":
                     key = "%s:%s" % (self.repository.name, option)
 
                 return self.repo_options[key].value
-            elif len(option_parts) == 3:
-                # Module option
-                repo, module, option = option_parts
-
-                if repo == "":
-                    repo = self.repository.name
-                if module == "":
-                    module = self.module.name
-
-                key = "%s:%s:%s" % (repo, module, option)
-                return self.module_options[key].value
             else:
-                raise exception.BlobOptionFormatException(key)
+                option_name = option_parts[-1]
+                module_name = option_parts[0:-1]
 
+                module_fullname_parts = self.module.fullname.split(":")
+                if len(module_fullname_parts) > (depth - 1):
+                    module_fullname_parts[:depth - 1]
+
+                name = []
+                for part, fill in itertools.zip_longest(module_name,
+                                                        module_fullname_parts,
+                                                        fillvalue=""):
+                    if part == "":
+                        name.append(fill)
+                    else:
+                        name.append(part)
+                name.append(option_name)
+                return self.module_options[":".join(name)].value
         except KeyError:
             raise BlobException("Unknown option name '%s'" % key)
 
@@ -199,7 +208,7 @@ class Module:
     def fullname(self):
         return self._fullname
 
-    def __register_module(self):
+    def register_module(self):
         """
         Update the fullname attribute and register module at its repository.
         """
@@ -223,7 +232,7 @@ class Module:
 
         Recursively appends all submodules.
         """
-        self.__register_module()
+        self.register_module()
 
         available_modules = {}
         prepare_function = self.functions["prepare"]

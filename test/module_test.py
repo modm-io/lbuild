@@ -26,6 +26,7 @@ class ModuleTest(unittest.TestCase):
 
         self.module = lbuild.module.Module(self.repo, "module.lb", ".")
         self.module.name = "other"
+        self.module.register_module()
 
     def test_resolver_should_reject_invalid_names(self):
         resolver = lbuild.module.OptionNameResolver(self.repo, self.module, {}, {})
@@ -52,7 +53,7 @@ class ModuleTest(unittest.TestCase):
             "repo1:other:foo": lbuild.option.NumericOption("foo", "", default=456),
             "repo1:other:bar": lbuild.option.NumericOption("bar", "", default=768),
             "repo1:other:xyz": lbuild.option.BooleanOption("bar", "", default="Yes"),
-            "repo1:other:abc": lbuild.option.Option("abc", "", default="Hello World!"),
+            "repo1:other:bla:abc": lbuild.option.Option("abc", "", default="Hello World!"),
         }
 
         resolver = lbuild.module.OptionNameResolver(self.repo, self.module, repo_options, module_options)
@@ -63,7 +64,7 @@ class ModuleTest(unittest.TestCase):
         self.assertEqual(456, resolver["repo1:other:foo"])
         self.assertEqual(768, resolver["repo1::bar"])
         self.assertEqual(True, resolver[":other:xyz"])
-        self.assertEqual("Hello World!", resolver["::abc"])
+        self.assertEqual("Hello World!", resolver["::bla:abc"])
 
     def test_should_create_correct_representation(self):
         repo_options = {

@@ -51,10 +51,11 @@ class Option:
     @property
     def fullname(self):
         name = []
-        if self.repository is not None:
-            name.append(self.repository.name)
         if self.module is not None:
-            name.append(self.module.name)
+            name.append(self.module.fullname)
+        elif self.repository is not None:
+            name.append(self.repository.name)
+
         name.append(self.name)
         return ':'.join(name)
 

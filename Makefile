@@ -5,7 +5,7 @@ test:
 test-discover:
 	python3 scripts/lbuild-discover -r test/resources/repo1.lb -r test/resources/repo2/repo2.lb --discover="repository:options"
 	python3 scripts/lbuild-discover -r test/resources/repo1.lb -r test/resources/repo2/repo2.lb --discover="modules"
-	python3 scripts/lbuild-discover -r test/resources/repo1.lb -r test/resources/repo2/repo2.lb --discover="module:options" -D":target=hosted"
+	python3 scripts/lbuild-discover -r test/resources/repo1.lb -r test/resources/repo2/repo2.lb --discover="module:options" -D":target=hosted" -c test/resources/test1.lb
 
 coverage:
 	@coverage run --source=lbuild -m unittest discover -p *test.py

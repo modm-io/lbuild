@@ -13,4 +13,4 @@ def prepare(module, options):
     return True
 
 def build(env):
-    pass
+    price = env["::::price"]

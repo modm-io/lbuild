@@ -129,10 +129,7 @@ class Parser:
                         option.value = value
                 else:
                     repo_options_by_full_name[config_name].value = value
-            elif len(name) == 3:
-                # module option
-                pass
-            else:
+            elif len(name) < 2:
                 raise BlobOptionFormatException(config_name)
 
         # Overwrite again with the values for the command line.
@@ -148,10 +145,7 @@ class Parser:
                             option.value = value
                     else:
                         repo_options_by_full_name[config_name].value = value
-                elif len(name) == 3:
-                    # module option
-                    pass
-                else:
+                elif len(name) < 2:
                     raise BlobOptionFormatException(config_name)
 
         return repo_options_by_full_name
@@ -265,62 +259,43 @@ class Parser:
             Dictionary mapping the full qualified option name to the option
             object.
         """
-        modules_by_full_name = {}
-        modules_by_name = {}
-        for module in build_modules:
-            modules_by_full_name[module.fullname] = module
-
-            # Add an additional reference to find options without
-            # the repository name but only but option name
-            module_list = modules_by_name.get(module.name, [])
-            module_list.append(module)
-            modules_by_name[module.name] = module_list
-
-        # Overwrite the values in the options with the values provided
-        # in the configuration file
-        for config_name, value in config_options.items():
-            name = config_name.split(':')
-            if len(name) == 2:
-                # repository option -> ignore here
-                pass
-            elif len(name) == 3:
-                # module option
-                repo_name, module_name, option_name = name
-
-                modules = []
-                # Select modules to which to apply the value
-                if module_name == "":
-                    if repo_name == "":
-                        modules = build_modules
-                    else:
-                        for module in build_modules:
-                            if module.repository.name == repo_name:
-                                modules.append(module)
-                else:
-                    if repo_name == "":
-                        modules = modules_by_name[module_name]
-                    else:
-                        modules = [modules_by_full_name["%s:%s" % (repo_name, module_name)]]
-
-                # Search options within the selected modules
-                found = False
-                for module in modules:
-                    for option in module.options.values():
-                        if option_name == option.name:
-                            # Set new value
-                            option.value = value
-                            found = True
-
-                if not found:
-                    raise BlobException("Option '%s' not found!" % config_name)
-            else:
-                raise BlobOptionFormatException(config_name)
-
+        canidates = {}
         options = {}
         for module in build_modules:
             for option in module.options.values():
-                fullname = "%s:%s" % (module.fullname, option.name)
+                fullname = ":".join([module.fullname,
+                                     option.name])
                 options[fullname] = option
+
+                parts = fullname.split(":")
+                depth = len(parts)
+                canidate_list = canidates.get(depth, [])
+                canidate_list.append([parts, option])
+                canidates[depth] = canidate_list
+        
+        for name, value in config_options.items():
+            target_parts = name.split(":")
+            target_depth = len(target_parts)
+
+            if target_depth < 3:
+                # Option is a repository option
+                continue
+
+            found_options = []
+            for canidate_parts, canidate_option in canidates[target_depth]:
+                for target, canidate in zip(target_parts, canidate_parts):
+                    if target == "" or target == "*":
+                        continue
+                    elif target != canidate:
+                        break
+                else:
+                    found_options.append(canidate_option)
+
+            if len(found_options) == 0:
+                raise BlobException("Option '{}' not found!".format(name))
+            
+            for found_option in found_options:
+                found_option.value = value
 
         return options
 
