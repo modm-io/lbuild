@@ -7,11 +7,24 @@
 # 2-clause BSD license. See the file `LICENSE.txt` for the full license
 # governing this code.
 
+import os
+import shutil
+import logging
+import itertools
+
+import lbuild.filter
+import lbuild.option
+
 from . import utils
+from . import exception
+from . import repository
+
+from .repository import Localpath
 from .repository import Repository
 
 from .exception import BlobException
-from .exception import OptionFormatException
+
+LOGGER = logging.getLogger('lbuild.repository')
 
 
 def verify_module_name(modulename):
@@ -20,9 +33,22 @@ def verify_module_name(modulename):
 
     Raises an exception if the name is not valid.
     """
-    if len(modulename.split(":")) != 2:
-        raise BlobException("Modulename '%s' must contain exactly one ':' as "
-                            "separator between repository and module name" % modulename)
+    if len(modulename.split(":")) < 2:
+        raise BlobException("Modulename '{}' must contain one or more ':' as "
+                            "separator between repository and module "
+                            "names".format(modulename))
+
+
+class ModuleBase:
+
+    def init(self, module):
+        pass
+
+    def prepare(self, module, options):
+        pass
+
+    def build(self, env):
+        pass
 
 
 class OptionNameResolver:
@@ -39,29 +65,39 @@ class OptionNameResolver:
         option_parts = key.split(":")
 
         try:
-            if len(option_parts) == 2:
+            depth = len(option_parts)
+            if depth < 2:
+                key = "{}:{}".format(self.module.fullname, key)
+                return self.module_options[key].value
+            if depth == 2:
                 # Repository option
                 repo, option = option_parts
                 if repo == "":
                     key = "%s:%s" % (self.repository.name, option)
 
                 return self.repo_options[key].value
-            elif len(option_parts) == 3:
-                # Module option
-                repo, module, option = option_parts
-
-                if repo == "":
-                    repo = self.repository.name
-                if module == "":
-                    module = self.module.name
-
-                key = "%s:%s:%s" % (repo, module, option)
-                return self.module_options[key].value
             else:
-                raise OptionFormatException(key)
+                option_name = option_parts[-1]
+                module_name = option_parts[0:-1]
 
+                module_fullname_parts = self.module.fullname.split(":")
+                if len(module_fullname_parts) > (depth - 1):
+                    module_fullname_parts[:depth - 1]
+
+                name = []
+                for part, fill in itertools.zip_longest(module_name,
+                                                        module_fullname_parts,
+                                                        fillvalue=""):
+                    if part == "":
+                        name.append(fill)
+                    else:
+                        name.append(part)
+                name.append(option_name)
+                key = ":".join(name)
+                return self.module_options[key].value
         except KeyError:
-            raise BlobException("Unknown option name '%s'" % key)
+            raise BlobException("Unknown option name '{}' in "
+                                "module '{}'".format(key, self.module.fullname))
 
     def __repr__(self):
         # Create representation of merged module and repository options
@@ -76,8 +112,49 @@ class OptionNameResolver:
 
 class Module:
 
+    @staticmethod
+    def parse_module(repository, module_filename: str):
+        """
+        Parse a specific module file.
+
+        Returns:
+            Module() module definition object.
+        """
+        try:
+            with open(module_filename) as module_file:
+                LOGGER.debug("Parse module_filename '%s'", module_filename)
+                code = compile(module_file.read(), module_filename, 'exec')
+
+                local = {
+                    # The localpath(...) function can be used to create
+                    # a local path form the folder of the repository file.
+                    'localpath': Localpath(module_filename),
+                    'listify': lbuild.filter.listify,
+                    'ignore_patterns': shutil.ignore_patterns,
+
+                    'Module': ModuleBase,
+
+                    'StringOption': lbuild.option.Option,
+                    'BooleanOption': lbuild.option.BooleanOption,
+                    'NumericOption': lbuild.option.NumericOption,
+                    'EnumerationOption': lbuild.option.EnumerationOption,
+                }
+                exec(code, local)
+
+                module = Module(repository,
+                                module_filename,
+                                os.path.dirname(module_filename))
+
+                # Get the required global functions
+                module.functions = Repository._get_global_functions(local, ['init', 'prepare', 'build'])
+                module.init()
+
+                return module
+        except Exception as error:
+            raise BlobException("While parsing '%s': %s" % (module_filename, error))
+
     def __init__(self,
-                 repository: Repository,
+                 repository,
                  filename: str,
                  path: str,
                  name: str=None):
@@ -94,13 +171,14 @@ class Module:
         self.filename = filename
         self.path = path
 
-        if name is None:
-            # Module name without repository
-            self._name = None
-            # Full qualified name ('repository:module')
-            self.full_name = None
-        else:
-            self.name = name
+        # Parent module. May be empty
+        self._parent = None
+        # Full qualified name ('repository:module:submodule:...')
+        self._fullname = None
+
+        self._submodules = []
+
+        self._name = name
         self.description = ""
 
         # Required functions declared in the module configuration file
@@ -119,8 +197,98 @@ class Module:
 
     @name.setter
     def name(self, name):
-        self._name = name
-        self.full_name = "%s:%s" % (self.repository.name, name)
+        if self._fullname is None:
+            self._name = name
+        else:
+            raise exception.BlobAttributeException("name")
+
+    @property
+    def parent(self):
+        return self._parent
+
+    @parent.setter
+    def parent(self, name):
+        if self._fullname is None:
+            self._parent = name
+        else:
+            raise exception.BlobAttributeException("name")
+
+    @property
+    def fullname(self):
+        return self._fullname
+
+    def init(self):
+        # Execute init() function from module to get module name
+        self.functions['init'](self)
+    
+        if self.name is None:
+            raise BlobException("The init(module) function must set a module name! " \
+                                "Please set the 'name' attribute.")
+    
+        LOGGER.info("Found module '%s'", self.name)
+
+    def register_module(self):
+        """
+        Update the fullname attribute and register module at its repository.
+        """
+        if self._fullname is not None:
+            return
+
+        if self._parent is None:
+            fullname = "{}:{}".format(self.repository.name, self._name)
+        else:
+            fullname = "{}:{}:{}".format(self.repository.name,
+                                         self._parent,
+                                         self._name)
+        self._fullname = fullname
+        if self.repository.modules.get(fullname, None) is not None:
+            raise BlobException("Module name '{}' is not unique".format(fullname))
+        self.repository.modules[fullname] = self
+
+    def prepare(self, repo_options):
+        """
+        Prepare module.
+
+        Recursively appends all submodules.
+        """
+        self.register_module()
+
+        available_modules = {}
+        prepare_function = self.functions["prepare"]
+        is_available = prepare_function(self,
+                                        repository.OptionNameResolver(self.repository,
+                                                                      repo_options))
+        if is_available:
+            available_modules[self.fullname] = self
+
+        for submodule in self._submodules:
+            if isinstance(submodule, ModuleBase):
+                module = Module(repository=self.repository,
+                                filename=None,
+                                path=self.path)
+                
+                module.functions = {
+                    'init': submodule.init,
+                    'prepare': submodule.prepare,
+                    'build': submodule.build,
+                }
+                module.init()
+            else:
+                module = Module.parse_module(repository=self.repository,
+                                             module_filename=os.path.join(self.path,
+                                                                          submodule))
+            
+            # Set parent for new module
+            if self._parent:
+                module.parent = "{}:{}".format(self._parent, self._name)
+            else:
+                module.parent = self._name
+            available_modules.update(module.prepare(repo_options))
+
+        return available_modules
+
+    def add_submodule(self, modulename):
+        self._submodules.append(modulename)
 
     def add_option(self, option):
         """
@@ -150,10 +318,10 @@ class Module:
             self.dependencies.append(dependency)
 
     def __lt__(self, other):
-        return self.full_name.__lt__(other.full_name)
+        return self.fullname.__lt__(other.fullname)
 
     def __repr__(self):
-        return "Module({})".format(self.full_name)
+        return "Module({})".format(self.fullname)
 
     def __str__(self):
-        return self.full_name
+        return self.fullname

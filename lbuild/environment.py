@@ -144,6 +144,9 @@ class Environment:
                                 " {}: {}".format(self.modulepath(src),
                                                  error.__class__.__name__,
                                                  error))
+        except BlobException as error:
+            raise BlobException("Error in template '{}': \n"
+                                "{}".format(self.modulepath(src), error))
 
         outfile_name = self.outpath(dest)
 

@@ -26,6 +26,7 @@ class OptionTest(unittest.TestCase):
     def setUp(self):
         self.default_repository = Repository("path", name="repo")
         self.default_module = Module(self.default_repository, "filename", "path", name="module")
+        self.default_module.register_module()
 
     def test_should_provide_string_representation_for_base_option(self):
         option = lbuild.option.Option("test", "description", "value")

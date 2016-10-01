@@ -8,10 +8,13 @@
 		<option name="repo1::bar">768</option>
 		<option name=":other:xyz">No</option>
 		<option name="::abc">Hello World!</option>
+		<option name="::submodule3::price">15</option>
 	</options>
 
 	<modules>
 		<module>repo1:other</module>
 		<module>:module1</module>
+		<module>::submodule3:subsubmodule1</module>
+		<module>::submodule3</module>
 	</modules>
 </library>
