@@ -67,7 +67,8 @@ class OptionNameResolver:
         try:
             depth = len(option_parts)
             if depth < 2:
-                raise exception.BlobOptionFormatException(key)
+                key = "{}:{}".format(self.module.fullname, key)
+                return self.module_options[key].value
             if depth == 2:
                 # Repository option
                 repo, option = option_parts
@@ -92,7 +93,8 @@ class OptionNameResolver:
                     else:
                         name.append(part)
                 name.append(option_name)
-                return self.module_options[":".join(name)].value
+                key = ":".join(name)
+                return self.module_options[key].value
         except KeyError:
             raise BlobException("Unknown option name '{}' in "
                                 "module '{}'".format(key, self.module.fullname))
