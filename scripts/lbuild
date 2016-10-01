@@ -22,7 +22,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Build libraries from source code repositories')
     parser.add_argument('-r', '--repository',
         dest='repositories',
-        required=True,
         action='append',
         help='Folder in which modules are located')
     parser.add_argument('-c', '--configuration',
@@ -51,9 +50,7 @@ if __name__ == '__main__':
 
     try:
         parser = lbuild.parser.Parser()
-        for repofile in args.repositories:
-            parser.parse_repository(repofile)
-
+        parser.load_repositories(args.config, args.repositories)
         parser.configure_and_build_library(args.config, args.outpath, args.options)
     except lbuild.exception.BlobException as e:
         sys.stderr.write('%s\n' % e)

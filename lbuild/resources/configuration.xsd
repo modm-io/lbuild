@@ -4,11 +4,24 @@
   <xsd:element name="library">
     <xsd:complexType>
       <xsd:sequence>
+        <xsd:element name="repositories" type="RepositoriesType" minOccurs="0" maxOccurs="1" />
         <xsd:element name="options" type="OptionsType" minOccurs="1" maxOccurs="1" />
         <xsd:element name="modules" type="ModulesType" minOccurs="1" maxOccurs="1" />
       </xsd:sequence>
     </xsd:complexType>
   </xsd:element>
+  
+  <xsd:complexType name="RepositoriesType">
+    <xsd:choice maxOccurs="unbounded">
+      <xsd:element name="folder" type="FolderType" minOccurs="0" maxOccurs="unbounded"></xsd:element>
+    </xsd:choice>
+  </xsd:complexType>
+
+  <xsd:complexType name="FolderType">
+    <xsd:sequence>
+      <xsd:element name="path" type="xsd:string" minOccurs="1" maxOccurs="1" />
+    </xsd:sequence>
+  </xsd:complexType>
 
   <xsd:complexType name="OptionsType">
     <xsd:sequence>

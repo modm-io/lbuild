@@ -7,6 +7,7 @@
 # 2-clause BSD license. See the file `LICENSE.txt` for the full license
 # governing this code.
 
+import os
 import pkgutil
 import logging
 from lxml import etree
@@ -18,6 +19,7 @@ from .exception import BlobException
 from .exception import BlobOptionFormatException
 
 from . import repository
+from . import utils
 
 LOGGER = logging.getLogger('lbuild.parser')
 
@@ -38,6 +40,21 @@ class Parser:
         # Module name -> Module()
         self.available_modules = {}
 
+    def load_repositories(self,
+                          configfilename: str,
+                          repofilenames=None):
+        if repofilenames is not None:
+            for repofile in utils.listify(repofilenames):
+                self.parse_repository(repofile)
+
+        configpath = os.path.dirname(configfilename)
+
+        rootnode = self._load_and_verify_configuration(configfilename)
+        for path_node in rootnode.iterfind("repositories/folder/path"):
+            repository_path = path_node.text
+            repository_filename = os.path.realpath(os.path.join(configpath, repository_path))
+            self.parse_repository(repository_filename)
+
     def parse_repository(self, repofilename: str) -> repository.Repository:
         """
         Parse the given repository file.
@@ -55,21 +72,15 @@ class Parser:
         return repo
 
     @staticmethod
-    def parse_configuration(configfile):
+    def _load_and_verify_configuration(configfile):
         """
-        Parse the configuration file.
-
-        This file contains information about which modules should be included
-        and how they are configured.
-
-        Returns:
-            tuple with the names of the requested modules and the selected options.
+        Verify the XML structure.
         """
         try:
             LOGGER.debug("Parse configuration '%s'", configfile)
             xmlroot = etree.parse(configfile)
 
-            xmlschema = etree.fromstring(pkgutil.get_data('lbuild', 'resources/library.xsd'))
+            xmlschema = etree.fromstring(pkgutil.get_data('lbuild', 'resources/configuration.xsd'))
 
             schema = etree.XMLSchema(xmlschema)
             schema.assertValid(xmlroot)
@@ -80,6 +91,20 @@ class Parser:
         except (etree.XMLSyntaxError, etree.DocumentInvalid) as error:
             raise BlobException("Error while parsing xml-file '{}': "
                                 "{}".format(configfile, error))
+        return xmltree
+
+    @staticmethod
+    def parse_configuration(configfile):
+        """
+        Parse the configuration file.
+
+        This file contains information about which modules should be included
+        and how they are configured.
+
+        Returns:
+            tuple with the names of the requested modules and the selected options.
+        """
+        xmltree = Parser._load_and_verify_configuration(configfile)
 
         requested_modules = []
         for modules_node in xmltree.findall('modules'):
@@ -98,6 +123,30 @@ class Parser:
                 config_options[option_node.attrib['name']] = option_node.text
 
         return (requested_modules, config_options)
+
+    @staticmethod
+    def _overwrite_repository_options(options_full_name,
+                                      options_option_name,
+                                      option_name,
+                                      option_value):
+        try:
+            name_parts = option_name.split(':')
+            if len(name_parts) == 2:
+                # repository option
+                repo_name, option_part = name_parts
+
+                if repo_name == "" or repo_name == "*":
+                    key = option_part
+                    for option in options_option_name[key]:
+                        option.value = option_value
+                else:
+                    key = option_name
+                    options_full_name[key].value = option_value
+            elif len(name_parts) < 2:
+                raise BlobOptionFormatException(option_name)
+        except KeyError:
+            raise BlobException("Repository option '{}' not found in any "
+                                "repository.".format(option_name))
 
     def merge_repository_options(self, config_options, cmd_options=None):
         repo_options_by_full_name = {}
@@ -118,36 +167,17 @@ class Parser:
 
         # Overwrite the values in the options with the values provided
         # in the configuration file
-        for config_name, value in config_options.items():
-            name = config_name.split(':')
-            if len(name) == 2:
-                # repository option
-                repo_name, option_name = name
-
-                if repo_name == "":
-                    for option in repo_options_by_option_name[option_name]:
-                        option.value = value
-                else:
-                    repo_options_by_full_name[config_name].value = value
-            elif len(name) < 2:
-                raise BlobOptionFormatException(config_name)
+        for option_name, option_value in config_options.items():
+            self._overwrite_repository_options(repo_options_by_full_name,
+                                               repo_options_by_option_name,
+                                               option_name, option_value)
 
         # Overwrite again with the values for the command line.
         if cmd_options is not None:
-            for config_name, value in cmd_options.items():
-                name = config_name.split(':')
-                if len(name) == 2:
-                    # repository option
-                    repo_name, option_name = name
-
-                    if repo_name == "":
-                        for option in repo_options_by_option_name[option_name]:
-                            option.value = value
-                    else:
-                        repo_options_by_full_name[config_name].value = value
-                elif len(name) < 2:
-                    raise BlobOptionFormatException(config_name)
-
+            for option_name, option_value in cmd_options.items():
+                self._overwrite_repository_options(repo_options_by_full_name,
+                                                   repo_options_by_option_name,
+                                                   option_name, option_value)
         return repo_options_by_full_name
 
     def prepare_repositories(self,
@@ -272,7 +302,7 @@ class Parser:
                 canidate_list = canidates.get(depth, [])
                 canidate_list.append([parts, option])
                 canidates[depth] = canidate_list
-        
+
         for name, value in config_options.items():
             target_parts = name.split(":")
             target_depth = len(target_parts)
@@ -293,7 +323,7 @@ class Parser:
 
             if len(found_options) == 0:
                 raise BlobException("Option '{}' not found!".format(name))
-            
+
             for found_option in found_options:
                 found_option.value = value
 
