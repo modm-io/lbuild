@@ -47,13 +47,14 @@ class Parser:
             for repofile in utils.listify(repofilenames):
                 self.parse_repository(repofile)
 
-        configpath = os.path.dirname(configfilename)
+        if configfilename is not None:
+            configpath = os.path.dirname(configfilename)
 
-        rootnode = self._load_and_verify_configuration(configfilename)
-        for path_node in rootnode.iterfind("repositories/folder/path"):
-            repository_path = path_node.text
-            repository_filename = os.path.realpath(os.path.join(configpath, repository_path))
-            self.parse_repository(repository_filename)
+            rootnode = self._load_and_verify_configuration(configfilename)
+            for path_node in rootnode.iterfind("repositories/folder/path"):
+                repository_path = path_node.text
+                repository_filename = os.path.realpath(os.path.join(configpath, repository_path))
+                self.parse_repository(repository_filename)
 
     def parse_repository(self, repofilename: str) -> repository.Repository:
         """
