@@ -44,9 +44,19 @@ class Option:
     def value(self, value):
         self._value = value
 
-    @staticmethod
-    def values_hint():
+    @property
+    def values(self):
         return "String"
+
+    def values_hint(self):
+        return self.values
+
+    def format(self):
+        values = self.values_hint()
+        if self.value is None:
+            return "{} = [{}]".format(self.fullname, values)
+        else:
+            return "{} = {}  [{}]".format(self.fullname, self._value, values)
 
     @property
     def fullname(self):
@@ -63,11 +73,7 @@ class Option:
         return self.fullname.__lt__(other.fullname)
 
     def __str__(self):
-        values = self.values_hint()
-        if self.value is None:
-            return "{} = [{}]".format(self.fullname, values)
-        else:
-            return "{} = {}  [{}]".format(self.fullname, self._value, values)
+        return self.fullname
 
 
 class BooleanOption(Option):
@@ -85,8 +91,8 @@ class BooleanOption(Option):
     def value(self, value):
         self._value = self.as_boolean(value)
 
-    @staticmethod
-    def values_hint():
+    @property
+    def values(self):
         return "True, False"
 
     @staticmethod
@@ -128,7 +134,8 @@ class NumericOption(Option):
             BlobException("Value '{}' must be greater than '{}'".format(self.name, self.maximum))
         self._value = numeric_value
 
-    def values_hint(self):
+    @property
+    def values(self):
         return "{} ... {}".format("-Inf" if self.minimum is None else str(self.minimum),
                                   "+Inf" if self.maximum is None else str(self.maximum))
 
@@ -177,21 +184,18 @@ class EnumerationOption(Option):
     def value(self, value):
         self._value = self.as_enumeration(value)
 
-    def values_hint(self):
+    @property
+    def values(self):
         values = []
         for value in self._enumeration:
             values.append(value.name)
         values.sort()
-        return ", ".join(values)
+        return values
 
-    def as_enumeration(self, value):
-        try:
-            # Try to access 'value' as if it where an enum
-            return self._enumeration[value.name]
-        except AttributeError:
-            return self._enumeration[value]
+    def values_hint(self):
+        return ", ".join(self.values)
 
-    def __str__(self):
+    def format(self):
         name = self.fullname + " = "
         if self._value is None:
             values = self.values_hint()
@@ -209,3 +213,11 @@ class EnumerationOption(Option):
                 max_length = self.LINEWITH - overhead - len(mark)
                 values = values[0:max_length] + mark
             return "{}{}  [{}]".format(name, self._value.value, values)
+
+    def as_enumeration(self, value):
+        try:
+            # Try to access 'value' as if it where an enum
+            return self._enumeration[value.name]
+        except AttributeError:
+            return self._enumeration[value]
+

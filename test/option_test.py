@@ -31,23 +31,26 @@ class OptionTest(unittest.TestCase):
     def test_should_provide_string_representation_for_base_option(self):
         option = lbuild.option.Option("test", "description", "value")
 
-        self.assertTrue(str(option).startswith("test"))
-        self.assertTrue("value" in str(option))
+        output = option.format()
+        self.assertTrue(output.startswith("test"))
+        self.assertTrue("value" in output)
 
     def test_should_provide_string_representation_for_base_option_with_repo(self):
         option = lbuild.option.Option("test", "description", "value")
         option.repository = self.default_repository
 
-        self.assertTrue(str(option).startswith("repo:test"))
-        self.assertTrue("value" in str(option))
+        output = option.format()
+        self.assertTrue(output.startswith("repo:test"))
+        self.assertTrue("value" in output)
 
     def test_should_provide_string_representation_for_base_option_full(self):
         option = lbuild.option.Option("test", "description", "value")
         option.repository = self.default_repository
         option.module = self.default_module
 
-        self.assertTrue(str(option).startswith("repo:module:test"))
-        self.assertTrue("value" in str(option))
+        output = option.format()
+        self.assertTrue(output.startswith("repo:module:test"))
+        self.assertTrue("value" in output)
 
     def test_should_be_constructable_from_enum(self):
         class TestEnum(enum.Enum):

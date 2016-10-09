@@ -3,9 +3,12 @@ test:
 	@python3 -m unittest discover -p *test.py
 
 test-discover:
-	python3 scripts/lbuild-discover -r test/resources/repo1.lb -r test/resources/repo2/repo2.lb --discover="repository:options"
-	python3 scripts/lbuild-discover -r test/resources/repo1.lb -r test/resources/repo2/repo2.lb --discover="modules"
-	python3 scripts/lbuild-discover -r test/resources/repo1.lb -r test/resources/repo2/repo2.lb --discover="module:options" -D":target=hosted" -c test/resources/test1.lb
+	python3 scripts/lbuild -c test/resources/test1.lb discover-repository
+	python3 scripts/lbuild -c test/resources/test1.lb discover-modules
+	python3 scripts/lbuild -c test/resources/test1.lb discover-module-options
+	python3 scripts/lbuild -c test/resources/test1.lb discover-module-options --module="repo1:other"
+	python3 scripts/lbuild -c test/resources/test1.lb discover-option --option-name="repo1:target"
+	python3 scripts/lbuild -c test/resources/test1.lb discover-option --option-name=":other:foo"
 
 coverage:
 	@coverage run --source=lbuild -m unittest discover -p *test.py
@@ -26,7 +29,7 @@ install-user:
 
 install-prerequisites:
 	# Required for the tests
-	sudo -H pip3 install testfixtures coverage
+	sudo -H pip3 install testfixtures coverage svn gitpython
 
 # TODO: Also remove folder
 uninstall:

@@ -3,9 +3,10 @@ def init(repo):
     repo.name = "repo1"
 
     repo.add_option(
-        StringOption(name="target",
-                     description="Target architecture for the library.",
-                     default="obscure"))
+        EnumerationOption(name="target",
+                          description="Target architecture for the library.",
+                           default="obscure",
+                           enumeration=["obscure", "hosted", "other", "foo", "bar"]))
     repo.add_option(
         NumericOption(name="foo",
                       default=76,

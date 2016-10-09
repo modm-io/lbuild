@@ -19,39 +19,150 @@ import lbuild.parser
 import lbuild.logger
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Build libraries from source code repositories')
+    parser = argparse.ArgumentParser(
+        description='Build source code libraries from modules.')
     parser.add_argument('-r', '--repository',
+        metavar="REPO",
         dest='repositories',
         action='append',
-        help='Folder in which modules are located')
-    parser.add_argument('-c', '--configuration',
+        default=[],
+        help="Repository file(s) which should be available for the current library. "
+             "The loading of repository files from a VCS is only supported through "
+             "the library configuration file.")
+    parser.add_argument('-c', '--config',
         dest='config',
-        required=True,
-        help='Project/library configuration file')
-    parser.add_argument('-o', '--outpath',
-        dest='outpath',
+        default='project.lb',
+        help="Project/library configuration file. "
+             "Specifies the used repositories, modules and options "
+             "(default: '%(default)s').")
+    parser.add_argument('-p', '--path',
+        dest='path',
         default='.',
-        help='Path in which the  library will be generated')
+        help="Path in which the library will be generated (default: '%(default)s').")
     parser.add_argument('-D', '--option',
+        metavar='OPTION',
         dest='options',
         action='append',
         type=str,
         default=[],
-        help='Additional options. Options given here will be merged with options '
-             'from the configuration file.')
+        help="Additional options. Options given here will be merged with options "
+             "from the configuration file and will overwrite the configuration "
+             "file definitions. "
+             "Use a single colon to specify repository options and multiple "
+             "colons to specify (sub)module options.")
     parser.add_argument('-v', '--verbose',
         action='count',
         default=0,
         dest='verbose')
 
+    subparsers = parser.add_subparsers(title="Actions",
+        dest="action")
+
+    parser_init = subparsers.add_parser("init",
+        help="Load remote repositories into the cache folder.")
+    parser_update = subparsers.add_parser("update",
+        help="Update the content of remote repositories in the cache folder.")
+    parser_discover_repo = subparsers.add_parser("discover-repository",
+        aliases=['repo'],
+        help="Display the repository options of all selected repositories.")
+    parser_discover_modules = subparsers.add_parser("discover-modules",
+        aliases=['modules'],
+        help="Inspect all available modules with the given repository options. "
+             "All repository options must be defined.")
+    parser_discover_module_options = subparsers.add_parser("discover-module-options",
+        aliases=['options'],
+        help="Inspect the module options of one or more modules (if specified "
+             "through the module option(s)) or all available modules (if no "
+             "module is specified).")
+    parser_discover_module_options.add_argument("-m", "--module",
+        dest="modules",
+        type=str,
+        action="append",
+        default=[],
+        help="Select a specific module.")
+
+    parser_discover_option = subparsers.add_parser("discover-option",
+        aliases=['option'],
+        help="Print the values of one option.")
+    parser_discover_option.add_argument("-o", "--option-name",
+        dest="option_name",
+        required=True,
+        help="Select a specific module")
+
+    parser_build = subparsers.add_parser("build",
+        help="Generate the library source code blob with the given options.")
+
+
+
     args = parser.parse_args()
 
     lbuild.logger.configure_logger(args.verbose)
-
     try:
-        parser = lbuild.parser.Parser()
-        parser.load_repositories(args.config, args.repositories)
-        parser.configure_and_build_library(args.config, args.outpath, args.options)
-    except lbuild.exception.BlobException as e:
-        sys.stderr.write('%s\n' % e)
+        if args.action == 'init':
+            pass
+        elif args.action == 'update':
+            pass
+        else:
+            parser = lbuild.parser.Parser()
+            parser.load_repositories(args.config, args.repositories)
+
+            if args.config is not None:
+                selected_modules, config_options = parser.parse_configuration(args.config)
+            else:
+                selected_modules = []
+                config_options = {}
+            commandline_options = parser.format_commandline_options(args.options)
+            repo_options = parser.merge_repository_options(config_options, commandline_options)
+
+            if args.action in ['discover-repository', 'repo']:
+                for option in sorted(list(repo_options.values())):
+                    print(option.format())
+            elif args.action in ['discover-modules', 'modules']:
+                modules = parser.prepare_repositories(repo_options)
+                for module in sorted(list(modules.values())):
+                    print(module)
+            elif args.action in ['discover-module-options', 'options']:
+                modules = parser.prepare_repositories(repo_options)
+
+                if len(args.modules) == 0:
+                    selected_modules = modules
+                else:
+                    selected_modules = args.modules
+
+                build_modules = parser.resolve_dependencies(modules, selected_modules)
+                module_options = parser.merge_module_options(build_modules, config_options)
+
+                for option in sorted(list(module_options.values())):
+                    print(option.format())
+            elif args.action in ['discover-option', 'option']:
+                option_name = args.option_name
+                parts = option_name.split(":")
+                if len(parts) < 2:
+                    raise lbuild.exception.BlobOptionFormatException(option_name)
+                elif len(parts) == 2:
+                    # Repositry option
+                    option = parser.find_module(repo_options, option_name)
+                    for value in lbuild.utils.listify(option.values):
+                        print(value)
+                else:
+                    # Module option
+                    modules = parser.prepare_repositories(repo_options)
+                    selected_modules = modules
+                    build_modules = parser.resolve_dependencies(modules, selected_modules)
+                    module_options = parser.merge_module_options(build_modules, config_options)
+                    
+                    option = parser.find_module(module_options, option_name)
+                    for value in lbuild.utils.listify(option.values):
+                        print(value)
+            elif args.action == 'build':
+                modules = parser.prepare_repositories(repo_options)
+
+                build_modules = parser.resolve_dependencies(modules, selected_modules)
+                module_options = parser.merge_module_options(build_modules, config_options)
+                parser.build_modules(args.path, build_modules, repo_options, module_options)
+            else:
+                raise lbuild.exception.BlobException("Unknown discovery "
+                                                     "option '{}'".format(args.discover))
+    except lbuild.exception.BlobException as error:
+        sys.stderr.write('%s\n' % error)
         sys.exit(1)

@@ -51,7 +51,7 @@ class Parser:
             configpath = os.path.dirname(configfilename)
 
             rootnode = self._load_and_verify_configuration(configfilename)
-            for path_node in rootnode.iterfind("repositories/folder/path"):
+            for path_node in rootnode.iterfind("repositories/repository/path"):
                 repository_path = path_node.text
                 repository_filename = os.path.realpath(os.path.join(configpath, repository_path))
                 self.parse_repository(repository_filename)
@@ -250,7 +250,7 @@ class Parser:
         elif len(found) > 1:
             raise BlobException("Name '{}' is ambiguous "
                                 "between '{}'.".format(modulename,
-                                                       "', '".join(found)))
+                                                       "', '".join([str(x) for x in found])))
         return found[0]
 
     @staticmethod
@@ -313,7 +313,7 @@ class Parser:
                 continue
 
             found_options = []
-            for canidate_parts, canidate_option in canidates[target_depth]:
+            for canidate_parts, canidate_option in canidates.get(target_depth, []):
                 for target, canidate in zip(target_parts, canidate_parts):
                     if target == "" or target == "*":
                         continue
@@ -323,7 +323,7 @@ class Parser:
                     found_options.append(canidate_option)
 
             if len(found_options) == 0:
-                raise BlobException("Option '{}' not found!".format(name))
+                LOGGER.warning("Option '%s' not found in selected modules!", name)
 
             for found_option in found_options:
                 found_option.value = value
