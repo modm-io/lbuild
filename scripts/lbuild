@@ -69,6 +69,8 @@ if __name__ == '__main__':
         aliases=['modules'],
         help="Inspect all available modules with the given repository options. "
              "All repository options must be defined.")
+    parser_dependecies = subparsers.add_parser("dependencies",
+        help="Generate a grahpviz representation of the module dependencies.")
     parser_discover_module_options = subparsers.add_parser("discover-module-options",
         aliases=['options'],
         help="Inspect the module options of one or more modules (if specified "
@@ -121,6 +123,9 @@ if __name__ == '__main__':
                 modules = parser.prepare_repositories(repo_options)
                 for module in sorted(list(modules.values())):
                     print(module)
+            elif args.action in ['dependencies']:
+                modules = parser.prepare_repositories(repo_options)
+                print(lbuild.builder.dependency.graphviz(parser.repositories))
             elif args.action in ['discover-module-options', 'options']:
                 modules = parser.prepare_repositories(repo_options)
 

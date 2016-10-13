@@ -10,6 +10,11 @@ test-discover:
 	python3 scripts/lbuild -c test/resources/test1.lb discover-option --option-name="repo1:target"
 	python3 scripts/lbuild -c test/resources/test1.lb discover-option --option-name=":other:foo"
 
+test-graphviz:
+	python3 scripts/lbuild -c test/resources/test1.lb dependencies > dep.dot
+	dot -Tpng dep.dot > dep.png
+	xdg-open dep.png
+
 coverage:
 	@coverage run --source=lbuild -m unittest discover -p *test.py
 	@coverage report
