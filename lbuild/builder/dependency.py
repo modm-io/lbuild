@@ -8,7 +8,12 @@
 # 2-clause BSD license. See the file `LICENSE.txt` for the full license
 # governing this code.
 
+import re
+
 import lbuild.parser
+
+def get_valid_identifier(name):
+    return re.sub('\W|^(?=\d)', '_', name)
 
 def graphviz(repositories, clustered=False):
     output = []
@@ -22,26 +27,26 @@ def graphviz(repositories, clustered=False):
 
     for name, repository in repositories.items():
         if clustered:
-            output.append("subgraph cluster{} {{".format(name))
+            output.append("subgraph cluster{} {{".format(get_valid_identifier(name)))
         else:
-            output.append("subgraph {} {{".format(name))
+            output.append("subgraph {} {{".format(get_valid_identifier(name)))
         output.append("label = \"{}\";".format(name))
         output.append("node [style=filled, shape=box];")
         for module in repository.modules.values():
             if clustered:
                 # Remove the repository name
-                name = ":\n".join(module.fullname.split(":")[1:])
+                name = ":\\n".join(module.fullname.split(":")[1:])
             else:
-                name = ":\n".join(module.fullname.split(":"))
-            output.append("{} [label=\"{}\"];".format(module.fullname.replace(":", "_"), name))
+                name = ":\\n".join(module.fullname.split(":"))
+            output.append("{} [label=\"{}\"];".format(get_valid_identifier(module.fullname), name))
 
         output.append("}")
 
     for module in modules.values():
         for dep in module.dependencies:
             dep = lbuild.parser.Parser.find_module(modules, dep)
-            output.append("{} -> {};".format(module.fullname.replace(":", "_"),
-                                             dep.fullname.replace(":", "_")))
+            output.append("{} -> {};".format(get_valid_identifier(module.fullname),
+                                             get_valid_identifier(dep.fullname)))
 
     output.append("}")
     return "\n".join(output)
