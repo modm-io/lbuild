@@ -12,9 +12,16 @@
   </xsd:element>
 
   <xsd:complexType name="RepositoriesType">
-    <xsd:sequence>
+    <xsd:choice maxOccurs="unbounded">
       <xsd:element name="repository" type="RepositoryType" minOccurs="0" maxOccurs="unbounded" />
-    </xsd:sequence>
+      <xsd:element name="cache" type="xsd:anyURI" minOccurs="0" maxOccurs="1">
+        <xsd:annotation>
+          <xsd:documentation>
+            Cache folder in which VCS repositories will be checked out.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:choice>
   </xsd:complexType>
 
   <xsd:complexType name="RepositoryType">

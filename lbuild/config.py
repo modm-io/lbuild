@@ -8,6 +8,7 @@
 # 2-clause BSD license. See the file `LICENSE.txt` for the full license
 # governing this code.
 
+import os
 import pkgutil
 import logging
 import collections
@@ -16,7 +17,7 @@ import lxml.etree
 from .exception import BlobException
 
 LOGGER = logging.getLogger('lbuild.config')
-
+DEFAULT_CACHE_FOLDER = ".lbuild_cache"
 
 def load_and_verify(configfile):
     """
@@ -41,7 +42,20 @@ def load_and_verify(configfile):
         raise BlobException("While parsing '{}':"
                             " {}".format(error.error_log.last_error.filename,
                                          error))
-    return xmltree
+
+    projectpath = os.path.dirname(configfile)
+    return xmltree, projectpath
+
+def get_cachefolder(xmltree, projectpath):
+    cache_node = xmltree.find("repositories/cache")
+    if cache_node is not None:
+        cachefolder = cache_node.text
+        if not os.path.isabs(cachefolder):
+            cachefolder = os.path.join(projectpath, cachefolder)
+    else:
+        cachefolder = os.path.join(projectpath, DEFAULT_CACHE_FOLDER)
+
+    return cachefolder
 
 def to_dict(xmltree):
     """

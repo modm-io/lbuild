@@ -32,7 +32,7 @@ class Repository:
             LOGGER.debug("Found existing repository in %s", self.localpath)
             self._repo = git.Repo(self.localpath)
         else:
-            LOGGER.debug("Initialize new repository in %s", self.localpath)
+            LOGGER.info("Initialize new repository in %s", self.localpath)
             self._repo = git.Repo.clone_from(self.url,
                                              self.localpath,
                                              branch=self.branch)

@@ -49,9 +49,11 @@ class Parser:
         if configfilename is not None:
             configpath = os.path.dirname(configfilename)
 
-            rootnode = config.load_and_verify(configfilename)
+            rootnode, projectpath = config.load_and_verify(configfilename)
+            cachefolder = config.get_cachefolder(rootnode, projectpath)
             for path_node in rootnode.iterfind("repositories/repository/path"):
-                repository_path = path_node.text
+                repository_path = path_node.text.format(cache=cachefolder)
+
                 repository_filename = os.path.realpath(os.path.join(configpath, repository_path))
                 self.parse_repository(repository_filename)
 
@@ -82,7 +84,7 @@ class Parser:
         Returns:
             tuple with the names of the requested modules and the selected options.
         """
-        xmltree = config.load_and_verify(configfile)
+        xmltree, _ = config.load_and_verify(configfile)
 
         requested_modules = []
         for modules_node in xmltree.findall('modules'):

@@ -164,6 +164,8 @@ class Repository:
 
     @staticmethod
     def parse_repository(repofilename: str):
+        LOGGER.debug("Parse repository '%s'", repofilename)
+
         repo = Repository(os.path.dirname(repofilename))
         try:
             with open(repofilename) as repofile:

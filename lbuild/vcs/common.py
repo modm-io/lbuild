@@ -26,10 +26,9 @@ class Action(enum.Enum):
 def _parse_vcs(configfile, action):
     LOGGER.debug("Initialize VCS repositories")
 
-    projectpath = os.path.dirname(configfile)
-    cachefolder = os.path.join(projectpath, "lbuild_cache")
+    xmltree, projectpath = lbuild.config.load_and_verify(configfile)
+    cachefolder = lbuild.config.get_cachefolder(xmltree, projectpath)
 
-    xmltree = lbuild.config.load_and_verify(configfile)
     for vcs_node in xmltree.iterfind("repositories/repository/vcs"):
         for vcs in vcs_node.iterchildren():
             config = lbuild.config.to_dict(vcs)[vcs.tag]
