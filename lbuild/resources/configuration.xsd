@@ -19,28 +19,31 @@
 
   <xsd:complexType name="RepositoryType">
     <xsd:sequence>
-      <xsd:choice minOccurs="0" maxOccurs="unbounded">
-        <xsd:element name="git" type="GitRepositoryType" />
-        <xsd:element name="svn" type="SubversionRepositoryType" />
-      </xsd:choice>
-
+      <xsd:element name="vcs" type="VersionControlType" minOccurs="0" maxOccurs="1"/>
       <xsd:element name="path" type="xsd:string" minOccurs="1" maxOccurs="1" />
     </xsd:sequence>
+  </xsd:complexType>
+  
+  <xsd:complexType name="VersionControlType">
+    <xsd:choice minOccurs="0" maxOccurs="unbounded">
+      <xsd:element name="git" type="GitRepositoryType" />
+      <xsd:element name="svn" type="SubversionRepositoryType" />
+    </xsd:choice>
   </xsd:complexType>
 
   <xsd:complexType name="GitRepositoryType">
     <xsd:sequence>
-      <xsd:element name="url" type="xsd:anyURI"/>
+      <xsd:element name="name" type="xsd:anyURI">
+        <xsd:annotation>
+          <xsd:documentation>
+            Local filesystem name of the checkout.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="url" type="xsd:anyURI" />
       <xsd:element name="branch" type="xsd:string"/>
       <xsd:choice minOccurs="0">
         <xsd:element name="commit">
-          <xsd:simpleType>
-            <xsd:restriction base="xsd:hexBinary">
-              <xsd:length value="40" />
-            </xsd:restriction>
-          </xsd:simpleType>
-        </xsd:element>
-        <xsd:element name="commit-abbrev">
           <xsd:simpleType>
             <xsd:restriction base="xsd:hexBinary">
               <xsd:minLength value="4" />

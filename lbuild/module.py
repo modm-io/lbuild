@@ -14,10 +14,10 @@ import itertools
 
 import lbuild.filter
 import lbuild.option
+import lbuild.repository
 
 from . import utils
 from . import exception
-from . import repository
 
 from .repository import Localpath
 from .repository import Repository
@@ -255,9 +255,9 @@ class Module:
 
         available_modules = {}
         prepare_function = self.functions["prepare"]
-        is_available = prepare_function(self,
-                                        repository.OptionNameResolver(self.repository,
-                                                                      repo_options))
+        name_resolver = lbuild.repository.OptionNameResolver(self.repository,
+                                                             repo_options)
+        is_available = prepare_function(self, name_resolver)
         if is_available:
             available_modules[self.fullname] = self
 

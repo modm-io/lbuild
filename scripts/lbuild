@@ -17,6 +17,7 @@ sys.path.append(rootpath)
 
 import lbuild.parser
 import lbuild.logger
+import lbuild.vcs.common
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -101,9 +102,9 @@ if __name__ == '__main__':
     lbuild.logger.configure_logger(args.verbose)
     try:
         if args.action == 'init':
-            pass
+            lbuild.vcs.common.initialize(args.config)
         elif args.action == 'update':
-            pass
+            lbuild.vcs.common.update(args.config)
         else:
             parser = lbuild.parser.Parser()
             parser.load_repositories(args.config, args.repositories)

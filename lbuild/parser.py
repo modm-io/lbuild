@@ -8,9 +8,7 @@
 # governing this code.
 
 import os
-import pkgutil
 import logging
-from lxml import etree
 
 import lbuild.module
 import lbuild.environment
@@ -20,6 +18,7 @@ from .exception import BlobOptionFormatException
 
 from . import repository
 from . import utils
+from . import config
 
 LOGGER = logging.getLogger('lbuild.parser')
 
@@ -50,7 +49,7 @@ class Parser:
         if configfilename is not None:
             configpath = os.path.dirname(configfilename)
 
-            rootnode = self._load_and_verify_configuration(configfilename)
+            rootnode = config.load_and_verify(configfilename)
             for path_node in rootnode.iterfind("repositories/repository/path"):
                 repository_path = path_node.text
                 repository_filename = os.path.realpath(os.path.join(configpath, repository_path))
@@ -73,28 +72,6 @@ class Parser:
         return repo
 
     @staticmethod
-    def _load_and_verify_configuration(configfile):
-        """
-        Verify the XML structure.
-        """
-        try:
-            LOGGER.debug("Parse configuration '%s'", configfile)
-            xmlroot = etree.parse(configfile)
-
-            xmlschema = etree.fromstring(pkgutil.get_data('lbuild', 'resources/configuration.xsd'))
-
-            schema = etree.XMLSchema(xmlschema)
-            schema.assertValid(xmlroot)
-
-            xmltree = xmlroot.getroot()
-        except OSError as error:
-            raise BlobException(error)
-        except (etree.XMLSyntaxError, etree.DocumentInvalid) as error:
-            raise BlobException("Error while parsing xml-file '{}': "
-                                "{}".format(configfile, error))
-        return xmltree
-
-    @staticmethod
     def parse_configuration(configfile):
         """
         Parse the configuration file.
@@ -105,7 +82,7 @@ class Parser:
         Returns:
             tuple with the names of the requested modules and the selected options.
         """
-        xmltree = Parser._load_and_verify_configuration(configfile)
+        xmltree = config.load_and_verify(configfile)
 
         requested_modules = []
         for modules_node in xmltree.findall('modules'):

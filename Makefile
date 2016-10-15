@@ -21,7 +21,7 @@ coverage:
 	@coverage html -d build/coverage
 
 pylint-gui:
-	@cd lbuild; pylint-gui
+	@cd lbuild; pylint-gui3
 
 dist:
 	@python3 setup.py sdist --formats=zip
@@ -34,7 +34,10 @@ install-user:
 
 install-prerequisites:
 	# Required for the tests
-	sudo -H pip3 install testfixtures coverage svn gitpython
+	sudo -H pip3 install testfixtures coverage
+
+	# For the handling of external repositories
+	sudo -H pip3 install gitpython
 
 # TODO: Also remove folder
 uninstall:
