@@ -34,7 +34,7 @@
   <xsd:complexType name="VersionControlType">
     <xsd:choice minOccurs="0" maxOccurs="unbounded">
       <xsd:element name="git" type="GitRepositoryType" />
-      <xsd:element name="svn" type="SubversionRepositoryType" />
+      <!-- <xsd:element name="svn" type="SubversionRepositoryType" /> -->
     </xsd:choice>
   </xsd:complexType>
 
