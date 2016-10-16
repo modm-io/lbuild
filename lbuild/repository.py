@@ -193,7 +193,8 @@ class Repository:
                 if repo.name is None:
                     raise BlobException("The init(repo) function must set a repository name! "
                                         "Please use the set_name() method.")
-
+        except FileNotFoundError as error:
+            raise BlobException("Repository configuration file not found '{}'.".format(repofilename))
         except KeyError as error:
             raise BlobException("Invalid repository configuration file '{}':\n"
                                 " {}: {}".format(repofilename,
