@@ -49,6 +49,7 @@ class Environment:
         self.__outpath = outpath
 
         self.outbasepath = None
+        self.substitutions = {}
 
     def copy(self, src, dest=None, ignore=None):
         """
@@ -86,6 +87,8 @@ class Environment:
         """
         if substitutions is None:
             substitutions = {}
+
+        substitutions.update(self.substitutions)
 
         if dest is None:
             dest = src
