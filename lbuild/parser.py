@@ -220,7 +220,7 @@ class Parser:
         target_depth = len(target_parts)
 
         if target_parts[-1] == "**":
-            # Remove the double start entry
+            # Remove the double star entry
             target_parts = target_parts[:-1]
 
             for module in modules.values():
