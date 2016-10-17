@@ -11,6 +11,7 @@
 import os
 import sys
 import argparse
+import traceback
 
 rootpath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
 sys.path.append(rootpath)
@@ -156,7 +157,7 @@ if __name__ == '__main__':
                     selected_modules = modules
                     build_modules = parser.resolve_dependencies(modules, selected_modules)
                     module_options = parser.merge_module_options(build_modules, config_options)
-                    
+
                     option = parser.find_module(module_options, option_name)
                     for value in lbuild.utils.listify(option.values):
                         print(value)
@@ -171,4 +172,7 @@ if __name__ == '__main__':
                                                      "option '{}'".format(args.discover))
     except lbuild.exception.BlobException as error:
         sys.stderr.write('%s\n' % error)
+
+        if args.verbose >= 2:
+            traceback.print_exc()
         sys.exit(1)
