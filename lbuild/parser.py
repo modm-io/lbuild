@@ -189,30 +189,52 @@ class Parser:
         return self.available_modules
 
     @staticmethod
-    def find_module(modules, modulename):
+    def find_modules(modules, modulename):
         """ Get the module representation from a module name.
 
-        The name can either be fully qualified or have an empty repository
-        string. In the later case all repositories are searched for the module
-        name. An error is raised in case multiple repositories are found.
+        The name can either be fully qualified, have an empty repository/module
+        string or use a '*'. In the later two cases all repositories/modules are
+        searched for the module name.
+
+        It is also possible to use a double star ('**') as last entry in module
+        name. In this all modules at this depth including their submodules
+        are selected.
+
+        E.g. modules "a:b", "a:c" and "a:c:d" are available. The name "a:*"
+        selects "a:b" and "a:c" but not "a:c:d" while "a:**" would
+        select all three.
 
         Args:
-            modulename :  Name of the module in the format
-                          'repository:module:submodule:...'.
-                          Each part but the last can be an empty string.
+        modulename -- Name of the module in the format
+            'repository:module:submodule:...'.
+            Each part but the last can be an empty string.
+
+        Returns:
+            List of possible modules.
         """
+        lbuild.module.verify_module_name(modulename)
+
         canidates = []
 
         target_parts = modulename.split(":")
         target_depth = len(target_parts)
-        if target_depth < 2:
-            raise BlobException("Invalid module name '{}'.".format(modulename))
 
-        for module in modules.values():
-            parts = module.fullname.split(":")
-            depth = len(parts)
-            if depth == target_depth:
-                canidates.append((parts, module))
+        if target_parts[-1] == "**":
+            # Remove the double start entry
+            target_parts = target_parts[:-1]
+
+            for module in modules.values():
+                parts = module.fullname.split(":")
+                depth = len(parts)
+                if depth >= target_depth:
+                    parts = parts[:target_depth]
+                    canidates.append((parts, module))
+        else:
+            for module in modules.values():
+                parts = module.fullname.split(":")
+                depth = len(parts)
+                if depth == target_depth:
+                    canidates.append((parts, module))
 
         found = []
         for parts, module in canidates:
@@ -226,7 +248,21 @@ class Parser:
 
         if len(found) == 0:
             raise BlobException("Module '{}' not found.".format(modulename))
-        elif len(found) > 1:
+        return found
+
+    @staticmethod
+    def find_module(modules, modulename):
+        """
+        Find a single module.
+
+        Similar to find_modules(...) but returns only a single module and
+        raised an exception in case multiple modules are found.
+
+        Return:
+            Single module corresponding to the module name.
+        """
+        found = Parser.find_modules(modules, modulename)
+        if len(found) > 1:
             raise BlobException("Name '{}' is ambiguous "
                                 "between '{}'.".format(modulename,
                                                        "', '".join([str(x) for x in found])))
@@ -239,11 +275,14 @@ class Parser:
         """
         selected_modules = []
         for modulename in requested_module_names:
-            module = Parser.find_module(modules, modulename)
-            selected_modules.append(module)
+            module_list = Parser.find_modules(modules, modulename)
+            selected_modules.extend(module_list)
+
+        LOGGER.info("Selected modules: {}".format(", ".join(
+            sorted([module.fullname for module in selected_modules]))))
 
         current = selected_modules
-        while 1:
+        while True:
             additional = []
             for module in current:
                 for dependency_name in module.dependencies:
@@ -251,6 +290,7 @@ class Parser:
 
                     if dependency not in selected_modules and \
                             dependency not in additional:
+                        LOGGER.debug("Add dependency: {}".format(dependency.fullname))
                         additional.append(dependency)
             if not additional:
                 # Abort if no new dependencies are being found
