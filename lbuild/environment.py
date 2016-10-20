@@ -91,7 +91,13 @@ class Environment:
         substitutions.update(self.substitutions)
 
         if dest is None:
-            dest = src
+            # If src ends in ".in" remove that and use the remaing part
+            # as new destination.
+            parts = src.split(".")
+            if parts[-1] == "in":
+                dest = ".".join(parts[:-1])
+            else:
+                dest = src
 
         global_substitutions = {
             'time': time.strftime("%d %b %Y, %H:%M:%S", time.localtime()),
