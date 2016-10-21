@@ -36,8 +36,8 @@ class ParserTest(unittest.TestCase):
         repo_options = self.parser.merge_repository_options({})
         self.parser.prepare_repositories(repo_options)
 
-        self.assertEqual(6, len(repo.modules))
-        self.assertIn("repo1:other", repo.modules)
+        self.assertEqual(5, len(repo.modules))
+        # "repo1:other" is not available with the selected repository options
         self.assertIn("repo1:module1", repo.modules)
         self.assertIn("repo1:module2", repo.modules)
         self.assertIn("repo1:module2:submodule3", repo.modules)
@@ -69,10 +69,10 @@ class ParserTest(unittest.TestCase):
         repo_options = self.parser.merge_repository_options({})
         self.parser.prepare_repositories(repo_options)
 
-        self.assertEqual(6, len(self.parser.modules))
+        self.assertEqual(5, len(self.parser.modules))
+        # "repo1:other" is not available with the selected repository options
         self.assertIn("repo1:module1", self.parser.modules)
         self.assertIn("repo1:module2", self.parser.modules)
-        self.assertIn("repo1:other", self.parser.modules)
         self.assertIn("repo1:module2:submodule3", self.parser.modules)
         self.assertIn("repo1:module2:submodule3:subsubmodule1", self.parser.modules)
         self.assertIn("repo1:module2:submodule3:subsubmodule2", self.parser.modules)
@@ -83,13 +83,13 @@ class ParserTest(unittest.TestCase):
         repo_options = self.parser.merge_repository_options({})
         self.parser.prepare_repositories(repo_options)
 
-        self.assertEqual(10, len(self.parser.modules))
+        self.assertEqual(9, len(self.parser.modules))
+        # "repo1:other" is not available with the selected repository options
         self.assertIn("repo1:module1", self.parser.modules)
         self.assertIn("repo1:module2", self.parser.modules)
         self.assertIn("repo1:module2:submodule3", self.parser.modules)
         self.assertIn("repo1:module2:submodule3:subsubmodule1", self.parser.modules)
         self.assertIn("repo1:module2:submodule3:subsubmodule2", self.parser.modules)
-        self.assertIn("repo1:other", self.parser.modules)
         self.assertIn("repo2:module3", self.parser.modules)
         self.assertIn("repo2:module4", self.parser.modules)
         self.assertIn("repo2:module4:submodule1", self.parser.modules)

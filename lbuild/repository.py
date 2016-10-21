@@ -81,7 +81,8 @@ class Repository:
         # module objects
         self._module_files = []
 
-        # List of module objects
+        # List of available module objects (modules that returned True in
+        # the `prepare` step).
         self.modules = {}
 
         # Name -> Option()

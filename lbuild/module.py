@@ -251,14 +251,13 @@ class Module:
 
         Recursively appends all submodules.
         """
-        self.register_module()
-
         available_modules = {}
         prepare_function = self.functions["prepare"]
         name_resolver = lbuild.repository.OptionNameResolver(self.repository,
                                                              repo_options)
         is_available = prepare_function(self, name_resolver)
         if is_available:
+            self.register_module()
             available_modules[self.fullname] = self
 
         for submodule in self._submodules:
