@@ -11,6 +11,7 @@
 import os
 import sys
 import argparse
+import textwrap
 import traceback
 
 rootpath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
@@ -168,7 +169,7 @@ if __name__ == '__main__':
 
                     if option.short_description:
                         print()
-                        print(option.short_description)
+                        print(textwrap.indent(option.short_description, "  "))
                         print()
             elif args.action in ['discover-option', 'option']:
                 option_name = args.option_name
@@ -179,6 +180,7 @@ if __name__ == '__main__':
                     option = parser.find_module(options, option_name)
 
                 print(option.factsheet())
+                print()
             elif args.action in ['discover-option-values', 'option-values']:
                 option_name = args.option_name
                 if is_repository_option(option_name):

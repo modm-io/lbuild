@@ -63,7 +63,7 @@ class Option:
                         break
                 else:
                     title.append(line)
-            description = textwrap.indent("\n".join(textwrap.wrap("\n".join(title), 80)), "  ")
+            description = "\n".join(textwrap.wrap("\n".join(title), 80))
 
         return description
 
@@ -112,11 +112,12 @@ class Option:
         output.append("=" * len(self.fullname))
         output.append("")
         if self.value is not None:
-            output.append("Current value:   {}".format(self.value))
+            output.append("Current value: {}".format(self.value))
         output.append("Possible values: {}".format(self.values_hint()))
-        output.append("")
+
         description = self.description.strip()
         if len(description) > 0:
+            output.append("")
             output.append(description)
         return "\n".join(output)
 
