@@ -9,6 +9,7 @@
 
 import enum
 import inspect
+import textwrap
 
 import lbuild.filter
 from .exception import BlobException
@@ -26,7 +27,7 @@ class Option:
                                 "name '{}'".format(name))
 
         self.name = name
-        self.description = description
+        self._description = description
 
         # Parent repository for this option
         self.repository = None
@@ -35,6 +36,36 @@ class Option:
         self.module = None
 
         self._value = default
+
+    @property
+    def description(self):
+        try:
+            return self._description.read()
+        except AttributeError:
+            return self._description
+
+    @property
+    def short_description(self):
+        """
+        Returns the wrapped first paragraph of the description.
+
+        A paragraph is defined by non-whitespace text followed by an empty
+        line.
+        """
+        description = self.description
+        if description is not None:
+            lines = description.splitlines()
+            title = []
+            for line in lines:
+                line = line.strip()
+                if line == "":
+                    if len(title) > 0:
+                        break
+                else:
+                    title.append(line)
+            description = textwrap.indent("\n".join(textwrap.wrap("\n".join(title), 80)), "  ")
+
+        return description
 
     @property
     def value(self):
@@ -74,6 +105,20 @@ class Option:
 
     def __str__(self):
         return self.fullname
+
+    def factsheet(self):
+        output = []
+        output.append(self.fullname)
+        output.append("=" * len(self.fullname))
+        output.append("")
+        if self.value is not None:
+            output.append("Current value:   {}".format(self.value))
+        output.append("Possible values: {}".format(self.values_hint()))
+        output.append("")
+        description = self.description.strip()
+        if len(description) > 0:
+            output.append(description)
+        return "\n".join(output)
 
 
 class BooleanOption(Option):

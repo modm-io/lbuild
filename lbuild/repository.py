@@ -23,11 +23,31 @@ LOGGER = logging.getLogger('lbuild.repository')
 
 class Localpath:
 
-    def __init__(self, repository_file):
-        self.basepath = os.path.dirname(os.path.realpath(repository_file))
+    def __init__(self, basepath):
+        self.basepath = basepath
 
     def __call__(self, *args):
         return os.path.join(self.basepath, *args)
+
+
+class LocalFileReader:
+
+    def __init__(self, basepath, filename):
+        self.basepath = basepath
+        self.filename = filename
+
+    def read(self):
+        with open(os.path.join(self.basepath, self.filename)) as file:
+            return file.read()
+
+
+class LocalFileReaderFactory:
+
+    def __init__(self, basepath):
+        self.basepath = basepath
+
+    def __call__(self, filename):
+        return LocalFileReader(self.basepath, filename)
 
 
 class OptionNameResolver:
@@ -167,7 +187,8 @@ class Repository:
     def parse_repository(repofilename: str):
         LOGGER.debug("Parse repository '%s'", repofilename)
 
-        repo = Repository(os.path.dirname(repofilename))
+        repopath = os.path.dirname(os.path.realpath(repofilename))
+        repo = Repository(repopath)
         try:
             with open(repofilename) as repofile:
                 code = compile(repofile.read(), repofilename, 'exec')
@@ -176,7 +197,8 @@ class Repository:
 
                     # The localpath(...) function can be used to create
                     # a local path form the folder of the repository file.
-                    'localpath': Localpath(repofilename),
+                    'localpath': Localpath(repopath),
+                    'FileReader': LocalFileReaderFactory(repopath),
                     'listify': lbuild.filter.listify,
 
                     'StringOption': lbuild.option.Option,

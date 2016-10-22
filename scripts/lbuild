@@ -20,6 +20,26 @@ import lbuild.parser
 import lbuild.logger
 import lbuild.vcs.common
 
+
+def get_modules(parser, repo_options, selected_modules=None):
+    if selected_modules is None:
+        selected_modules = [":**"]
+    modules = parser.prepare_repositories(repo_options)
+    build_modules = parser.resolve_dependencies(modules, selected_modules)
+    module_options = parser.merge_module_options(build_modules, config_options)
+
+    return build_modules, module_options
+
+def is_repository_option(option_name):
+    parts = option_name.split(":")
+    if len(parts) < 2:
+        raise lbuild.exception.BlobOptionFormatException(option_name)
+    elif len(parts) == 2:
+        return True
+    else:
+        return False
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Build source code libraries from modules.')
@@ -87,8 +107,16 @@ if __name__ == '__main__':
 
     parser_discover_option = subparsers.add_parser("discover-option",
         aliases=['option'],
-        help="Print the values of one option.")
+        help="Print the description and values of one option.")
     parser_discover_option.add_argument("-o", "--option-name",
+        dest="option_name",
+        required=True,
+        help="Select a specific module")
+
+    parser_discover_option_values = subparsers.add_parser("discover-option-values",
+        aliases=['option-values'],
+        help="Print the values of one option.")
+    parser_discover_option_values.add_argument("-o", "--option-name",
         dest="option_name",
         required=True,
         help="Select a specific module")
@@ -129,43 +157,40 @@ if __name__ == '__main__':
                 modules = parser.prepare_repositories(repo_options)
                 print(lbuild.builder.dependency.graphviz(parser.repositories))
             elif args.action in ['discover-module-options', 'options']:
-                modules = parser.prepare_repositories(repo_options)
-
                 if len(args.modules) == 0:
-                    selected_modules = modules
+                    selected_modules = [":**"]
                 else:
                     selected_modules = args.modules
+                _, options = get_modules(parser, repo_options, selected_modules)
 
-                build_modules = parser.resolve_dependencies(modules, selected_modules)
-                module_options = parser.merge_module_options(build_modules, config_options)
-
-                for option in sorted(list(module_options.values())):
+                for option in sorted(list(options.values())):
                     print(option.format())
+
+                    if option.short_description:
+                        print()
+                        print(option.short_description)
+                        print()
             elif args.action in ['discover-option', 'option']:
                 option_name = args.option_name
-                parts = option_name.split(":")
-                if len(parts) < 2:
-                    raise lbuild.exception.BlobOptionFormatException(option_name)
-                elif len(parts) == 2:
-                    # Repositry option
+                if is_repository_option(option_name):
                     option = parser.find_module(repo_options, option_name)
-                    for value in lbuild.utils.listify(option.values):
-                        print(value)
                 else:
-                    # Module option
-                    modules = parser.prepare_repositories(repo_options)
-                    selected_modules = modules
-                    build_modules = parser.resolve_dependencies(modules, selected_modules)
-                    module_options = parser.merge_module_options(build_modules, config_options)
+                    _, options = get_modules(parser, repo_options)
+                    option = parser.find_module(options, option_name)
 
-                    option = parser.find_module(module_options, option_name)
-                    for value in lbuild.utils.listify(option.values):
-                        print(value)
+                print(option.factsheet())
+            elif args.action in ['discover-option-values', 'option-values']:
+                option_name = args.option_name
+                if is_repository_option(option_name):
+                    option = parser.find_module(repo_options, option_name)
+                else:
+                    _, options = get_modules(parser, repo_options)
+                    option = parser.find_module(options, option_name)
+
+                for value in lbuild.utils.listify(option.values):
+                    print(value)
             elif args.action == 'build':
-                modules = parser.prepare_repositories(repo_options)
-
-                build_modules = parser.resolve_dependencies(modules, selected_modules)
-                module_options = parser.merge_module_options(build_modules, config_options)
+                build_modules, module_options = get_modules(parser, repo_options)
                 parser.build_modules(args.path, build_modules, repo_options, module_options)
             else:
                 raise lbuild.exception.BlobException("Unknown discovery "

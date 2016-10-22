@@ -20,6 +20,7 @@ from . import utils
 from . import exception
 
 from .repository import Localpath
+from .repository import LocalFileReaderFactory
 from .repository import Repository
 
 from .exception import BlobException
@@ -121,6 +122,7 @@ class Module:
             Module() module definition object.
         """
         try:
+            modulepath = os.path.dirname(os.path.realpath(module_filename))
             with open(module_filename) as module_file:
                 LOGGER.debug("Parse module_filename '%s'", module_filename)
                 code = compile(module_file.read(), module_filename, 'exec')
@@ -128,7 +130,8 @@ class Module:
                 local = {
                     # The localpath(...) function can be used to create
                     # a local path form the folder of the repository file.
-                    'localpath': Localpath(module_filename),
+                    'localpath': Localpath(modulepath),
+                    'FileReader': LocalFileReaderFactory(modulepath),
                     'listify': lbuild.filter.listify,
                     'ignore_patterns': shutil.ignore_patterns,
 
@@ -143,7 +146,7 @@ class Module:
 
                 module = Module(repository,
                                 module_filename,
-                                os.path.dirname(module_filename))
+                                modulepath)
 
                 # Get the required global functions
                 module.functions = Repository._get_global_functions(local, ['init', 'prepare', 'build'])
