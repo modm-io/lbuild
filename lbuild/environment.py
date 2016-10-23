@@ -120,7 +120,8 @@ class Environment:
                 return os.path.normpath(path)
 
         environment = RelEnvironment(loader=jinja2.FileSystemLoader(self.__modulepath),
-                                     extensions=['jinja2.ext.do'])
+                                     extensions=['jinja2.ext.do'],
+                                     undefined=jinja2.StrictUndefined)
 
         environment.filters['lbuild.wordwrap'] = lbuild.filter.wordwrap
         environment.filters['lbuild.indent'] = lbuild.filter.indent
