@@ -124,8 +124,12 @@ if __name__ == '__main__':
 
     parser_build = subparsers.add_parser("build",
         help="Generate the library source code blob with the given options.")
-
-
+    parser_build.add_argument("-m", "--module",
+        dest="modules",
+        type=str,
+        action="append",
+        default=[],
+        help="Select a specific module.")
 
     args = parser.parse_args()
 
@@ -158,10 +162,10 @@ if __name__ == '__main__':
                 modules = parser.prepare_repositories(repo_options)
                 print(lbuild.builder.dependency.graphviz(parser.repositories))
             elif args.action in ['discover-module-options', 'options']:
-                if len(args.modules) == 0:
-                    selected_modules = [":**"]
+                if len(args.modules) == 0 and len(selected_modules) == 0:
+                    selected_modules.extend([":**"])
                 else:
-                    selected_modules = args.modules
+                    selected_modules.extend(args.modules)
                 _, options = get_modules(parser, repo_options, selected_modules)
 
                 for option in sorted(list(options.values())):
@@ -192,7 +196,8 @@ if __name__ == '__main__':
                 for value in lbuild.utils.listify(option.values):
                     print(value)
             elif args.action == 'build':
-                build_modules, module_options = get_modules(parser, repo_options)
+                selected_modules.extend(args.modules)
+                build_modules, module_options = get_modules(parser, repo_options, selected_modules)
                 parser.build_modules(args.path, build_modules, repo_options, module_options)
             else:
                 raise lbuild.exception.BlobException("Unknown discovery "
