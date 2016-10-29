@@ -361,7 +361,7 @@ class Parser:
                                     "or on the command line.".format(fullname))
 
     @staticmethod
-    def build_modules(outpath, build_modules, repo_options, module_options):
+    def build_modules(outpath, build_modules, repo_options, module_options, buildlog):
         """
         Go through all to build and call their 'build' function.
         """
@@ -371,7 +371,10 @@ class Parser:
                                                                module,
                                                                repo_options,
                                                                module_options)
-            env = lbuild.environment.Environment(option_resolver, module.path, outpath)
+            env = lbuild.environment.Environment(option_resolver,
+                                                 module,
+                                                 outpath,
+                                                 buildlog)
             # TODO add exception handling
             module.functions["build"](env)
 

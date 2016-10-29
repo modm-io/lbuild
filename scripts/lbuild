@@ -196,9 +196,11 @@ if __name__ == '__main__':
                 for value in lbuild.utils.listify(option.values):
                     print(value)
             elif args.action == 'build':
+                log = lbuild.buildlog.BuildLog()
+
                 selected_modules.extend(args.modules)
                 build_modules, module_options = get_modules(parser, repo_options, selected_modules)
-                parser.build_modules(args.path, build_modules, repo_options, module_options)
+                parser.build_modules(args.path, build_modules, repo_options, module_options, log)
             else:
                 raise lbuild.exception.BlobException("Unknown discovery "
                                                      "option '{}'".format(args.discover))

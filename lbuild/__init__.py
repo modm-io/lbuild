@@ -8,6 +8,7 @@
 # governing this code.
 
 from . import builder
+from . import buildlog
 from . import environment
 from . import exception
 from . import module
@@ -16,4 +17,14 @@ from . import parser
 from . import repository
 from . import utils
 
-__all__ = ['builder', 'environment', 'exception', 'module', 'option', 'parser', 'repository', 'utils']
+__all__ = [
+    'builder',
+    'buildlog',
+    'environment',
+    'exception',
+    'module',
+    'option',
+    'parser',
+    'repository',
+    'utils'
+]

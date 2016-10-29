@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<library>
+	<repositories>
+		<repository>
+			<path>repo1.lb</path>
+		</repository>
+		<repository>
+			<path>repo2/repo2.lb</path>
+		</repository>
+	</repositories>
+	
+	<options>
+		<option name=":target">hosted</option>
+		<option name="repo1:foo">43</option>
+		
+		<option name="repo1:other:foo">456</option>
+		<option name="repo1::bar">768</option>
+		<option name=":other:xyz">No</option>
+		<option name="::abc">Hello World!</option>
+		<option name="::submodule3::price">15</option>
+	</options>
+
+	<modules>
+		<module>repo1:other</module>
+		<module>:module1</module>
+		<module>::submodule3:subsubmodule1</module>
+		<module>::submodule3</module>
+	</modules>
+</library>

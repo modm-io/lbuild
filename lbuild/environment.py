@@ -43,10 +43,13 @@ def _copytree(src, dst, ignore=None):
 
 class Environment:
 
-    def __init__(self, options, modulepath, outpath):
+    def __init__(self, options, module, outpath, buildlog):
         self.options = options
-        self.__modulepath = modulepath
+        self.__module = module
+        self.__modulepath = module.path
         self.__outpath = outpath
+
+        self.__buildlog = buildlog
 
         self.outbasepath = None
         self.substitutions = {}
@@ -68,8 +71,11 @@ class Environment:
         destpath = dest if os.path.isabs(dest) else self.outpath(dest)
 
         if os.path.isdir(srcpath):
+            # TODO add buildpath to tree copy
             _copytree(srcpath, destpath, ignore)
         else:
+            self.__buildlog.log(self.__module, srcpath, destpath)
+
             if not os.path.exists(os.path.dirname(destpath)):
                 os.makedirs(os.path.dirname(destpath))
             shutil.copy2(srcpath, destpath)
@@ -85,11 +91,6 @@ class Environment:
         If dest is empty the same name as src is used (relocated to
         the output path).
         """
-        if substitutions is None:
-            substitutions = {}
-
-        substitutions.update(self.substitutions)
-
         if dest is None:
             # If src ends in ".in" remove that and use the remaing part
             # as new destination.
@@ -98,6 +99,11 @@ class Environment:
                 dest = ".".join(parts[:-1])
             else:
                 dest = src
+
+        if substitutions is None:
+            substitutions = {}
+
+        substitutions.update(self.substitutions)
 
         global_substitutions = {
             'time': time.strftime("%d %b %Y, %H:%M:%S", time.localtime()),
@@ -159,6 +165,8 @@ class Environment:
                                 "{}".format(self.modulepath(src), error))
 
         outfile_name = self.outpath(dest)
+
+        self.__buildlog.log(self.__module, self.modulepath(src), outfile_name)
 
         # Create folder structure if it doesn't exists
         if not os.path.exists(os.path.dirname(outfile_name)):

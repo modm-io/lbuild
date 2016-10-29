@@ -1,0 +1,17 @@
+
+
+def init(repo):
+    repo.name = "repository_options"
+
+    repo.add_option(
+        EnumerationOption(name="target",
+                          description="Target architecture for the library.",
+                           default="obscure",
+                           enumeration=["obscure", "hosted", "other", "foo", "bar"]))
+    repo.add_option(
+        NumericOption(name="foo",
+                      default=76,
+                      description="Something"))
+
+def prepare(repo, options):
+    pass

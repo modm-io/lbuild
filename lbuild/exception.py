@@ -31,3 +31,14 @@ class BlobAttributeException(BlobException):
         BlobException.__init__(self,
                                ("The attribute {} may only be changed in "
                                 "the init(...) method".format(name)))
+
+
+class BlobBuildException(BlobException):
+    """
+    Exceptions raised during the build of project.
+
+    E.g. when a previously generated file is being overwritten by another
+    module.
+    """
+    pass
+
