@@ -130,6 +130,13 @@ if __name__ == '__main__':
         action="append",
         default=[],
         help="Select a specific module.")
+    parser_build.add_argument("--no-log",
+        dest="buildlog",
+        action="store_false",
+        default=True,
+        help="Not not write a build log. This log contains all files being "
+             "generated, their source files and the module which generated "
+             "the file.")
 
     args = parser.parse_args()
 
@@ -201,8 +208,14 @@ if __name__ == '__main__':
                 selected_modules.extend(args.modules)
                 build_modules, module_options = get_modules(parser, repo_options, selected_modules)
                 parser.build_modules(args.path, build_modules, repo_options, module_options, log)
+
+                if args.buildlog:
+                    configfilename = args.config
+                    logfilename = configfilename + ".log"
+                    with open(logfilename, "wb") as logfile:
+                        logfile.write(log.to_xml(to_string=True))
             else:
-                raise lbuild.exception.BlobException("Unknown discovery "
+                raise lbuild.exception.BlobException("Unknown command-line "
                                                      "option '{}'".format(args.discover))
     except lbuild.exception.BlobException as error:
         sys.stderr.write('%s\n' % error)

@@ -9,6 +9,7 @@
 # governing this code.
 
 import logging
+import lxml.etree
 from .exception import BlobBuildException
 
 LOGGER = logging.getLogger('lbuild.buildlog')
@@ -41,13 +42,14 @@ class BuildLog:
     a specific file.
     """
     def __init__(self):
-        self.operations = {}
+        self.operations = []
+        self._build_files = {}
 
     def log(self, module, filename_in: str, filename_out: str):
         operation = Operation(module, filename_in, filename_out)
         LOGGER.debug(str(operation))
 
-        previous = self.operations.get(filename_out, None)
+        previous = self._build_files.get(filename_out, None)
         if previous is not None:
             raise BlobBuildException("Overwrite file '{}' from '{}' (module '{}'). Previously "
                                      "generated from '{}' (module '{}')."
@@ -57,4 +59,26 @@ class BuildLog:
                                              previous.filename_in,
                                              previous.module))
 
-        self.operations[filename_out] = operation
+        self._build_files[filename_out] = operation
+        self.operations.append(operation)
+
+    def to_xml(self, to_string=True):
+        rootnode = lxml.etree.Element("buildlog")
+
+        for operation in self.operations:
+            operationnode = lxml.etree.SubElement(rootnode, "operation")
+
+            modulenode = lxml.etree.SubElement(operationnode, "module")
+            modulenode.text = operation.module
+            srcnode = lxml.etree.SubElement(operationnode, "source")
+            srcnode.text = operation.filename_in
+            destnode = lxml.etree.SubElement(operationnode, "destination")
+            destnode.text = operation.filename_out
+
+        if to_string:
+            return lxml.etree.tostring(rootnode,
+                                       encoding="UTF-8",
+                                       pretty_print=True,
+                                       xml_declaration=True,)
+        else:
+            return rootnode
