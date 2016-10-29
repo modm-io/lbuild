@@ -1,0 +1,6 @@
+
+def init(repo):
+    repo.name = "overwrite_file"
+
+def prepare(repo, options):
+    repo.find_modules_recursive()

@@ -1,6 +1,0 @@
-
-def init(repo):
-    repo.name = "build_same_file"
-
-def prepare(repo, options):
-    repo.add_modules(["module1.lb", "module2.lb"])

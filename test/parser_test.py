@@ -24,6 +24,18 @@ class ParserTest(unittest.TestCase):
     def _get_path(self, filename):
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), "resources", "parser", filename)
 
+    @staticmethod
+    def prepare_modules(parser, selected=None, config=None):
+        if selected is None:
+            selected = [":**"]
+        if config is None:
+            config = {}
+        repo_options = parser.merge_repository_options(config)
+        modules = parser.prepare_repositories(repo_options)
+        build_modules = parser.resolve_dependencies(modules, selected)
+        module_options = parser.merge_module_options(build_modules, config)
+        return build_modules, repo_options, module_options
+
     def setUp(self):
         self.parser = lbuild.parser.Parser()
 
@@ -198,11 +210,8 @@ class ParserTest(unittest.TestCase):
             'repo1:other:foo': '456',
             '::abc': 'Hello World!',
         }
-
-        repo_options = self.parser.merge_repository_options(config_options)
-        modules = self.parser.prepare_repositories(repo_options)
-        build_modules = self.parser.resolve_dependencies(modules, selected_modules)
-        module_options = self.parser.merge_module_options(build_modules, config_options)
+        build_modules, repo_options, module_options = \
+            self.prepare_modules(self.parser, selected_modules, config_options)
 
         log = lbuild.buildlog.BuildLog()
 
@@ -214,14 +223,20 @@ class ParserTest(unittest.TestCase):
         testfixtures.compare(tempdir.read("src/module3.cpp"), b"Hello World!")
 
     @testfixtures.tempdir()
-    def test_should_raise_when_build_same_file_multiple_times(self, tempdir):
-        self.parser.parse_repository(self._get_path("build_same_file/repo.lb"))
+    def test_should_raise_when_overwriting_file(self, tempdir):
+        self.parser.parse_repository(self._get_path("overwrite_file/repo.lb"))
+        build_modules, repo_options, module_options = self.prepare_modules(self.parser)
 
-        config_options = {}
-        repo_options = self.parser.merge_repository_options(config_options)
-        modules = self.parser.prepare_repositories({})
-        build_modules = self.parser.resolve_dependencies(modules, modules)
-        module_options = self.parser.merge_module_options(build_modules, config_options)
+        log = lbuild.buildlog.BuildLog()
+
+        outpath = tempdir.path
+        self.assertRaises(lbuild.exception.BlobBuildException,
+                          lambda: self.parser.build_modules(outpath, build_modules, repo_options, module_options, log))
+
+    @testfixtures.tempdir()
+    def test_should_raise_when_overwriting_file_in_tree(self, tempdir):
+        self.parser.parse_repository(self._get_path("overwrite_file_in_tree/repo.lb"))
+        build_modules, repo_options, module_options = self.prepare_modules(self.parser)
 
         log = lbuild.buildlog.BuildLog()
 

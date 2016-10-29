@@ -1,10 +1,11 @@
 
 def init(module):
-	module.name = "module1"
+	module.name = "module"
 	module.description = ""
 
 def prepare(module, options):
 	return True
 
 def build(env):
+	env.copy('file.txt')
 	env.copy('file.txt')

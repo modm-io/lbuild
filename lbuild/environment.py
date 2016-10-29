@@ -17,7 +17,7 @@ import lbuild.filter
 from .exception import BlobException
 
 
-def _copytree(src, dst, ignore=None):
+def _copytree(logger, src, dst, ignore=None):
     """
     Implementation of shutil.copytree that overwrites files instead
     of aborting.
@@ -34,8 +34,10 @@ def _copytree(src, dst, ignore=None):
             sourcepath = os.path.join(src, filename)
             destpath = os.path.join(dst, filename)
             if os.path.isdir(sourcepath):
-                _copytree(sourcepath, destpath, ignore)
+                _copytree(logger, sourcepath, destpath, ignore)
             else:
+                logger(sourcepath, destpath)
+
                 time_diff = os.stat(src).st_mtime - os.stat(dst).st_mtime
                 if not os.path.exists(destpath) or time_diff > 1:
                     shutil.copy2(sourcepath, destpath)
@@ -71,8 +73,10 @@ class Environment:
         destpath = dest if os.path.isabs(dest) else self.outpath(dest)
 
         if os.path.isdir(srcpath):
-            # TODO add buildpath to tree copy
-            _copytree(srcpath, destpath, ignore)
+            _copytree(lambda src, dest: self.__buildlog.log(self.__module, src, dest),
+                      srcpath,
+                      destpath,
+                      ignore)
         else:
             self.__buildlog.log(self.__module, srcpath, destpath)
 
