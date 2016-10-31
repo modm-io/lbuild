@@ -134,7 +134,7 @@ if __name__ == '__main__':
         dest="buildlog",
         action="store_false",
         default=True,
-        help="Not not write a build log. This log contains all files being "
+        help="Do not create a build log. This log contains all files being "
              "generated, their source files and the module which generated "
              "the file.")
 
