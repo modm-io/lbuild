@@ -69,8 +69,8 @@ class Environment:
         if dest is None:
             dest = src
 
-        srcpath = src if os.path.isabs(src) else self.modulepath(src)
-        destpath = dest if os.path.isabs(dest) else self.outpath(dest)
+        srcpath = os.path.normpath(src if os.path.isabs(src) else self.modulepath(src))
+        destpath = os.path.normpath(dest if os.path.isabs(dest) else self.outpath(dest))
 
         if os.path.isdir(srcpath):
             _copytree(lambda src, dest: self.__buildlog.log(self.__module, src, dest),
