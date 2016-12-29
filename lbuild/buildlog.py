@@ -22,12 +22,14 @@ class Operation:
     Stores the connection between a generated file and its template and module
     from within it was generated.
     """
-    def __init__(self, module, filename_in: str, filename_out: str):
+    def __init__(self, module, filename_in: str, filename_out: str, time=None):
         self.module = module.fullname
         self.modulepath = module.path
 
         self.filename_in = filename_in
         self.filename_out = filename_out
+
+        self.time = time
 
     def __str__(self):
         return "{} -> {}".format(self.filename_in, self.filename_out)
@@ -45,8 +47,8 @@ class BuildLog:
         self.operations = []
         self._build_files = {}
 
-    def log(self, module, filename_in: str, filename_out: str):
-        operation = Operation(module, filename_in, filename_out)
+    def log(self, module, filename_in: str, filename_out: str, time=None):
+        operation = Operation(module, filename_in, filename_out, time)
         LOGGER.debug(str(operation))
 
         previous = self._build_files.get(filename_out, None)
@@ -74,6 +76,10 @@ class BuildLog:
             srcnode.text = operation.filename_in
             destnode = lxml.etree.SubElement(operationnode, "destination")
             destnode.text = operation.filename_out
+
+            if operation.time is not None:
+                timenode = lxml.etree.SubElement(operationnode, "time")
+                timenode.text = "{:.3f} ms".format(operation.time * 1000)
 
         if to_string:
             return lxml.etree.tostring(rootnode,

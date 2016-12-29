@@ -36,11 +36,15 @@ def _copytree(logger, src, dst, ignore=None):
             if os.path.isdir(sourcepath):
                 _copytree(logger, sourcepath, destpath, ignore)
             else:
-                logger(sourcepath, destpath)
+                starttime = time.time()
 
                 time_diff = os.stat(src).st_mtime - os.stat(dst).st_mtime
                 if not os.path.exists(destpath) or time_diff > 1:
                     shutil.copy2(sourcepath, destpath)
+
+                endtime = time.time()
+                total = endtime - starttime
+                logger(sourcepath, destpath, total)
 
 
 class Environment:
@@ -52,6 +56,8 @@ class Environment:
         self.__outpath = outpath
 
         self.__buildlog = buildlog
+        self.__template_environment = None
+        self.__template_environment_filters = None
 
         self.outbasepath = None
         self.substitutions = {}
@@ -69,47 +75,35 @@ class Environment:
         if dest is None:
             dest = src
 
+        starttime = time.time()
+
         srcpath = os.path.normpath(src if os.path.isabs(src) else self.modulepath(src))
         destpath = os.path.normpath(dest if os.path.isabs(dest) else self.outpath(dest))
 
         if os.path.isdir(srcpath):
-            _copytree(lambda src, dest: self.__buildlog.log(self.__module, src, dest),
+            _copytree(lambda src, dest, time: self.__buildlog.log(self.__module, src, dest, time),
                       srcpath,
                       destpath,
                       ignore)
         else:
-            self.__buildlog.log(self.__module, srcpath, destpath)
-
             if not os.path.exists(os.path.dirname(destpath)):
                 os.makedirs(os.path.dirname(destpath))
             shutil.copy2(srcpath, destpath)
+
+            endtime = time.time()
+            total = endtime - starttime
+            self.__buildlog.log(self.__module, srcpath, destpath, total)
 
     @staticmethod
     def ignore_files(*files):
         return shutil.ignore_patterns(*files)
 
-    def template(self, src, dest=None, substitutions=None, filters=None):
-        """
-        Uses the Jinja2 template engine to generate files.
+    def __reload_template_environment(self, filters):
+        if self.__template_environment_filters == filters:
+            return
 
-        If dest is empty the same name as src is used (relocated to
-        the output path).
-        """
-        if dest is None:
-            # If src ends in ".in" remove that and use the remaing part
-            # as new destination.
-            parts = src.split(".")
-            if parts[-1] == "in":
-                dest = ".".join(parts[:-1])
-            else:
-                dest = src
-
-        if substitutions is None:
-            substitutions = {}
-
-        substitutions.update(self.substitutions)
-
-        global_substitutions = {
+        self.__template_environment_filters = filters
+        self.__global_substitutions = {
             'time': time.strftime("%d %b %Y, %H:%M:%S", time.localtime()),
             'options': self.options,
         }
@@ -140,15 +134,49 @@ class Environment:
         environment.filters['lbuild.split'] = lbuild.filter.split
         environment.filters['lbuild.listify'] = lbuild.filter.listify
 
-        if filters is not None:
-            environment.filters.update(filters)
+        environment.filters.update(filters)
 
         # Jinja2 Line Statements
         environment.line_statement_prefix = '%%'
         environment.line_comment_prefix = '%#'
 
+        self.__template_environment = environment
+
+    @property
+    def template_environment(self):
+        if self.__template_environment is None:
+            self.__reload_template_environment({})
+        return self.__template_environment
+
+    def template(self, src, dest=None, substitutions=None, filters=None):
+        """
+        Uses the Jinja2 template engine to generate files.
+
+        If dest is empty the same name as src is used (relocated to
+        the output path).
+        """
+        starttime = time.time()
+
+        if dest is None:
+            # If src ends in ".in" remove that and use the remaing part
+            # as new destination.
+            parts = src.split(".")
+            if parts[-1] == "in":
+                dest = ".".join(parts[:-1])
+            else:
+                dest = src
+
+        if substitutions is None:
+            substitutions = {}
+
+        substitutions.update(self.substitutions)
         try:
-            template = environment.get_template(src, globals=global_substitutions)
+            if filters is not None:
+                # Reload environment if it uses different filters than
+                # the previous environment
+                self.__reload_template_environment(filters)
+
+            template = self.template_environment.get_template(src, globals=self.__global_substitutions)
             output = template.render(substitutions)
         except jinja2.TemplateNotFound as error:
             raise BlobException('Failed to retrieve Template: %s' % error)
@@ -170,14 +198,16 @@ class Environment:
 
         outfile_name = self.outpath(dest)
 
-        self.__buildlog.log(self.__module, self.modulepath(src), outfile_name)
-
         # Create folder structure if it doesn't exists
         if not os.path.exists(os.path.dirname(outfile_name)):
             os.makedirs(os.path.dirname(outfile_name))
 
         with open(outfile_name, 'w') as outfile:
             outfile.write(output)
+
+        endtime = time.time()
+        total = endtime - starttime
+        self.__buildlog.log(self.__module, self.modulepath(src), outfile_name, total)
 
     def modulepath(self, *path):
         """Relocate given path to the path of the module file."""
