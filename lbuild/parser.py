@@ -276,7 +276,11 @@ class Parser:
         selected_modules = []
         for modulename in requested_module_names:
             module_list = Parser.find_modules(modules, modulename)
-            selected_modules.extend(module_list)
+
+            # Only add modules which are not already selected
+            for module in module_list:
+                if module not in selected_modules:
+                    selected_modules.append(module)
 
         LOGGER.info("Selected modules: {}".format(", ".join(
             sorted([module.fullname for module in selected_modules]))))
