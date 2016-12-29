@@ -42,9 +42,9 @@ def is_repository_option(option_name):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
+    argument_parser = argparse.ArgumentParser(
         description='Build source code libraries from modules.')
-    parser.add_argument('-r', '--repository',
+    argument_parser.add_argument('-r', '--repository',
         metavar="REPO",
         dest='repositories',
         action='append',
@@ -52,17 +52,17 @@ if __name__ == '__main__':
         help="Repository file(s) which should be available for the current library. "
              "The loading of repository files from a VCS is only supported through "
              "the library configuration file.")
-    parser.add_argument('-c', '--config',
+    argument_parser.add_argument('-c', '--config',
         dest='config',
         default='project.lb',
         help="Project/library configuration file. "
              "Specifies the used repositories, modules and options "
              "(default: '%(default)s').")
-    parser.add_argument('-p', '--path',
+    argument_parser.add_argument('-p', '--path',
         dest='path',
         default='.',
         help="Path in which the library will be generated (default: '%(default)s').")
-    parser.add_argument('-D', '--option',
+    argument_parser.add_argument('-D', '--option',
         metavar='OPTION',
         dest='options',
         action='append',
@@ -73,12 +73,12 @@ if __name__ == '__main__':
              "file definitions. "
              "Use a single colon to specify repository options and multiple "
              "colons to specify (sub)module options.")
-    parser.add_argument('-v', '--verbose',
+    argument_parser.add_argument('-v', '--verbose',
         action='count',
         default=0,
         dest='verbose')
 
-    subparsers = parser.add_subparsers(title="Actions",
+    subparsers = argument_parser.add_subparsers(title="Actions",
         dest="action")
 
     parser_init = subparsers.add_parser("init",
@@ -138,7 +138,7 @@ if __name__ == '__main__':
              "generated, their source files and the module which generated "
              "the file.")
 
-    args = parser.parse_args()
+    args = argument_parser.parse_args()
 
     lbuild.logger.configure_logger(args.verbose)
     try:
@@ -216,9 +216,10 @@ if __name__ == '__main__':
                         logfile.write(log.to_xml(to_string=True))
             else:
                 raise lbuild.exception.BlobException("Unknown command-line "
-                                                     "option '{}'".format(args.discover))
+                                                     "option '{}'".format(args.action))
     except lbuild.exception.BlobException as error:
-        sys.stderr.write('%s\n' % error)
+        argument_parser.print_help()
+        sys.stderr.write('\nERROR: %s\n' % error)
 
         if args.verbose >= 2:
             traceback.print_exc()
