@@ -11,6 +11,7 @@ import os
 import time
 import shutil
 import jinja2
+import fnmatch
 
 import lbuild.filter
 
@@ -96,7 +97,40 @@ class Environment:
 
     @staticmethod
     def ignore_files(*files):
+        """
+        Ignore file and folder names without checking the full path.
+
+        Example: the following code with ignore all files with the ending `.lb`:
+        ```
+        env.copy(".", ignore=env.ignore_files("*.lb"))
+        ```
+
+        Based on the shutil.ignore_patterns() function.
+        """
         return shutil.ignore_patterns(*files)
+
+    @staticmethod
+    def ignore_patterns(*patterns):
+        """
+        Ignore patterns based on the absolute file path.
+
+        Use an `*` at the beginning to match relative paths:
+        ```
+        env.copy(".", ignore=env.ignore_patterns("*platform/*.lb"))
+        ```
+        This ignores all files in the `platform` sub-directory with the
+        ending `.lb`.
+        """
+        def check(path, files):
+            ignored = set()
+            for pattern in patterns:
+                for filename in files:
+                    if fnmatch.fnmatch(os.path.join(path, filename), pattern):
+                        # The copytree function uses only the filename to check
+                        # which files should be ignored, not the absolute path.
+                        ignored.add(filename)
+            return ignored
+        return check
 
     def __reload_template_environment(self, filters):
         if self.__template_environment_filters == filters:
