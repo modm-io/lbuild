@@ -215,12 +215,14 @@ if __name__ == '__main__':
                     with open(logfilename, "wb") as logfile:
                         logfile.write(log.to_xml(to_string=True))
             else:
-                raise lbuild.exception.BlobException("Unknown command-line "
-                                                     "option '{}'".format(args.action))
-    except lbuild.exception.BlobException as error:
+                raise lbuild.exception.BlobArgumentException("Unknown command-line "
+                                                             "option '{}'".format(args.action))
+    except lbuild.exception.BlobArgumentException as error:
         argument_parser.print_help()
+        print(error)
+        sys.exit(2)
+    except lbuild.exception.BlobException as error:
         sys.stderr.write('\nERROR: %s\n' % error)
-
         if args.verbose >= 2:
             traceback.print_exc()
         sys.exit(1)

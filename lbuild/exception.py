@@ -15,6 +15,13 @@ class BlobException(Exception):
     pass
 
 
+class BlobArgumentException(BlobException):
+    """
+    Raised if something is wrong with the command line arguments.
+    """
+    pass
+
+
 class BlobOptionFormatException(BlobException):
     """
     Exception for all invalid option names.
