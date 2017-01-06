@@ -254,7 +254,31 @@ class Environment:
         else:
             return os.path.join(self.__outpath, self.outbasepath, *path)
 
+    def has_option(self, key):
+        """Query whether an option exists."""
+        try:
+            value = self.options[key]
+            return True
+        except BlobException:
+            return False
+
+    def get_option(self, key, default=None):
+        """
+        Get an option value.
+
+        Returns a user configurable default value if the option is not found.
+        """
+        try:
+            return self.options[key]
+        except BlobException:
+            return default
+
     def __getitem__(self, key):
+        """
+        Get an option value.
+
+        Raises an exception if the option is not found.
+        """
         return self.options[key]
 
     def __repr__(self):
