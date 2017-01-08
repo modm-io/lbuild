@@ -221,6 +221,10 @@ if __name__ == '__main__':
         argument_parser.print_help()
         print(error)
         sys.exit(2)
+    except lbuild.exception.BlobTemplateException as error:
+        sys.stderr.write('\nERROR: %s\n' % error)
+        traceback.print_exc()
+        sys.exit(3)
     except lbuild.exception.BlobException as error:
         sys.stderr.write('\nERROR: %s\n' % error)
         if args.verbose >= 2:

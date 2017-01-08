@@ -15,7 +15,7 @@ import fnmatch
 
 import lbuild.filter
 
-from .exception import BlobException
+from .exception import BlobException, BlobTemplateException
 
 
 def _copytree(logger, src, dst, ignore=None):
@@ -222,10 +222,10 @@ class Environment:
                                                  error.__class__.__name__,
                                                  error))
         except jinja2.exceptions.UndefinedError as error:
-            raise BlobException("Error in template '{}':\n"
-                                " {}: {}".format(self.modulepath(src),
-                                                 error.__class__.__name__,
-                                                 error))
+            raise BlobTemplateException("Error in template '{}':\n"
+                                        " {}: {}".format(self.modulepath(src),
+                                                         error.__class__.__name__,
+                                                         error))
         except BlobException as error:
             raise BlobException("Error in template '{}': \n"
                                 "{}".format(self.modulepath(src), error))

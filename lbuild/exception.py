@@ -39,6 +39,11 @@ class BlobAttributeException(BlobException):
                                ("The attribute {} may only be changed in "
                                 "the init(...) method".format(name)))
 
+class BlobTemplateException(BlobException):
+    """
+    Error in Jinja2 template evaluation.
+    """
+    pass
 
 class BlobBuildException(BlobException):
     """
