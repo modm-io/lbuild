@@ -10,23 +10,23 @@
 from setuptools import setup, find_packages
 
 setup(
-    name = "lbuild",    
+    name = "lbuild",
     version = "0.1",
     scripts = ['scripts/lbuild'],
-    
+
     packages = find_packages(exclude=["test"]),
-    
+
     include_package_data = True,
-	
+
 	# Make sure all files are unzipped during installation
 	#zip_safe = False,
-	
-    install_requires = ['lxml', 'jinja2'],
-    
+
+    install_requires = ['lxml', 'jinja2', 'gitpython'],
+
     extras_require = {
-        "test": ['testfixtures'],
+        "test": ['testfixtures', 'coverage'],
     },
-    
+
     # Metadata
     author = "Fabian Greif",
     author_email = "fabian.greif@rwth-aachen.de",
@@ -49,4 +49,3 @@ setup(
         "Topic :: Software Development :: Embedded Systems",
     ],
 )
-
