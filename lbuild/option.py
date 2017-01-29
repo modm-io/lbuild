@@ -206,6 +206,20 @@ class EnumerationOption(Option):
     LINEWITH = 120
 
     def __init__(self, name, description, enumeration, default=None):
+        """
+        Construct an enumeration option.
+
+        Keyword arguments:
+        name -- Name of the option.
+        description -- Short description of the option. Can contain markdown
+            markup.
+        enumeration -- If `enumeration` is an enum.Enum subclass it is used
+            directly, otherwise it is converted into an Enum class. During
+            the conversion the enumeration names are converted to string.
+        default -- Default value which is used if no value is given in the
+            configuration. If the default value is not set, the build will
+            fail if no value is specified.
+        """
         Option.__init__(self, name, description)
         if inspect.isclass(enumeration) and issubclass(enumeration, enum.Enum):
             self._enumeration = enumeration
@@ -213,7 +227,10 @@ class EnumerationOption(Option):
                 len(enumeration) == len(set(enumeration)):
             # If the argument is a list and the items in the list are unqiue,
             # convert it so that the value of the enum equals its name.
-            self._enumeration = enum.Enum(name, dict(zip(enumeration, enumeration)))
+            self._enumeration = enum.Enum(name, dict(zip(map(str, enumeration), enumeration)))
+
+            if default is not None:
+                default = str(default)
         else:
             self._enumeration = enum.Enum(name, enumeration)
         if default is not None:
@@ -266,4 +283,3 @@ class EnumerationOption(Option):
             return self._enumeration[value.name]
         except AttributeError:
             return self._enumeration[value]
-
