@@ -370,12 +370,17 @@ class Parser:
         Go through all to build and call their 'build' function.
         """
         Parser.verify_options_are_defined(module_options)
+        all_modules = {m.fullname:m for m in build_modules}
         for module in build_modules:
             option_resolver = lbuild.module.OptionNameResolver(module.repository,
                                                                module,
                                                                repo_options,
                                                                module_options)
+            module_resolver = lbuild.module.ModuleNameResolver(module.repository,
+                                                               module,
+                                                               all_modules)
             env = lbuild.environment.Environment(option_resolver,
+                                                 module_resolver,
                                                  module,
                                                  outpath,
                                                  buildlog)

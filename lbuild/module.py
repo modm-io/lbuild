@@ -110,6 +110,44 @@ class OptionNameResolver:
     def __len__(self):
         return len(self.module_options) + len(self.repo_options)
 
+class ModuleNameResolver:
+    """
+    Module name resolver for modules.
+    """
+    def __init__(self, repository, module, modules):
+        self.repository = repository
+        self.module = module
+        self.modules = modules
+
+    def __getitem__(self, key: str):
+        module_parts = key.split(":")
+
+        try:
+            depth = len(module_parts)
+            module_fullname_parts = self.module.fullname.split(":")
+            if len(module_fullname_parts) > (depth - 1):
+                module_fullname_parts = module_fullname_parts[:depth - 1]
+
+            name = []
+            for part, fill in itertools.zip_longest(module_parts,
+                                                    module_fullname_parts,
+                                                    fillvalue=""):
+                if part == "":
+                    name.append(fill)
+                else:
+                    name.append(part)
+            key = ":".join(name)
+            return self.modules[key]
+        except KeyError:
+            raise BlobException("Unknown module name '{}' in "
+                                "repository '{}'".format(key, self.repository.name))
+
+    def __repr__(self):
+        return repr(self.modules)
+
+    def __len__(self):
+        return len(self.modules)
+
 
 class Module:
 

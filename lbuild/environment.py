@@ -50,8 +50,9 @@ def _copytree(logger, src, dst, ignore=None):
 
 class Environment:
 
-    def __init__(self, options, module, outpath, buildlog):
+    def __init__(self, options, modules, module, outpath, buildlog):
         self.options = options
+        self.modules = modules
         self.__module = module
         self.__modulepath = module.path
         self.__outpath = outpath
@@ -272,6 +273,14 @@ class Environment:
             return self.options[key]
         except BlobException:
             return default
+
+    def has_module(self, key):
+        """Query whether a module exists."""
+        try:
+            value = self.modules[key]
+            return True
+        except BlobException:
+            return False
 
     def __getitem__(self, key):
         """
