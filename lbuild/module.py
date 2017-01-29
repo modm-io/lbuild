@@ -79,20 +79,9 @@ class OptionNameResolver:
                 return self.repo_options[key].value
             else:
                 option_name = option_parts[-1]
-                module_name = option_parts[0:-1]
+                partial_module_name = option_parts[:-1]
 
-                module_fullname_parts = self.module.fullname.split(":")
-                if len(module_fullname_parts) > (depth - 1):
-                    module_fullname_parts = module_fullname_parts[:depth - 1]
-
-                name = []
-                for part, fill in itertools.zip_longest(module_name,
-                                                        module_fullname_parts,
-                                                        fillvalue=""):
-                    if part == "":
-                        name.append(fill)
-                    else:
-                        name.append(part)
+                name = self.module.fill_partial_name(partial_module_name)
                 name.append(option_name)
                 key = ":".join(name)
                 return self.module_options[key].value
@@ -120,22 +109,9 @@ class ModuleNameResolver:
         self.modules = modules
 
     def __getitem__(self, key: str):
-        module_parts = key.split(":")
-
+        partial_name = key.split(":")
         try:
-            depth = len(module_parts)
-            module_fullname_parts = self.module.fullname.split(":")
-            if len(module_fullname_parts) > (depth - 1):
-                module_fullname_parts = module_fullname_parts[:depth - 1]
-
-            name = []
-            for part, fill in itertools.zip_longest(module_parts,
-                                                    module_fullname_parts,
-                                                    fillvalue=""):
-                if part == "":
-                    name.append(fill)
-                else:
-                    name.append(part)
+            name = self.module.fill_partial_name(partial_name)
             key = ":".join(name)
             return self.modules[key]
         except KeyError:
@@ -258,14 +234,38 @@ class Module:
     def fullname(self):
         return self._fullname
 
+    def fill_partial_name(self, partial_name):
+        """
+        Fill the array of the module name with the parts of the full name
+        of the current module.
+
+        Returns an array of the full name.
+        """
+        module_fullname_parts = self.fullname.split(":")
+
+        # Limit length of the module name to the length of the requested
+        # name
+        depth = len(partial_name)
+        if len(module_fullname_parts) > depth:
+            module_fullname_parts = module_fullname_parts[:depth]
+
+        # Using zip_longest restricts the name to the length of full name
+        # if it is shorted than the requested module name.
+        name = []
+        for part, fill in itertools.zip_longest(partial_name,
+                                                module_fullname_parts,
+                                                fillvalue=""):
+            name.append(fill if (part == "") else part)
+        return name
+
     def init(self):
         # Execute init() function from module to get module name
         self.functions['init'](self)
-    
+
         if self.name is None:
             raise BlobException("The init(module) function must set a module name! " \
                                 "Please set the 'name' attribute.")
-    
+
         LOGGER.info("Found module '%s'", self.name)
 
     def register_module(self):
@@ -306,7 +306,7 @@ class Module:
                 module = Module(repository=self.repository,
                                 filename=None,
                                 path=self.path)
-                
+
                 module.functions = {
                     'init': submodule.init,
                     'prepare': submodule.prepare,
@@ -317,7 +317,7 @@ class Module:
                 module = Module.parse_module(repository=self.repository,
                                              module_filename=os.path.join(self.path,
                                                                           submodule))
-            
+
             # Set parent for new module
             if self._parent:
                 module.parent = "{}:{}".format(self._parent, self._name)
