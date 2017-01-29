@@ -223,7 +223,7 @@ class EnumerationOption(Option):
         Option.__init__(self, name, description)
         if inspect.isclass(enumeration) and issubclass(enumeration, enum.Enum):
             self._enumeration = enumeration
-        elif (isinstance(enumeration, list) or isinstance(enumeration, tuple)) and \
+        elif isinstance(enumeration, (list, tuple, set, range)) and \
                 len(enumeration) == len(set(enumeration)):
             # If the argument is a list and the items in the list are unqiue,
             # convert it so that the value of the enum equals its name.

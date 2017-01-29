@@ -85,5 +85,19 @@ class OptionTest(unittest.TestCase):
                                                  enumeration=enum_list)
         self.assertEqual("value1", option.value)
 
+    def test_should_be_constructable_from_range(self):
+        option = lbuild.option.EnumerationOption("test",
+                                                 "description",
+                                                 default=10,
+                                                 enumeration=range(1, 21))
+        self.assertEqual(10, option.value)
+
+    def test_should_be_constructable_from_set(self):
+        option = lbuild.option.EnumerationOption("test",
+                                                 "description",
+                                                 default=10,
+                                                 enumeration=set(range(1, 21)))
+        self.assertEqual(10, option.value)
+
 if __name__ == '__main__':
     unittest.main()
