@@ -346,14 +346,14 @@ class Module:
         if name in self.options:
             raise BlobException("Option name '%s' is already defined" % name)
 
-    def depends(self, dependencies):
+    def depends(self, *dependencies):
         """
         Add one or more dependencies for the module.
 
         Keyword arguments:
-        dependencies -- Either one module name or a list of module names.
+        dependencies -- one or several dependencies as comma separated arguments.
         """
-        for dependency in utils.listify(dependencies):
+        for dependency in dependencies:
             verify_module_name(dependency)
             self.dependencies.append(dependency)
 
