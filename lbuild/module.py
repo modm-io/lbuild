@@ -83,7 +83,7 @@ class OptionNameResolver:
 
                 module_fullname_parts = self.module.fullname.split(":")
                 if len(module_fullname_parts) > (depth - 1):
-                    module_fullname_parts[:depth - 1]
+                    module_fullname_parts = module_fullname_parts[:depth - 1]
 
                 name = []
                 for part, fill in itertools.zip_longest(module_name,
