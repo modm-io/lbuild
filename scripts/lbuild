@@ -54,7 +54,7 @@ if __name__ == '__main__':
              "the library configuration file.")
     argument_parser.add_argument('-c', '--config',
         dest='config',
-        default='project.lb',
+        default='project.xml',
         help="Project/library configuration file. "
              "Specifies the used repositories, modules and options "
              "(default: '%(default)s').")

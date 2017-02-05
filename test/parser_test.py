@@ -108,7 +108,7 @@ class ParserTest(unittest.TestCase):
         self.assertIn("repo2:module4:submodule2", self.parser.modules)
 
     def test_should_parse_configuration_file(self):
-        modules, options = self.parser.parse_configuration(self._get_path("configfile/project.lb"))
+        modules, options = self.parser.parse_configuration(self._get_path("configfile/project.xml"))
 
         self.assertEqual(4, len(modules))
         self.assertIn("repo1:other", modules)
@@ -129,7 +129,7 @@ class ParserTest(unittest.TestCase):
     def test_should_merge_options(self):
         self.parser.parse_repository(self._get_path("combined/repo1.lb"))
         self.parser.parse_repository(self._get_path("combined/repo2/repo2.lb"))
-        _, config_options = self.parser.parse_configuration(self._get_path("combined/test1.lb"))
+        _, config_options = self.parser.parse_configuration(self._get_path("combined/test1.xml"))
 
         options = self.parser.merge_repository_options(config_options)
         self.assertEqual("hosted", options["repo1:target"].value)
@@ -139,7 +139,7 @@ class ParserTest(unittest.TestCase):
 
     def test_should_select_available_modules(self):
         self.parser.parse_repository(self._get_path("combined/repo1.lb"))
-        _, config_options = self.parser.parse_configuration(self._get_path("combined/test1.lb"))
+        _, config_options = self.parser.parse_configuration(self._get_path("combined/test1.xml"))
 
         options = self.parser.merge_repository_options(config_options)
         modules = self.parser.prepare_repositories(options)
@@ -151,7 +151,7 @@ class ParserTest(unittest.TestCase):
         self.parser.parse_repository(self._get_path("combined/repo1.lb"))
         self.parser.parse_repository(self._get_path("combined/repo2/repo2.lb"))
         selected_modules, config_options = \
-            self.parser.parse_configuration(self._get_path("combined/test1.lb"))
+            self.parser.parse_configuration(self._get_path("combined/test1.xml"))
 
         repo_options = self.parser.merge_repository_options(config_options)
         modules = self.parser.prepare_repositories(repo_options)
