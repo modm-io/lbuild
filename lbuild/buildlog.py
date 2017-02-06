@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2016, Fabian Greif
+# Copyright (c) 2016-2017, Fabian Greif
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
 # 2-clause BSD license. See the file `LICENSE.txt` for the full license
 # governing this code.
 
+import os
 import logging
+
 import lxml.etree
 from .exception import BlobBuildException
 
@@ -23,7 +25,7 @@ class Operation:
     from within it was generated.
     """
     def __init__(self, module, filename_in: str, filename_out: str, time=None):
-        self.module = module.fullname
+        self.modulename = module.fullname
         self.modulepath = module.path
 
         self.filename_in = filename_in
@@ -31,8 +33,18 @@ class Operation:
 
         self.time = time
 
-    def __str__(self):
-        return "{} -> {}".format(self.filename_in, self.filename_out)
+    @property
+    def filename_local_in(self):
+        """
+        Remove the module path from the output filename.
+        """
+        localfile = os.path.join(os.path.relpath(os.path.dirname(self.filename_in),
+                                                 self.modulepath),
+                                 os.path.basename(self.filename_in))
+        return os.path.normpath(localfile)
+
+    def __repr__(self):
+        return "<{}: {} -> {}>".format(self.modulename, self.filename_in, self.filename_out)
 
 
 class BuildLog:
@@ -59,19 +71,36 @@ class BuildLog:
                                              filename_in,
                                              module.fullname,
                                              previous.filename_in,
-                                             previous.module))
+                                             previous.modulename))
 
         self._build_files[filename_out] = operation
         self.operations.append(operation)
 
+        return operation
+
+    def get_operations_per_module(self, modulename: str):
+        """
+        Get all operations which have been performed for the given module and
+        its submodules.
+        
+        Keyword arguments:
+        modulename -- Full module name.
+        """
+        module_operations = [operation for operation in self.operations if
+                             operation.modulename.startswith(modulename)]
+        return module_operations
+
     def to_xml(self, to_string=True):
+        """
+        Convert the complete build log into a XML representation.
+        """
         rootnode = lxml.etree.Element("buildlog")
 
         for operation in self.operations:
             operationnode = lxml.etree.SubElement(rootnode, "operation")
 
             modulenode = lxml.etree.SubElement(operationnode, "module")
-            modulenode.text = operation.module
+            modulenode.text = operation.modulename
             srcnode = lxml.etree.SubElement(operationnode, "source")
             srcnode.text = operation.filename_in
             destnode = lxml.etree.SubElement(operationnode, "destination")
@@ -88,3 +117,4 @@ class BuildLog:
                                        xml_declaration=True,)
         else:
             return rootnode
+

@@ -26,19 +26,29 @@ class BuildLogTest(unittest.TestCase):
 
         self.module1 = lbuild.module.Module(self.repo, "module.lb", ".")
         self.module1.name = "module1"
+        self.module1.path = "/m1"
         self.module1.register_module()
+
+        self.module1a = lbuild.module.Module(self.repo, "module.lb", ".")
+        self.module1a.name = "module1a"
+        self.module1a.path = "/m1/a"
+        self.module1a.parent = "module1"
+        self.module1a.register_module()
 
         self.module2 = lbuild.module.Module(self.repo, "module.lb", ".")
         self.module2.name = "module2"
+        self.module2.path = "/m2"
         self.module2.register_module()
 
     def test_should_collect_operations(self):
         log = lbuild.buildlog.BuildLog()
 
-        log.log(self.module1, "in1", "out1")
-        log.log(self.module1, "in2", "out2")
+        o1 = log.log(self.module1, "in1", "out1")
+        o2 = log.log(self.module1, "in2", "out2")
 
         self.assertEqual(2, len(log.operations))
+        self.assertIn(o1, log.operations)
+        self.assertIn(o2, log.operations)
 
     def test_should_raise_on_overwriting_a_file(self):
         log = lbuild.buildlog.BuildLog()
@@ -67,6 +77,26 @@ class BuildLogTest(unittest.TestCase):
   </operation>
 </buildlog>
 """, log.to_xml())
+
+    def test_should_provide_operations_per_module(self):
+        log = lbuild.buildlog.BuildLog()
+
+        o1 = log.log(self.module1, "in1", "out1")
+        o1a = log.log(self.module1a, "in1a", "out1a")
+        o2 = log.log(self.module2, "in2", "out2")
+
+        operations = log.get_operations_per_module("repo:module1")
+        self.assertIn(o1, operations)
+        self.assertIn(o1a, operations)
+        self.assertNotIn(o2, operations)
+
+    def test_should_create_local_path(self):
+        log = lbuild.buildlog.BuildLog()
+        o1 = log.log(self.module1, "/m1/in1", "out1")
+
+        self.assertEqual("/m1/in1", o1.filename_in)
+        self.assertEqual("in1", o1.filename_local_in)
+
 
 if __name__ == '__main__':
     unittest.main()
