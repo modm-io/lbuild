@@ -372,8 +372,11 @@ class Parser:
         Go through all to build and call their 'build' function.
         """
         Parser.verify_options_are_defined(module_options)
-        all_modules = {m.fullname:m for m in build_modules}
-        for module in build_modules:
+        all_modules = {m.fullname: m for m in build_modules}
+
+        # Build all modules in reversed alphabetical order. This enforces
+        # that the submodules are always build before their parent modules.
+        for module in sorted(build_modules, reverse=True):
             option_resolver = lbuild.module.OptionNameResolver(module.repository,
                                                                module,
                                                                repo_options,

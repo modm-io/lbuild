@@ -363,6 +363,11 @@ class Module:
             self.dependencies.append(dependency)
 
     def __lt__(self, other):
+        """
+        Compare the full name of two modules.
+
+        Used to sort modules by their full name.
+        """
         return self.fullname.__lt__(other.fullname)
 
     def __repr__(self):
