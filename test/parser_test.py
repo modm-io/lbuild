@@ -162,12 +162,13 @@ class ParserTest(unittest.TestCase):
     def test_should_resolve_module_dependencies(self):
         build_modules, _, _ = self._get_build_modules()
 
-        self.assertEqual(6, len(build_modules))
+        self.assertEqual(7, len(build_modules))
 
         m = [x.fullname for x in build_modules]
         self.assertIn("repo1:other", m)
         self.assertIn("repo1:module1", m)
         self.assertIn("repo2:module4", m)
+        self.assertIn("repo1:module2", m)
         self.assertIn("repo1:module2:submodule3", m)
         self.assertIn("repo1:module2:submodule3:subsubmodule1", m)
         self.assertIn("repo1:module2:submodule3:subsubmodule2", m)

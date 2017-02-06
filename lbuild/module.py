@@ -224,8 +224,14 @@ class Module:
 
     @parent.setter
     def parent(self, name):
+        """
+        Set a parent for the current module.
+
+        Modules always have a dependency on their parent modules.
+        """
         if self._fullname is None:
             self._parent = name
+            self.depends(":{}".format(name))
         else:
             raise exception.BlobAttributeException("name")
 
