@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2015, Fabian Greif
+# Copyright (c) 2015-2016, Fabian Greif
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -34,7 +34,7 @@ def load_and_verify(configfile):
 
         xmltree = xmlroot.getroot()
     except OSError as error:
-            raise BlobException(error)
+        raise BlobException(error)
     except (lxml.etree.DocumentInvalid,
             lxml.etree.XMLSyntaxError,
             lxml.etree.XMLSchemaParseError,
@@ -68,7 +68,7 @@ def to_dict(xmltree):
         children.append(c)
     if children:
         dd = collections.defaultdict(list)
-        for dc in map(to_dict, children):
+        for dc in [to_dict(c) for c in  children]:
             for k, v in dc.items():
                 dd[k].append(v)
         d = {xmltree.tag: {k:v[0] if len(v) == 1 else v for k, v in dd.items()}}

@@ -37,6 +37,12 @@ def is_repository_option(option_name):
         return False
 
 def prepare_argument_parser():
+    """
+    Set up the argument parser for the different commands.
+
+    Return:
+    Configured ArgumentParser object.
+    """
     argument_parser = argparse.ArgumentParser(
         description='Build source code libraries from modules.')
     argument_parser.add_argument('-r', '--repository',
@@ -213,6 +219,9 @@ def run(args):
                                                          "option '{}'".format(args.action))
 
 def main():
+    """
+    Main entry point of lbuild.
+    """
     argument_parser = prepare_argument_parser()
     args = argument_parser.parse_args(sys.argv[1:])
 

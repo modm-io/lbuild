@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright (c) 2015, Fabian Greif
+# Copyright (c) 2015-2017, Fabian Greif
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -16,7 +16,6 @@ import lbuild.filter
 import lbuild.option
 import lbuild.repository
 
-from . import utils
 from . import exception
 
 from .repository import Localpath
@@ -163,7 +162,7 @@ class Module:
                                 modulepath)
 
                 # Get the required global functions
-                module.functions = Repository._get_global_functions(local, ['init', 'prepare', 'build'])
+                module.functions = Repository.get_global_functions(local, ['init', 'prepare', 'build'])
                 module.init()
 
                 return module

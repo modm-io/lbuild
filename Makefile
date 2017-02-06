@@ -3,7 +3,7 @@ test:
 	@python3 -m unittest discover -p *test.py
 
 coverage:
-	@coverage run --source=lbuild -m unittest discover -p *test.py
+	@coverage run --branch --source=lbuild -m unittest discover -p *test.py
 	@coverage report
 	@coverage html -d build/coverage
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright (c) 2015, Fabian Greif
+# Copyright (c) 2015-2017, Fabian Greif
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -175,7 +175,7 @@ class Parser:
                                                                     repo_options))
 
             # Parse the modules inside this repository
-            for modulefile in repo._module_files:
+            for modulefile in repo.module_files:
                 module = lbuild.module.Module.parse_module(repo, modulefile)
                 available = module.prepare(repo_options)
                 self.available_modules.update(available)
@@ -282,8 +282,8 @@ class Parser:
                 if module not in selected_modules:
                     selected_modules.append(module)
 
-        LOGGER.info("Selected modules: {}".format(", ".join(
-            sorted([module.fullname for module in selected_modules]))))
+        LOGGER.info("Selected modules: %s",
+                    ", ".join(sorted([module.fullname for module in selected_modules])))
 
         current = selected_modules
         while True:
@@ -294,7 +294,8 @@ class Parser:
 
                     if dependency not in selected_modules and \
                             dependency not in additional:
-                        LOGGER.debug("Add dependency: {}".format(dependency.fullname))
+                        LOGGER.debug("Add dependency: %s",
+                                     dependency.fullname)
                         additional.append(dependency)
             if not additional:
                 # Abort if no new dependencies are being found
@@ -305,7 +306,8 @@ class Parser:
 
         return selected_modules
 
-    def merge_module_options(self, build_modules, config_options):
+    @staticmethod
+    def merge_module_options(build_modules, config_options):
         """
         Return the list of options used for building the selected modules.
 
@@ -407,4 +409,5 @@ class Parser:
         build_modules = self.resolve_dependencies(modules, selected_modules)
         module_options = self.merge_module_options(build_modules, config_options)
 
-        self.build_modules(outpath, build_modules, repo_options, module_options)
+        log = lbuild.buildlog.BuildLog()
+        self.build_modules(outpath, build_modules, repo_options, module_options, log)

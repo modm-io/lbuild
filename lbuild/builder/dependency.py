@@ -42,7 +42,8 @@ def graphviz(repositories, clustered=False):
                 name = ":\\n".join(module.fullname.split(":")[1:])
             else:
                 name = ":\\n".join(module.fullname.split(":"))
-            output.append("\t\t{} [label=\"{}\"];".format(get_valid_identifier(module.fullname), name))
+            output.append("\t\t{} [label=\"{}\"];".format(get_valid_identifier(module.fullname),
+                                                          name))
 
         output.append("\t}")
 

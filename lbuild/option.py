@@ -194,7 +194,7 @@ class NumericOption(Option):
         elif isinstance(value, str):
             try:
                 return int(value, 0)
-            except:
+            except ValueError:
                 pass
 
         raise BlobException("Value '%s' (%s) must be numeric" %
@@ -227,7 +227,7 @@ class EnumerationOption(Option):
                 len(enumeration) == len(set(enumeration)):
             # If the argument is a list and the items in the list are unqiue,
             # convert it so that the value of the enum equals its name.
-            self._enumeration = enum.Enum(name, dict(zip(map(str, enumeration), enumeration)))
+            self._enumeration = enum.Enum(name, {str(entry): entry for entry in enumeration})
 
             if default is not None:
                 default = str(default)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2015, Fabian Greif
+# Copyright (c) 2015-2017, Fabian Greif
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -99,7 +99,7 @@ class Repository:
 
         # List of module filenames which are later transfered into
         # module objects
-        self._module_files = []
+        self.module_files = []
 
         # List of available module objects (modules that returned True in
         # the `prepare` step).
@@ -136,7 +136,7 @@ class Repository:
             if not os.path.isfile(file):
                 raise BlobException("Module file not found '%s'" % file)
 
-            self._module_files.append(file)
+            self.module_files.append(file)
 
     def find_modules_recursive(self, basepath="", modulefile="module.lb"):
         """
@@ -151,7 +151,7 @@ class Repository:
         for path, _, files in os.walk(basepath):
             if modulefile in files:
                 modulefilepath = os.path.normpath(os.path.join(path, modulefile))
-                self._module_files.append(modulefilepath)
+                self.module_files.append(modulefilepath)
 
     def add_option(self, option: lbuild.option.Option):
         """
@@ -171,7 +171,7 @@ class Repository:
             raise BlobException("Option name '%s' is already defined" % name)
 
     @staticmethod
-    def _get_global_functions(local, names):
+    def get_global_functions(local, names):
         """
         Get global functions from the environment.
         """
@@ -208,7 +208,7 @@ class Repository:
                 }
                 exec(code, local)
 
-                repo.functions = Repository._get_global_functions(local, ['init', 'prepare'])
+                repo.functions = Repository.get_global_functions(local, ['init', 'prepare'])
 
                 # Execution init() function. In this function options are added.
                 repo.functions['init'](repo)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright (c) 2015, Fabian Greif
+# Copyright (c) 2015-2017, Fabian Greif
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -10,8 +10,8 @@
 import os
 import time
 import shutil
-import jinja2
 import fnmatch
+import jinja2
 
 import lbuild.filter
 
@@ -60,6 +60,10 @@ class Environment:
         self.__buildlog = buildlog
         self.__template_environment = None
         self.__template_environment_filters = None
+        self.__template_global_substitutions = {
+            'time': time.strftime("%d %b %Y, %H:%M:%S", time.localtime()),
+            'options': self.options,
+        }
 
         self.outbasepath = None
         self.substitutions = {}
@@ -138,10 +142,6 @@ class Environment:
             return
 
         self.__template_environment_filters = filters
-        self.__global_substitutions = {
-            'time': time.strftime("%d %b %Y, %H:%M:%S", time.localtime()),
-            'options': self.options,
-        }
 
         # Overwrite jinja2 Environment in order to enable relative paths
         # since this runs locally that should not be a security concern
@@ -211,7 +211,7 @@ class Environment:
                 # the previous environment
                 self.__reload_template_environment(filters)
 
-            template = self.template_environment.get_template(src, globals=self.__global_substitutions)
+            template = self.template_environment.get_template(src, globals=self.__template_global_substitutions)
             output = template.render(substitutions)
         except jinja2.TemplateNotFound as error:
             raise BlobException('Failed to retrieve Template: %s' % error)
@@ -258,7 +258,7 @@ class Environment:
     def has_option(self, key):
         """Query whether an option exists."""
         try:
-            value = self.options[key]
+            _ = self.options[key]
             return True
         except BlobException:
             return False
@@ -277,7 +277,7 @@ class Environment:
     def has_module(self, key):
         """Query whether a module exists."""
         try:
-            value = self.modules[key]
+            _ = self.modules[key]
             return True
         except BlobException:
             return False
