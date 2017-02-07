@@ -19,6 +19,7 @@ from .exception import BlobException
 import lbuild.module
 
 LOGGER = logging.getLogger('lbuild.config')
+DEFAULT_CACHE_FOLDER = ".lbuild_cache"
 
 class Option:
     """
@@ -47,8 +48,6 @@ class Option:
 
 
 class Configuration:
-    
-    DEFAULT_CACHE_FOLDER = ".lbuild_cache"
 
     def __init__(self):
         self.filename = ""
@@ -89,7 +88,7 @@ class Configuration:
         return xmltree
 
     @staticmethod
-    def parse_configuration(configfile):
+    def parse_configuration(configfile, childconfig=None):
         """
         Parse the configuration file.
 
@@ -99,20 +98,27 @@ class Configuration:
         Returns:
         Populated Configuration object.
         """
+        if childconfig is None:
+            childconfig = Configuration()
+
         xmltree = Configuration.load_and_verify(configfile)
-        
-        configuration = Configuration()
+        configpath = os.path.dirname(configfile)
+
+        for basenode in xmltree.iterfind("extends"):
+            basefile = Configuration.__get_path(basenode.text, configpath)
+            Configuration.parse_configuration(basefile, childconfig)
+
+        configuration = childconfig
         configuration.filename = configfile
-        configuration.configpath = os.path.dirname(configfile)
+        configuration.configpath = configpath
 
         # Load cachefolder
         cache_node = xmltree.find("repositories/cache")
         if cache_node is not None:
-            cachefolder = cache_node.text
-            if not os.path.isabs(cachefolder):
-                cachefolder = os.path.join(configuration.configpath, cachefolder)
+            cachefolder = Configuration.__get_path(cache_node.text, configuration.configpath)
         else:
-            cachefolder = os.path.join(configuration.configpath, Configuration.DEFAULT_CACHE_FOLDER)
+            default = DEFAULT_CACHE_FOLDER if configuration.cachefolder is None else configuration.cachefolder
+            cachefolder = os.path.join(configuration.configpath, default)
         configuration.cachefolder = cachefolder
 
         # Load version control nodes
@@ -125,8 +131,11 @@ class Configuration:
         for path_node in xmltree.iterfind("repositories/repository/path"):
             repository_path = path_node.text.format(cache=cachefolder)
 
-            repository_filename = os.path.realpath(os.path.join(configuration.configpath, repository_path))
-            configuration.repositories.append(repository_filename)
+            repository_filename = os.path.realpath(os.path.join(configuration.configpath,
+                                                                repository_path))
+
+            if repository_filename not in configuration.repositories:
+                configuration.repositories.append(repository_filename)
 
         # Load all requested modules
         for modules_node in xmltree.findall('modules'):
@@ -135,7 +144,8 @@ class Configuration:
                 lbuild.module.verify_module_name(modulename)
 
                 LOGGER.debug("- require module '%s'", modulename)
-                configuration.selected_modules.append(modulename)
+                if modulename not in configuration.selected_modules:
+                    configuration.selected_modules.append(modulename)
 
         # Load options
         for option_node in xmltree.find('options').findall('option'):
@@ -145,10 +155,19 @@ class Configuration:
             except KeyError:
                 value = option_node.text
 
-            option = Option(name=name, value=value)
-            configuration.options.append(option)
+            for index, option in enumerate(configuration.options):
+                if option.name == name:
+                    del configuration.options[index]
+            configuration.options.append(Option(name=name, value=value))
 
         return configuration
+
+    @staticmethod
+    def __get_path(path, configpath):
+        if os.path.isabs(path):
+            return path
+        else:
+            return os.path.join(configpath, path)
 
     @staticmethod
     def format_commandline_options(cmd_options):
@@ -184,5 +203,3 @@ class Configuration:
             else:
                 d[xmltree.tag] = text
         return d
-
-

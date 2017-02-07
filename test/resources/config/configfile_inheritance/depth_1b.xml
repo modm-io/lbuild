@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<library>
+    <extends>depth_0.xml</extends>
+
+    <repositories>
+        <repository>
+            <path>repo2.lb</path>
+        </repository>
+    </repositories>
+
+    <options>
+        <option name=":other:xyz">Yes</option>
+        <option name="::abc">Hello World!</option>
+        <option name="::submodule3::price">15</option>
+    </options>
+
+    <modules>
+        <module>::submodule3:subsubmodule2</module>
+        <module>::submodule3</module>
+    </modules>
+</library>

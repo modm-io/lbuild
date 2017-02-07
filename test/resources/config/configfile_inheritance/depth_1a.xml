@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<library>
+    <extends>depth_0.xml</extends>
+
+    <repositories>
+        <repository>
+            <path>repo1.lb</path>
+        </repository>
+        <repository>
+            <path>repo3.lb</path>
+        </repository>
+    </repositories>
+
+    <options>
+        <option name="repo1:foo">43</option>
+        <option name="repo1:other:foo">456</option>
+        <option name="repo1::bar">768</option>
+    </options>
+
+    <modules>
+        <module>repo1:other</module>
+        <module>:module1</module>
+    </modules>
+</library>

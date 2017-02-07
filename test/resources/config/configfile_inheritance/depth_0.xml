@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<library>
+    <repositories>
+        <repository>
+            <path>repo3.lb</path>
+        </repository>
+    </repositories>
+
+    <options>
+        <option name=":other:xyz">No</option>
+        <option name="::abc">Hello World!</option>
+    </options>
+
+    <modules>
+        <module>repo1:other</module>
+    </modules>
+</library>

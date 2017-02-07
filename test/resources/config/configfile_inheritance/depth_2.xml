@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<library>
+    <extends>depth_1a.xml</extends>
+
+    <options>
+        <option name=":target">hosted</option>
+        <option name="repo1:foo">42</option>
+    </options>
+
+    <modules>
+        <module>::submodule3:subsubmodule2</module>
+    </modules>
+</library>
