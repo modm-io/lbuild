@@ -22,23 +22,19 @@ class Action(enum.Enum):
     update = 1
 
 
-def _parse_vcs(configfile, action):
+def _parse_vcs(config: lbuild.config.Configuration,
+               action):
     LOGGER.debug("Initialize VCS repositories")
 
-    xmltree, projectpath = lbuild.config.load_and_verify(configfile)
-    cachefolder = lbuild.config.get_cachefolder(xmltree, projectpath)
-
-    for vcs_node in xmltree.iterfind("repositories/repository/vcs"):
-        for vcs in vcs_node.iterchildren():
-            config = lbuild.config.to_dict(vcs)[vcs.tag]
-
-            if vcs.tag == "git":
+    for vcs in config.vcs:
+        for tag, repoconfig in vcs.items():
+            if tag == "git":
                 LOGGER.debug("Found Git repository")
 
                 from . import git
-                repo = git.Repository(cachefolder, config)
+                repo = git.Repository(config.cachefolder, repoconfig)
             else:
-                raise BlobException("Unsupported VCS type '{}'".format(vcs.tag))
+                raise BlobException("Unsupported VCS type '{}'".format(tag))
 
             if action == Action.init:
                 repo.initialize()

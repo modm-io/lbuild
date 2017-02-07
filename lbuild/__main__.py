@@ -142,21 +142,18 @@ def prepare_argument_parser():
     return argument_parser
 
 def run(args):
+    config = lbuild.config.Configuration.parse_configuration(args.config)
+
     if args.action == 'init':
-        lbuild.vcs.common.initialize(args.config)
+        lbuild.vcs.common.initialize(config)
     elif args.action == 'update':
-        lbuild.vcs.common.update(args.config)
+        lbuild.vcs.common.update(config)
     else:
         parser = lbuild.parser.Parser()
-        parser.load_repositories(args.config, args.repositories)
+        parser.load_repositories(config, args.repositories)
 
-        if args.config is not None:
-            selected_modules, config_options = parser.parse_configuration(args.config)
-        else:
-            selected_modules = []
-            config_options = {}
-        commandline_options = parser.format_commandline_options(args.options)
-        repo_options = parser.merge_repository_options(config_options, commandline_options)
+        commandline_options = config.format_commandline_options(args.options)
+        repo_options = parser.merge_repository_options(config.options, commandline_options)
 
         if args.action in ['discover-repository', 'repo']:
             for option in sorted(list(repo_options.values())):
@@ -169,11 +166,11 @@ def run(args):
             modules = parser.prepare_repositories(repo_options)
             print(lbuild.builder.dependency.graphviz(parser.repositories))
         elif args.action in ['discover-module-options', 'options']:
-            if len(args.modules) == 0 and len(selected_modules) == 0:
-                selected_modules.extend([":**"])
+            if len(args.modules) == 0 and len(config.selected_modules) == 0:
+                config.selected_modules.extend([":**"])
             else:
-                selected_modules.extend(args.modules)
-            _, options = get_modules(parser, repo_options, config_options, selected_modules)
+                config.selected_modules.extend(args.modules)
+            _, options = get_modules(parser, repo_options, config.options, config.selected_modules)
 
             for option in sorted(list(options.values())):
                 print(option.format())
@@ -187,7 +184,7 @@ def run(args):
             if is_repository_option(option_name):
                 option = parser.find_module(repo_options, option_name)
             else:
-                _, options = get_modules(parser, repo_options, config_options)
+                _, options = get_modules(parser, repo_options, config.options)
                 option = parser.find_module(options, option_name)
 
             print(option.factsheet())
@@ -197,7 +194,7 @@ def run(args):
             if is_repository_option(option_name):
                 option = parser.find_module(repo_options, option_name)
             else:
-                _, options = get_modules(parser, repo_options, config_options)
+                _, options = get_modules(parser, repo_options, config.options)
                 option = parser.find_module(options, option_name)
 
             for value in lbuild.utils.listify(option.values):
@@ -205,8 +202,8 @@ def run(args):
         elif args.action == 'build':
             log = lbuild.buildlog.BuildLog()
 
-            selected_modules.extend(args.modules)
-            build_modules, module_options = get_modules(parser, repo_options, config_options, selected_modules)
+            config.selected_modules.extend(args.modules)
+            build_modules, module_options = get_modules(parser, repo_options, config.options, config.selected_modules)
             parser.build_modules(args.path, build_modules, repo_options, module_options, log)
 
             if args.buildlog:

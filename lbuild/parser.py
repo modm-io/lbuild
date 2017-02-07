@@ -40,22 +40,14 @@ class Parser:
         self.available_modules = {}
 
     def load_repositories(self,
-                          configfilename: str,
+                          configuration: config.Configuration,
                           repofilenames=None):
         if repofilenames is not None:
             for repofile in utils.listify(repofilenames):
                 self.parse_repository(repofile)
-
-        if configfilename is not None:
-            configpath = os.path.dirname(configfilename)
-
-            rootnode, projectpath = config.load_and_verify(configfilename)
-            cachefolder = config.get_cachefolder(rootnode, projectpath)
-            for path_node in rootnode.iterfind("repositories/repository/path"):
-                repository_path = path_node.text.format(cache=cachefolder)
-
-                repository_filename = os.path.realpath(os.path.join(configpath, repository_path))
-                self.parse_repository(repository_filename)
+        
+        for repository_filename in configuration.repositories:
+            self.parse_repository(repository_filename)
 
     def parse_repository(self, repofilename: str) -> repository.Repository:
         """
@@ -72,37 +64,6 @@ class Parser:
         else:
             self.repositories[repo.name] = repo
         return repo
-
-    @staticmethod
-    def parse_configuration(configfile):
-        """
-        Parse the configuration file.
-
-        This file contains information about which modules should be included
-        and how they are configured.
-
-        Returns:
-            tuple with the names of the requested modules and the selected options.
-        """
-        xmltree, _ = config.load_and_verify(configfile)
-
-        requested_modules = []
-        for modules_node in xmltree.findall('modules'):
-            for module_node in modules_node.findall('module'):
-                modulename = module_node.text
-                lbuild.module.verify_module_name(modulename)
-
-                LOGGER.debug("- require module '%s'", modulename)
-                requested_modules.append(modulename)
-
-        config_options = {}
-        for option_node in xmltree.find('options').findall('option'):
-            try:
-                config_options[option_node.attrib['name']] = option_node.attrib['value']
-            except KeyError:
-                config_options[option_node.attrib['name']] = option_node.text
-
-        return (requested_modules, config_options)
 
     @staticmethod
     def _overwrite_repository_options(options_full_name,
@@ -147,17 +108,17 @@ class Parser:
 
         # Overwrite the values in the options with the values provided
         # in the configuration file
-        for option_name, option_value in config_options.items():
+        for option in config_options:
             self._overwrite_repository_options(repo_options_by_full_name,
                                                repo_options_by_option_name,
-                                               option_name, option_value)
+                                               option.name, option.value)
 
         # Overwrite again with the values for the command line.
         if cmd_options is not None:
-            for option_name, option_value in cmd_options.items():
+            for option in cmd_options:
                 self._overwrite_repository_options(repo_options_by_full_name,
                                                    repo_options_by_option_name,
-                                                   option_name, option_value)
+                                                   option.name, option.value)
         return repo_options_by_full_name
 
     def prepare_repositories(self,
@@ -329,8 +290,8 @@ class Parser:
                 canidate_list.append([parts, option])
                 canidates[depth] = canidate_list
 
-        for name, value in config_options.items():
-            target_parts = name.split(":")
+        for option in config_options:
+            target_parts = option.name.split(":")
             target_depth = len(target_parts)
 
             if target_depth < 3:
@@ -348,10 +309,10 @@ class Parser:
                     found_options.append(canidate_option)
 
             if len(found_options) == 0:
-                LOGGER.warning("Option '%s' not found in selected modules!", name)
+                LOGGER.warning("Option '%s' not found in selected modules!", option.name)
 
             for found_option in found_options:
-                found_option.value = value
+                found_option.value = option.value
 
         return options
 
@@ -392,25 +353,17 @@ class Parser:
             # TODO add exception handling
             module.functions["build"](env)
 
-    @staticmethod
-    def format_commandline_options(cmd_options):
-        cmd = {}
-        for option in cmd_options:
-            parts = option.split('=')
-            cmd[parts[0]] = parts[1]
-        return cmd
-
     def configure_and_build_library(self, configfile, outpath, cmd_options=None):
         cmd_options = [] if cmd_options is None else cmd_options
 
-        selected_modules, config_options = self.parse_configuration(configfile)
+        configuration = config.Configuration.parse_configuration(configfile)
 
         commandline_options = self.format_commandline_options(cmd_options)
-        repo_options = self.merge_repository_options(config_options, commandline_options)
+        repo_options = self.merge_repository_options(configuration.options, commandline_options)
 
         modules = self.prepare_repositories(repo_options)
-        build_modules = self.resolve_dependencies(modules, selected_modules)
-        module_options = self.merge_module_options(build_modules, config_options)
+        build_modules = self.resolve_dependencies(modules, configuration.selected_modules)
+        module_options = self.merge_module_options(build_modules, configuration.options)
 
         log = lbuild.buildlog.BuildLog()
         self.build_modules(outpath, build_modules, repo_options, module_options, log)

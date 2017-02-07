@@ -25,15 +25,15 @@ class ParserTest(unittest.TestCase):
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), "resources", "parser", filename)
 
     @staticmethod
-    def prepare_modules(parser, selected=None, config=None):
+    def prepare_modules(parser, selected=None, configoptions=None):
         if selected is None:
             selected = [":**"]
-        if config is None:
-            config = {}
-        repo_options = parser.merge_repository_options(config)
+        if configoptions is None:
+            configoptions = []
+        repo_options = parser.merge_repository_options(configoptions)
         modules = parser.prepare_repositories(repo_options)
         build_modules = parser.resolve_dependencies(modules, selected)
-        module_options = parser.merge_module_options(build_modules, config)
+        module_options = parser.merge_module_options(build_modules, configoptions)
         return build_modules, repo_options, module_options
 
     def setUp(self):
@@ -107,31 +107,12 @@ class ParserTest(unittest.TestCase):
         self.assertIn("repo2:module4:submodule1", self.parser.modules)
         self.assertIn("repo2:module4:submodule2", self.parser.modules)
 
-    def test_should_parse_configuration_file(self):
-        modules, options = self.parser.parse_configuration(self._get_path("configfile/project.xml"))
-
-        self.assertEqual(4, len(modules))
-        self.assertIn("repo1:other", modules)
-        self.assertIn(":module1", modules)
-        self.assertIn("::submodule3:subsubmodule1", modules)
-        self.assertIn("::submodule3", modules)
-
-        self.assertEqual(7, len(options))
-        self.assertEqual('hosted', options[':target'])
-        self.assertEqual('43', options['repo1:foo'])
-
-        self.assertEqual('456', options['repo1:other:foo'])
-        self.assertEqual('768', options['repo1::bar'])
-        self.assertEqual('No', options[':other:xyz'])
-        self.assertEqual('Hello World!', options['::abc'])
-        self.assertEqual('15', options['::submodule3::price'])
-
     def test_should_merge_options(self):
         self.parser.parse_repository(self._get_path("combined/repo1.lb"))
         self.parser.parse_repository(self._get_path("combined/repo2/repo2.lb"))
-        _, config_options = self.parser.parse_configuration(self._get_path("combined/test1.xml"))
+        config = lbuild.config.Configuration.parse_configuration(self._get_path("combined/test1.xml"))
 
-        options = self.parser.merge_repository_options(config_options)
+        options = self.parser.merge_repository_options(config.options)
         self.assertEqual("hosted", options["repo1:target"].value)
         self.assertEqual(43, options["repo1:foo"].value)
         self.assertEqual("hosted", options["repo2:target"].value)
@@ -139,9 +120,9 @@ class ParserTest(unittest.TestCase):
 
     def test_should_select_available_modules(self):
         self.parser.parse_repository(self._get_path("combined/repo1.lb"))
-        _, config_options = self.parser.parse_configuration(self._get_path("combined/test1.xml"))
+        config = lbuild.config.Configuration.parse_configuration(self._get_path("combined/test1.xml"))
 
-        options = self.parser.merge_repository_options(config_options)
+        options = self.parser.merge_repository_options(config.options)
         modules = self.parser.prepare_repositories(options)
 
         self.assertIn("repo1:other", modules)
@@ -150,14 +131,13 @@ class ParserTest(unittest.TestCase):
     def _get_build_modules(self):
         self.parser.parse_repository(self._get_path("combined/repo1.lb"))
         self.parser.parse_repository(self._get_path("combined/repo2/repo2.lb"))
-        selected_modules, config_options = \
-            self.parser.parse_configuration(self._get_path("combined/test1.xml"))
+        config = lbuild.config.Configuration.parse_configuration(self._get_path("combined/test1.xml"))
 
-        repo_options = self.parser.merge_repository_options(config_options)
+        repo_options = self.parser.merge_repository_options(config.options)
         modules = self.parser.prepare_repositories(repo_options)
-        build_modules = self.parser.resolve_dependencies(modules, selected_modules)
+        build_modules = self.parser.resolve_dependencies(modules, config.selected_modules)
 
-        return build_modules, config_options, repo_options
+        return build_modules, config.options, repo_options
 
     def test_should_resolve_module_dependencies(self):
         build_modules, _, _ = self._get_build_modules()
@@ -204,13 +184,13 @@ class ParserTest(unittest.TestCase):
         self.parser.parse_repository(self._get_path("combined/repo2/repo2.lb"))
 
         selected_modules = ["repo2:module3"]
-        config_options = {
-            ':target': 'hosted',
-            ':other:xyz': 'No',
-            'repo1::bar': '768',
-            'repo1:other:foo': '456',
-            '::abc': 'Hello World!',
-        }
+        config_options = [
+            lbuild.config.Option(name=':target', value='hosted'),
+            lbuild.config.Option(name=':other:xyz', value='No'),
+            lbuild.config.Option(name='repo1::bar', value='768'),
+            lbuild.config.Option(name='repo1:other:foo', value='456'),
+            lbuild.config.Option(name='::abc', value='Hello World!'),
+        ]
         build_modules, repo_options, module_options = \
             self.prepare_modules(self.parser, selected_modules, config_options)
 
