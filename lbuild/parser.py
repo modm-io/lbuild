@@ -7,7 +7,7 @@
 # 2-clause BSD license. See the file `LICENSE.txt` for the full license
 # governing this code.
 
-import os
+import random
 import logging
 
 import lbuild.module
@@ -335,9 +335,10 @@ class Parser:
         Parser.verify_options_are_defined(module_options)
         all_modules = {m.fullname: m for m in build_modules}
 
-        # Build all modules in reversed alphabetical order. This enforces
-        # that the submodules are always build before their parent modules.
-        for module in sorted(build_modules, reverse=True):
+        # Enforce that the submodules are always build before their
+        # parent modules.
+        sorting_key = lambda module: "{:04} {}".format(module.fullname.count(":"), random.random())
+        for module in sorted(build_modules, key=sorting_key, reverse=True):
             option_resolver = lbuild.module.OptionNameResolver(module.repository,
                                                                module,
                                                                repo_options,
@@ -350,6 +351,9 @@ class Parser:
                                                  module,
                                                  outpath,
                                                  buildlog)
+
+            LOGGER.info("Build %s", module.fullname)
+
             # TODO add exception handling
             module.functions["build"](env)
 
