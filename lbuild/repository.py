@@ -86,6 +86,81 @@ class OptionNameResolver:
         return len(self.options)
 
 
+class RepositoryFacade:
+    """
+    External access to the repository.
+
+    Used when execution the repository files.
+    """
+    def __init__(self, repository):
+        self.__repository = repository
+
+    @property
+    def name(self):
+        return self.__repository.name
+
+    @name.setter
+    def name(self, value):
+        self.__repository.name = value
+
+    @property
+    def description(self):
+        return self.__repository.description
+
+    @description.setter
+    def description(self, value):
+        self.__repository.description = value
+
+    def add_option(self, option: lbuild.option.Option):
+        """
+        Define new repository wide option.
+
+        These options can be used by modules to decide whether they are
+        available and what options they provide for a specific set of
+        repository options.
+        """
+        option.repository = self.__repository
+        option.module = None
+
+        self.__repository.add_unique_option(option)
+
+    def glob(self, pattern):
+        pattern = os.path.abspath(self.__repository.relocate_relative_path(pattern))
+        return glob.glob(pattern)
+
+    def find_modules_recursive(self, basepath="", modulefile="module.lb"):
+        """
+        Find all module files following a specific pattern.
+
+        Args:
+            basepath   : Rootpath for the search.
+            modulefile : Filename of the module files to search
+                for (default: "module.lb").
+        """
+        basepath = self.__repository.relocate_relative_path(basepath)
+        for path, _, files in os.walk(basepath):
+            if modulefile in files:
+                modulefilepath = os.path.normpath(os.path.join(path, modulefile))
+                self.__repository.module_files.append(modulefilepath)
+
+    def add_modules(self, modules):
+        """
+        Add one or more module files.
+
+        Args:
+            modules: List of filenames
+        """
+        module_files = utils.listify(modules)
+
+        for file in module_files:
+            file = self.__repository.relocate_relative_path(file)
+
+            if not os.path.isfile(file):
+                raise BlobException("Module file not found '%s'" % file)
+
+            self.__repository.module_files.append(file)
+
+
 class Repository:
     """
     A repository is a set of modules.
@@ -108,7 +183,7 @@ class Repository:
         # Name -> Option()
         self.options = {}
 
-    def _relocate(self, path):
+    def relocate_relative_path(self, path):
         """
         Relocate relative paths to the path of the repository
         configuration file.
@@ -117,58 +192,15 @@ class Repository:
             path = os.path.join(self.path, path)
         return os.path.normpath(path)
 
-    def glob(self, pattern):
-        pattern = os.path.abspath(self._relocate(pattern))
-        return glob.glob(pattern)
-
-    def add_modules(self, modules):
+    def add_unique_option(self, option):
         """
-        Add one or more module files.
+        Add a new repository option.
 
-        Args:
-            modules: List of filenames
+        Raises an exception if the option is already defined for the repository.
         """
-        module_files = utils.listify(modules)
-
-        for file in module_files:
-            file = self._relocate(file)
-
-            if not os.path.isfile(file):
-                raise BlobException("Module file not found '%s'" % file)
-
-            self.module_files.append(file)
-
-    def find_modules_recursive(self, basepath="", modulefile="module.lb"):
-        """
-        Find all module files following a specific pattern.
-
-        Args:
-            basepath   : Rootpath for the search.
-            modulefile : Filename of the module files to search
-                for (default: "module.lb").
-        """
-        basepath = self._relocate(basepath)
-        for path, _, files in os.walk(basepath):
-            if modulefile in files:
-                modulefilepath = os.path.normpath(os.path.join(path, modulefile))
-                self.module_files.append(modulefilepath)
-
-    def add_option(self, option: lbuild.option.Option):
-        """
-        Define new repository wide option.
-
-        These options can be used by modules to decide whether they are
-        available and what options they provide for a specific set of
-        repository options.
-        """
-        self._check_for_duplicates(option.name)
-        option.repository = self
-        option.module = None
+        if option.name in self.options:
+            raise BlobException("Option name '%s' is already defined" % option.name)
         self.options[option.name] = option
-
-    def _check_for_duplicates(self, name):
-        if name in self.options:
-            raise BlobException("Option name '%s' is already defined" % name)
 
     @staticmethod
     def get_global_functions(local, required, optional=None):
@@ -221,11 +253,11 @@ class Repository:
                 repo.functions = Repository.get_global_functions(local, ['init', 'prepare'])
 
                 # Execution init() function. In this function options are added.
-                repo.functions['init'](repo)
+                repo.functions['init'](RepositoryFacade(repo))
 
                 if repo.name is None:
                     raise BlobException("The init(repo) function must set a repository name! "
-                                        "Please use the set_name() method.")
+                                        "Please write the 'name' attribute.")
         except FileNotFoundError as error:
             raise BlobException("Repository configuration file not found '{}'.".format(repofilename))
         except KeyError as error:
@@ -234,6 +266,18 @@ class Repository:
                                                  error.__class__.__name__,
                                                  error))
         return repo
+
+    def prepare_repository(self, options):
+        self.functions["prepare"](RepositoryFacade(self),
+                                  OptionNameResolver(self,
+                                                     options))
+
+        modules = {}
+        # Parse the modules inside this repository
+        for modulefile in self.module_files:
+            module = lbuild.module.Module.parse_module(self, modulefile)
+            modules.update(module.prepare(options))
+        return modules
 
     def __lt__(self, other):
         return self.name.__cmp__(other.name)

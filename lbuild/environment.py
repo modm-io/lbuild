@@ -275,7 +275,7 @@ class Environment:
                 filenames.append(filename)
         return filenames
 
-    def has_option(self, key):
+    def assert_new_option(self, key):
         """Query whether an option exists."""
         try:
             _ = self.options[key]

@@ -132,15 +132,8 @@ class Parser:
         """
         self.verify_options_are_defined(repo_options)
         for repo in self.repositories.values():
-            repo.functions["prepare"](repo,
-                                      repository.OptionNameResolver(repo,
-                                                                    repo_options))
-
-            # Parse the modules inside this repository
-            for modulefile in repo.module_files:
-                module = lbuild.module.Module.parse_module(repo, modulefile)
-                available = module.prepare(repo_options)
-                self.available_modules.update(available)
+            modules = repo.prepare_repository(repo_options)
+            self.available_modules.update(modules)
 
         # Update the list of modules. Must be done after the prepare loop,
         # because submodules are only added there.

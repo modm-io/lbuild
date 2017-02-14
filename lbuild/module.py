@@ -351,12 +351,12 @@ class Module:
         The module options only influence the build process but not the
         selection and dependencies of modules.
         """
-        self._check_for_duplicates(option.name)
+        self.has_option(option.name)
         option.repository = self.repository
         option.module = self
         self.options[option.name] = option
 
-    def _check_for_duplicates(self, name):
+    def has_option(self, name):
         if name in self.options:
             raise BlobException("Option name '%s' is already defined" % name)
 
