@@ -275,7 +275,7 @@ class Repository:
         modules = {}
         # Parse the modules inside this repository
         for modulefile in self.module_files:
-            module = lbuild.module.Module.parse_module(self, modulefile)
+            module = lbuild.module.Module.parse_module_file(self, modulefile)
             modules.update(module.prepare(options))
         return modules
 

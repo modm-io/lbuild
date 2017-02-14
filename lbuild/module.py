@@ -24,7 +24,7 @@ from .repository import Repository
 
 from .exception import BlobException
 
-LOGGER = logging.getLogger('lbuild.repository')
+LOGGER = logging.getLogger('lbuild.module')
 
 
 def verify_module_name(modulename):
@@ -131,10 +131,82 @@ class ModuleNameResolver:
         return len(self.modules)
 
 
+class ModuleFacade:
+
+    def __init__(self, module):
+        self._module = module
+
+    @property
+    def name(self):
+        return self._module.name
+
+    @property
+    def description(self):
+        return self._module.description
+
+    @property
+    def parent(self):
+        return self._module.parent
+
+    def add_option(self, option):
+        self._module.add_unique_option(option)
+
+    def depends(self, *dependencies):
+        """
+        Add one or more dependencies for the module.
+
+        Keyword arguments:
+        dependencies -- one or several dependencies as comma separated arguments.
+        """
+        self._module.add_dependencies(*dependencies)
+
+    def add_submodule(self, modulename):
+        self._module._submodules.append(modulename)
+
+
+class ModuleInitFacade(ModuleFacade):
+    """
+    Module API for the initialization phase of module.
+
+    Allows to set the module name, description and parent.
+    """
+    def __init__(self, module):
+        ModuleFacade.__init__(self, module)
+
+    @property
+    def name(self):
+        return self._module.name
+
+    @name.setter
+    def name(self, value):
+        self._module.name = value
+
+    @property
+    def description(self):
+        return self._module.description
+
+    @description.setter
+    def description(self, value):
+        self._module.description = value
+
+    @property
+    def parent(self):
+        return self._module.parent
+
+    @parent.setter
+    def parent(self, name):
+        """
+        Set a parent for the current module.
+
+        Modules always have a dependency on their parent modules.
+        """
+        self._module.parent = name
+
+
 class Module:
 
     @staticmethod
-    def parse_module(repository, module_filename: str):
+    def parse_module_file(repository, module_filename: str):
         """
         Parse a specific module file.
 
@@ -240,13 +312,31 @@ class Module:
         """
         if self._fullname is None:
             self._parent = name
-            self.depends(":{}".format(name))
+            self.add_dependencies(":{}".format(name))
         else:
             raise exception.BlobAttributeException("name")
 
     @property
     def fullname(self):
         return self._fullname
+
+    def add_unique_option(self, option):
+        """
+        Define new option for this module.
+
+        The module options only influence the build process but not the
+        selection and dependencies of modules.
+        """
+        if option.name in self.options:
+            raise BlobException("Option name '%s' is already defined" % option.name)
+        option.repository = self.repository
+        option.module = self
+        self.options[option.name] = option
+
+    def add_dependencies(self, *dependencies):
+        for dependency in dependencies:
+            verify_module_name(dependency)
+            self.dependencies.append(dependency)
 
     def fill_partial_name(self, partial_name):
         """
@@ -274,7 +364,7 @@ class Module:
 
     def init(self):
         # Execute init() function from module to get module name
-        self.functions['init'](self)
+        self.functions['init'](ModuleInitFacade(self))
 
         if self.name is None:
             raise BlobException("The init(module) function must set a module name! " \
@@ -307,10 +397,10 @@ class Module:
         Recursively appends all submodules.
         """
         available_modules = {}
-        prepare_function = self.functions["prepare"]
         name_resolver = lbuild.repository.OptionNameResolver(self.repository,
                                                              repo_options)
-        is_available = prepare_function(self, name_resolver)
+        is_available = self.functions["prepare"](ModuleFacade(self),
+                                                 name_resolver)
         if is_available:
             self.register_module()
             available_modules[self.fullname] = self
@@ -328,9 +418,9 @@ class Module:
                 }
                 module.init()
             else:
-                module = Module.parse_module(repository=self.repository,
-                                             module_filename=os.path.join(self.path,
-                                                                          submodule))
+                module = Module.parse_module_file(repository=self.repository,
+                                                  module_filename=os.path.join(self.path,
+                                                                               submodule))
 
             # Set parent for new module
             if self._parent:
@@ -340,36 +430,6 @@ class Module:
             available_modules.update(module.prepare(repo_options))
 
         return available_modules
-
-    def add_submodule(self, modulename):
-        self._submodules.append(modulename)
-
-    def add_option(self, option):
-        """
-        Define new option for this module.
-
-        The module options only influence the build process but not the
-        selection and dependencies of modules.
-        """
-        self.has_option(option.name)
-        option.repository = self.repository
-        option.module = self
-        self.options[option.name] = option
-
-    def has_option(self, name):
-        if name in self.options:
-            raise BlobException("Option name '%s' is already defined" % name)
-
-    def depends(self, *dependencies):
-        """
-        Add one or more dependencies for the module.
-
-        Keyword arguments:
-        dependencies -- one or several dependencies as comma separated arguments.
-        """
-        for dependency in dependencies:
-            verify_module_name(dependency)
-            self.dependencies.append(dependency)
 
     def __lt__(self, other):
         """
