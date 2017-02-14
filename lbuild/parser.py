@@ -14,6 +14,7 @@ import lbuild.module
 import lbuild.environment
 
 from .exception import BlobException
+from .exception import BlobBuildException
 from .exception import BlobOptionFormatException
 
 from . import repository
@@ -45,7 +46,7 @@ class Parser:
         if repofilenames is not None:
             for repofile in utils.listify(repofilenames):
                 self.parse_repository(repofile)
-        
+
         for repository_filename in configuration.repositories:
             self.parse_repository(repository_filename)
 
@@ -146,6 +147,9 @@ class Parser:
         for repo in self.repositories.values():
             for module in repo.modules.values():
                 self.modules[module.fullname] = module
+
+        if len(self.available_modules) == 0:
+            raise BlobBuildException("No module found with the selected repository options!")
 
         return self.available_modules
 

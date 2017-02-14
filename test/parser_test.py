@@ -225,5 +225,25 @@ class ParserTest(unittest.TestCase):
         self.assertRaises(lbuild.exception.BlobBuildException,
                           lambda: self.parser.build_modules(outpath, build_modules, repo_options, module_options, log))
 
+    @testfixtures.tempdir()
+    def test_should_raise_when_no_module_is_found(self, tempdir):
+        self.parser.parse_repository(self._get_path("empty_repository/repo.lb"))
+
+        self.assertRaises(lbuild.exception.BlobBuildException,
+                          lambda: self.prepare_modules(self.parser))
+
+    @testfixtures.tempdir()
+    def test_should_parse_optional_functions_in_module(self, tempdir):
+        self.parser.parse_repository(self._get_path("optional_functions/repo.lb"))
+        _, _, _ = self.prepare_modules(self.parser)
+
+        module1 = self.parser.find_module(self.parser.available_modules, ":module1")
+        module2 = self.parser.find_module(self.parser.available_modules, ":module2")
+
+        self.assertIsNone(module1.functions["pre_build"])
+        self.assertIsNone(module1.functions["post_build"])
+        self.assertIsNotNone(module2.functions["pre_build"])
+        self.assertIsNotNone(module2.functions["post_build"])
+
 if __name__ == '__main__':
     unittest.main()

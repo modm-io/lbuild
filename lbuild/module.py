@@ -47,7 +47,13 @@ class ModuleBase:
     def prepare(self, module, options):
         pass
 
+    def pre_build(self, env):
+        pass
+
     def build(self, env):
+        pass
+
+    def post_build(self, env, log):
         pass
 
 
@@ -97,6 +103,7 @@ class OptionNameResolver:
 
     def __len__(self):
         return len(self.module_options) + len(self.repo_options)
+
 
 class ModuleNameResolver:
     """
@@ -162,7 +169,9 @@ class Module:
                                 modulepath)
 
                 # Get the required global functions
-                module.functions = Repository.get_global_functions(local, ['init', 'prepare', 'build'])
+                module.functions = Repository.get_global_functions(local,
+                                                                   required=['init', 'prepare', 'build'],
+                                                                   optional=['pre_build', 'post_build'])
                 module.init()
 
                 return module

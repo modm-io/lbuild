@@ -171,16 +171,26 @@ class Repository:
             raise BlobException("Option name '%s' is already defined" % name)
 
     @staticmethod
-    def get_global_functions(local, names):
+    def get_global_functions(local, required, optional=None):
         """
         Get global functions from the environment.
+
+        Keyword arguments:
+        required -- List of required functions.
+        optional -- List of optional functions.
         """
         functions = {}
-        for functionname in names:
+        for functionname in required:
             function = local.get(functionname)
             if function is None:
                 raise BlobException("No function '{}' found!".format(functionname))
             functions[functionname] = function
+
+        if optional is not None:
+            for functionname in optional:
+                function = local.get(functionname)
+                functions[functionname] = function
+
         return functions
 
     @staticmethod
