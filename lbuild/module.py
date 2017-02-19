@@ -12,6 +12,7 @@ import shutil
 import logging
 import itertools
 
+import lbuild.utils
 import lbuild.filter
 import lbuild.option
 import lbuild.repository
@@ -215,38 +216,37 @@ class Module:
         """
         try:
             modulepath = os.path.dirname(os.path.realpath(module_filename))
-            with open(module_filename) as module_file:
-                LOGGER.debug("Parse module_filename '%s'", module_filename)
-                code = compile(module_file.read(), module_filename, 'exec')
 
-                local = {
-                    # The localpath(...) function can be used to create
-                    # a local path form the folder of the repository file.
-                    'localpath': Localpath(modulepath),
-                    'FileReader': LocalFileReaderFactory(modulepath),
-                    'listify': lbuild.filter.listify,
-                    'ignore_patterns': shutil.ignore_patterns,
+            local = {
+                # The localpath(...) function can be used to create
+                # a local path form the folder of the repository file.
+                'localpath': Localpath(modulepath),
+                'FileReader': LocalFileReaderFactory(modulepath),
+                'listify': lbuild.filter.listify,
+                'ignore_patterns': shutil.ignore_patterns,
 
-                    'Module': ModuleBase,
+                'Module': ModuleBase,
 
-                    'StringOption': lbuild.option.Option,
-                    'BooleanOption': lbuild.option.BooleanOption,
-                    'NumericOption': lbuild.option.NumericOption,
-                    'EnumerationOption': lbuild.option.EnumerationOption,
-                }
-                exec(code, local)
+                'StringOption': lbuild.option.Option,
+                'BooleanOption': lbuild.option.BooleanOption,
+                'NumericOption': lbuild.option.NumericOption,
+                'EnumerationOption': lbuild.option.EnumerationOption,
+            }
 
-                module = Module(repository,
-                                module_filename,
-                                modulepath)
+            LOGGER.debug("Parse module_filename '%s'", module_filename)
+            local = lbuild.utils.load_module_from_file(module_filename, local)
 
-                # Get the required global functions
-                module.functions = Repository.get_global_functions(local,
-                                                                   required=['init', 'prepare', 'build'],
-                                                                   optional=['pre_build', 'post_build'])
-                module.init()
+            module = Module(repository,
+                            module_filename,
+                            modulepath)
 
-                return module
+            # Get the required global functions
+            module.functions = Repository.get_global_functions(local,
+                                                               required=['init', 'prepare', 'build'],
+                                                               optional=['pre_build', 'post_build'])
+            module.init()
+
+            return module
         except Exception as error:
             raise BlobException("While parsing '%s': %s" % (module_filename, error))
 
@@ -430,6 +430,12 @@ class Module:
             available_modules.update(module.prepare(repo_options))
 
         return available_modules
+
+    def build(self, env):
+        LOGGER.info("Build %s", self.fullname)
+
+        # TODO add exception handling
+        self.functions["build"](env)
 
     def __lt__(self, other):
         """

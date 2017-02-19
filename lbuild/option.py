@@ -214,25 +214,30 @@ class EnumerationOption(Option):
         description -- Short description of the option. Can contain markdown
             markup.
         enumeration -- If `enumeration` is an enum.Enum subclass it is used
-            directly, otherwise it is converted into an Enum class. During
-            the conversion the enumeration names are converted to string.
+            directly, otherwise it is converted into a dictionary. During
+            the conversion the names are converted to string.
         default -- Default value which is used if no value is given in the
             configuration. If the default value is not set, the build will
             fail if no value is specified.
         """
         Option.__init__(self, name, description)
         if inspect.isclass(enumeration) and issubclass(enumeration, enum.Enum):
-            self._enumeration = enumeration
+            self.__values = enumeration
         elif isinstance(enumeration, (list, tuple, set, range)) and \
                 len(enumeration) == len(set(enumeration)):
             # If the argument is a list and the items in the list are unqiue,
             # convert it so that the value of the enum equals its name.
-            self._enumeration = enum.Enum(name, {str(entry): entry for entry in enumeration})
+            self.__values = {str(entry): entry for entry in enumeration}
 
             if default is not None:
                 default = str(default)
+        elif isinstance(enumeration, (dict,)):
+            self.__values = enumeration
+            if default is not None:
+                default = str(default)
         else:
-            self._enumeration = enum.Enum(name, enumeration)
+            raise BlobException("Type {} currently not supported".format(type(enumeration)))
+
         if default is not None:
             self.value = default
 
@@ -241,7 +246,7 @@ class EnumerationOption(Option):
         if self._value is None:
             return None
         else:
-            return self._value.value
+            return self._value
 
     @value.setter
     def value(self, value):
@@ -249,9 +254,7 @@ class EnumerationOption(Option):
 
     @property
     def values(self):
-        values = []
-        for value in self._enumeration:
-            values.append(value.name)
+        values = list(self.__values.keys())
         values.sort()
         return values
 
@@ -280,6 +283,6 @@ class EnumerationOption(Option):
     def as_enumeration(self, value):
         try:
             # Try to access 'value' as if it where an enum
-            return self._enumeration[value.name]
+            return self.__values[value.name].value
         except AttributeError:
-            return self._enumeration[value]
+            return self.__values[value]

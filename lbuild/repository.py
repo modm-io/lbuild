@@ -14,6 +14,7 @@ import logging
 
 import lbuild.option
 import lbuild.filter
+import lbuild.utils
 
 from .exception import BlobException
 from . import utils
@@ -232,32 +233,28 @@ class Repository:
         repopath = os.path.dirname(os.path.realpath(repofilename))
         repo = Repository(repopath)
         try:
-            with open(repofilename) as repofile:
-                code = compile(repofile.read(), repofilename, 'exec')
-                local = {
-                    '__file__': repofilename,
+            local = {
+                # The localpath(...) function can be used to create
+                # a local path form the folder of the repository file.
+                'localpath': Localpath(repopath),
+                'FileReader': LocalFileReaderFactory(repopath),
+                'listify': lbuild.filter.listify,
 
-                    # The localpath(...) function can be used to create
-                    # a local path form the folder of the repository file.
-                    'localpath': Localpath(repopath),
-                    'FileReader': LocalFileReaderFactory(repopath),
-                    'listify': lbuild.filter.listify,
+                'StringOption': lbuild.option.Option,
+                'BooleanOption': lbuild.option.BooleanOption,
+                'NumericOption': lbuild.option.NumericOption,
+                'EnumerationOption': lbuild.option.EnumerationOption,
+            }
 
-                    'StringOption': lbuild.option.Option,
-                    'BooleanOption': lbuild.option.BooleanOption,
-                    'NumericOption': lbuild.option.NumericOption,
-                    'EnumerationOption': lbuild.option.EnumerationOption,
-                }
-                exec(code, local)
+            local = lbuild.utils.load_module_from_file(repofilename, local)
+            repo.functions = Repository.get_global_functions(local, ['init', 'prepare'])
 
-                repo.functions = Repository.get_global_functions(local, ['init', 'prepare'])
+            # Execution init() function. In this function options are added.
+            repo.functions['init'](RepositoryFacade(repo))
 
-                # Execution init() function. In this function options are added.
-                repo.functions['init'](RepositoryFacade(repo))
-
-                if repo.name is None:
-                    raise BlobException("The init(repo) function must set a repository name! "
-                                        "Please write the 'name' attribute.")
+            if repo.name is None:
+                raise BlobException("The init(repo) function must set a repository name! "
+                                    "Please write the 'name' attribute.")
         except FileNotFoundError as error:
             raise BlobException("Repository configuration file not found '{}'.".format(repofilename))
         except KeyError as error:

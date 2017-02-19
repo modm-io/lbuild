@@ -9,6 +9,7 @@
 
 import random
 import logging
+import collections
 
 import lbuild.module
 import lbuild.environment
@@ -22,6 +23,13 @@ from . import utils
 from . import config
 
 LOGGER = logging.getLogger('lbuild.parser')
+
+class Runner:
+    def __init__(self, module, env):
+        self.module = module
+        self.env = env
+    def __call__(self):
+        self.module.build(self.env)
 
 
 class Parser:
@@ -332,10 +340,8 @@ class Parser:
         Parser.verify_options_are_defined(module_options)
         all_modules = {m.fullname: m for m in build_modules}
 
-        # Enforce that the submodules are always build before their
-        # parent modules.
-        sorting_key = lambda module: "{:04} {}".format(module.fullname.count(":"), random.random())
-        for module in sorted(build_modules, key=sorting_key, reverse=True):
+        groups = collections.defaultdict(list)
+        for module in build_modules:
             option_resolver = lbuild.module.OptionNameResolver(module.repository,
                                                                module,
                                                                repo_options,
@@ -349,10 +355,17 @@ class Parser:
                                                  outpath,
                                                  buildlog)
 
-            LOGGER.info("Build %s", module.fullname)
+            depth = len(module.fullname.split(":"))
+            groups[depth].append(Runner(module, env))
 
-            # TODO add exception handling
-            module.functions["build"](env)
+        # Enforce that the submodules are always build before their
+        # parent modules.
+        for index in sorted(groups, reverse=True):
+            group = groups[index]
+            random.shuffle(group)
+
+            for runner in group:
+                runner()
 
     def configure_and_build_library(self, configfile, outpath, cmd_options=None):
         cmd_options = [] if cmd_options is None else cmd_options
