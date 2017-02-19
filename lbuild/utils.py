@@ -33,9 +33,15 @@ def load_module_from_file(filename, local, modulename=None):
     # a UUID is used instead here.
     if modulename is None:
         modulename = "lbuild.modules.{}".format(uuid.uuid1())
+
     loader = importlib.machinery.SourceFileLoader(modulename, filename)
+
     spec = importlib.util.spec_from_loader(loader.name, loader)
-    module = importlib.util.module_from_spec(spec)
+    try:
+        module = importlib.util.module_from_spec(spec)
+    except AttributeError:
+        import types
+        module = types.ModuleType(modulename)
 
     # Prepare the environment of the module. Everything set here will
     # be available in the global namespace when executing the module.
