@@ -10,6 +10,7 @@
 
 import os
 import logging
+import threading
 
 import lxml.etree
 from .exception import BlobBuildException
@@ -58,23 +59,25 @@ class BuildLog:
     def __init__(self):
         self.operations = []
         self._build_files = {}
+        self.__lock = threading.Lock()
 
     def log(self, module, filename_in: str, filename_out: str, time=None):
-        operation = Operation(module, filename_in, filename_out, time)
-        LOGGER.debug(str(operation))
+        with self.__lock:
+            operation = Operation(module, filename_in, filename_out, time)
+            LOGGER.debug(str(operation))
 
-        previous = self._build_files.get(filename_out, None)
-        if previous is not None:
-            raise BlobBuildException("Overwrite file '{}' from '{}' (module '{}'). Previously "
-                                     "generated from '{}' (module '{}')."
-                                     .format(filename_out,
-                                             filename_in,
-                                             module.fullname,
-                                             previous.filename_in,
-                                             previous.modulename))
+            previous = self._build_files.get(filename_out, None)
+            if previous is not None:
+                raise BlobBuildException("Overwrite file '{}' from '{}' (module '{}'). Previously "
+                                         "generated from '{}' (module '{}')."
+                                         .format(filename_out,
+                                                 filename_in,
+                                                 module.fullname,
+                                                 previous.filename_in,
+                                                 previous.modulename))
 
-        self._build_files[filename_out] = operation
-        self.operations.append(operation)
+            self._build_files[filename_out] = operation
+            self.operations.append(operation)
 
         return operation
 
@@ -82,12 +85,13 @@ class BuildLog:
         """
         Get all operations which have been performed for the given module and
         its submodules.
-        
+
         Keyword arguments:
         modulename -- Full module name.
         """
-        module_operations = [operation for operation in self.operations if
-                             operation.modulename.startswith(modulename)]
+        with self.__lock:
+            module_operations = [operation for operation in self.operations if
+                                 operation.modulename.startswith(modulename)]
         return module_operations
 
     def to_xml(self, to_string=True):
@@ -96,19 +100,20 @@ class BuildLog:
         """
         rootnode = lxml.etree.Element("buildlog")
 
-        for operation in self.operations:
-            operationnode = lxml.etree.SubElement(rootnode, "operation")
+        with self.__lock:
+            for operation in self.operations:
+                operationnode = lxml.etree.SubElement(rootnode, "operation")
 
-            modulenode = lxml.etree.SubElement(operationnode, "module")
-            modulenode.text = operation.modulename
-            srcnode = lxml.etree.SubElement(operationnode, "source")
-            srcnode.text = operation.filename_in
-            destnode = lxml.etree.SubElement(operationnode, "destination")
-            destnode.text = operation.filename_out
+                modulenode = lxml.etree.SubElement(operationnode, "module")
+                modulenode.text = operation.modulename
+                srcnode = lxml.etree.SubElement(operationnode, "source")
+                srcnode.text = operation.filename_in
+                destnode = lxml.etree.SubElement(operationnode, "destination")
+                destnode.text = operation.filename_out
 
-            if operation.time is not None:
-                timenode = lxml.etree.SubElement(operationnode, "time")
-                timenode.text = "{:.3f} ms".format(operation.time * 1000)
+                if operation.time is not None:
+                    timenode = lxml.etree.SubElement(operationnode, "time")
+                    timenode.text = "{:.3f} ms".format(operation.time * 1000)
 
         if to_string:
             return lxml.etree.tostring(rootnode,
