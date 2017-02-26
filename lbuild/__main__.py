@@ -18,10 +18,13 @@ import lbuild.logger
 import lbuild.vcs.common
 
 
-def get_modules(parser, repo_options, config_options, selected_modules=None):
-    if selected_modules is None:
-        selected_modules = [":**"]
+def get_modules(parser, repo_options, config_options, selected_module_names=None):
     modules = parser.prepare_repositories(repo_options)
+
+    if selected_module_names is None:
+        selected_module_names = [":**"]
+
+    selected_modules = lbuild.module.resolve_modules(modules, selected_module_names)
     build_modules = parser.resolve_dependencies(modules, selected_modules)
     module_options = parser.merge_module_options(build_modules, config_options)
 
@@ -95,6 +98,20 @@ def prepare_argument_parser():
              "All repository options must be defined.")
     parser_dependecies = subparsers.add_parser("dependencies",
         help="Generate a grahpviz representation of the module dependencies.")
+    parser_dependecies.add_argument("-m", "--module",
+        dest="modules",
+        type=str,
+        action="append",
+        default=[],
+        help="Select specific modules.")
+    parser_dependecies.add_argument("-n", "--depth",
+        dest="depth",
+        type=int,
+        default=sys.maxsize,
+        help="Only show dependencies up to a specific depth. Only valid if "
+             "specific modules are selected, otherwise all modules are printed "
+             "anyways.")
+
     parser_discover_module_options = subparsers.add_parser("discover-module-options",
         aliases=['options'],
         help="Inspect the module options of one or more modules (if specified "
@@ -163,9 +180,18 @@ def run(args):
             for module in sorted(list(modules.values())):
                 print(module)
         elif args.action in ['dependencies']:
-            modules = parser.prepare_repositories(repo_options)
-            dot_file = lbuild.builder.dependency.graphviz(parser.repositories)
+            available_modules = parser.prepare_repositories(repo_options)
 
+            if len(args.modules) == 0:
+                selected_modules = [":**"]
+            else:
+                selected_modules = args.modules
+            selected_modules = lbuild.module.resolve_modules(available_modules,
+                                                             selected_modules)
+            dot_file = lbuild.builder.dependency.graphviz(available_modules,
+                                                          selected_modules,
+                                                          args.depth,
+                                                          clustered=False)
             print(dot_file)
         elif args.action in ['discover-module-options', 'options']:
             if len(args.modules) == 0 and len(config.selected_modules) == 0:

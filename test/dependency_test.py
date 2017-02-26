@@ -30,7 +30,7 @@ class DepedencyTest(unittest.TestCase):
         self.parser.parse_repository(self._get_path("multiple_dependencies/repo.lb"))
         self.parser.prepare_repositories({})
 
-        module = lbuild.module.Module.find_module(self.parser.available_modules, ":module2")
+        module = lbuild.module.find_module(self.parser.available_modules, ":module2")
         module.resolve_dependencies(self.parser.available_modules)
 
         self.assertEqual(1, len(module.dependencies))

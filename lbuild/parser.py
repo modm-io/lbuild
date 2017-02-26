@@ -7,6 +7,7 @@
 # 2-clause BSD license. See the file `LICENSE.txt` for the full license
 # governing this code.
 
+import sys
 import random
 import logging
 import collections
@@ -155,27 +156,20 @@ class Parser:
         return self.available_modules
 
     @staticmethod
-    def resolve_dependencies(modules, requested_module_names):
+    def resolve_dependencies(modules, requested_modules, depth=sys.maxsize):
         """
         Resolve dependencies by adding missing modules.
         """
         for module in modules.values():
             module.resolve_dependencies(modules)
 
-        selected_modules = []
-        for modulename in requested_module_names:
-            module_list = lbuild.module.Module.find_modules(modules, modulename)
-
-            # Only add modules which are not already selected
-            for module in module_list:
-                if module not in selected_modules:
-                    selected_modules.append(module)
+        selected_modules = requested_modules.copy()
 
         LOGGER.info("Selected modules: %s",
                     ", ".join(sorted([module.fullname for module in selected_modules])))
 
         current = selected_modules
-        while True:
+        while depth > 0:
             additional = []
             for module in current:
                 for dependency in module.dependencies:
@@ -190,6 +184,7 @@ class Parser:
             selected_modules.extend(additional)
             current = additional
             additional = []
+            depth -= 1
 
         return selected_modules
 
@@ -297,7 +292,8 @@ class Parser:
         repo_options = self.merge_repository_options(configuration.options, commandline_options)
 
         modules = self.prepare_repositories(repo_options)
-        build_modules = self.resolve_dependencies(modules, configuration.selected_modules)
+        selected_modules = lbuild.module.resolve_modules(modules, configuration.selected_modules)
+        build_modules = self.resolve_dependencies(modules, selected_modules)
         module_options = self.merge_module_options(build_modules, configuration.options)
 
         log = lbuild.buildlog.BuildLog()

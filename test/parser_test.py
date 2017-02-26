@@ -27,12 +27,15 @@ class ParserTest(unittest.TestCase):
     @staticmethod
     def prepare_modules(parser, selected=None, configoptions=None):
         if selected is None:
-            selected = [":**"]
+            selected_module_names = [":**"]
+        else:
+            selected_module_names = selected
         if configoptions is None:
             configoptions = []
         repo_options = parser.merge_repository_options(configoptions)
         modules = parser.prepare_repositories(repo_options)
-        build_modules = parser.resolve_dependencies(modules, selected)
+        selected_modules = lbuild.module.resolve_modules(modules, selected_module_names)
+        build_modules = parser.resolve_dependencies(modules, selected_modules)
         module_options = parser.merge_module_options(build_modules, configoptions)
         return build_modules, repo_options, module_options
 
@@ -135,7 +138,8 @@ class ParserTest(unittest.TestCase):
 
         repo_options = self.parser.merge_repository_options(config.options)
         modules = self.parser.prepare_repositories(repo_options)
-        build_modules = self.parser.resolve_dependencies(modules, config.selected_modules)
+        selected_modules = lbuild.module.resolve_modules(modules, config.selected_modules)
+        build_modules = self.parser.resolve_dependencies(modules, selected_modules)
 
         return build_modules, config.options, repo_options
 
@@ -237,8 +241,8 @@ class ParserTest(unittest.TestCase):
         self.parser.parse_repository(self._get_path("optional_functions/repo.lb"))
         _, _, _ = self.prepare_modules(self.parser)
 
-        module1 = lbuild.module.Module.find_module(self.parser.available_modules, ":module1")
-        module2 = lbuild.module.Module.find_module(self.parser.available_modules, ":module2")
+        module1 = lbuild.module.find_module(self.parser.available_modules, ":module1")
+        module2 = lbuild.module.find_module(self.parser.available_modules, ":module2")
 
         self.assertIsNone(module1.functions["pre_build"])
         self.assertIsNone(module1.functions["post_build"])
