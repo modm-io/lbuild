@@ -155,93 +155,16 @@ class Parser:
         return self.available_modules
 
     @staticmethod
-    def find_modules(modules, modulename):
-        """ Get the module representation from a module name.
-
-        The name can either be fully qualified, have an empty repository/module
-        string or use a '*'. In the later two cases all repositories/modules are
-        searched for the module name.
-
-        It is also possible to use a double star ('**') as last entry in module
-        name. In this all modules at this depth including their submodules
-        are selected.
-
-        E.g. modules "a:b", "a:c" and "a:c:d" are available. The name "a:*"
-        selects "a:b" and "a:c" but not "a:c:d" while "a:**" would
-        select all three.
-
-        Args:
-        modulename -- Name of the module in the format
-            'repository:module:submodule:...'.
-            Each part but the last can be an empty string.
-
-        Returns:
-            List of possible modules.
-        """
-        lbuild.module.verify_module_name(modulename)
-
-        canidates = []
-
-        target_parts = modulename.split(":")
-        target_depth = len(target_parts)
-
-        if target_parts[-1] == "**":
-            # Remove the double star entry
-            target_parts = target_parts[:-1]
-
-            for module in modules.values():
-                parts = module.fullname.split(":")
-                depth = len(parts)
-                if depth >= target_depth:
-                    parts = parts[:target_depth]
-                    canidates.append((parts, module))
-        else:
-            for module in modules.values():
-                parts = module.fullname.split(":")
-                depth = len(parts)
-                if depth == target_depth:
-                    canidates.append((parts, module))
-
-        found = []
-        for parts, module in canidates:
-            for target, canidate in zip(target_parts, parts):
-                if target == "" or target == "*":
-                    continue
-                elif target != canidate:
-                    break
-            else:
-                found.append(module)
-
-        if len(found) == 0:
-            raise BlobException("Module '{}' not found.".format(modulename))
-        return found
-
-    @staticmethod
-    def find_module(modules, modulename):
-        """
-        Find a single module.
-
-        Similar to find_modules(...) but returns only a single module and
-        raised an exception in case multiple modules are found.
-
-        Return:
-            Single module corresponding to the module name.
-        """
-        found = Parser.find_modules(modules, modulename)
-        if len(found) > 1:
-            raise BlobException("Name '{}' is ambiguous "
-                                "between '{}'.".format(modulename,
-                                                       "', '".join([str(x) for x in found])))
-        return found[0]
-
-    @staticmethod
     def resolve_dependencies(modules, requested_module_names):
         """
         Resolve dependencies by adding missing modules.
         """
+        for module in modules.values():
+            module.resolve_dependencies(modules)
+
         selected_modules = []
         for modulename in requested_module_names:
-            module_list = Parser.find_modules(modules, modulename)
+            module_list = lbuild.module.Module.find_modules(modules, modulename)
 
             # Only add modules which are not already selected
             for module in module_list:
@@ -255,9 +178,7 @@ class Parser:
         while True:
             additional = []
             for module in current:
-                for dependency_name in module.dependencies:
-                    dependency = Parser.find_module(modules, dependency_name)
-
+                for dependency in module.dependencies:
                     if dependency not in selected_modules and \
                             dependency not in additional:
                         LOGGER.debug("Add dependency: %s",
@@ -372,7 +293,7 @@ class Parser:
 
         configuration = config.Configuration.parse_configuration(configfile)
 
-        commandline_options = self.format_commandline_options(cmd_options)
+        commandline_options = config.Configuration.format_commandline_options(cmd_options)
         repo_options = self.merge_repository_options(configuration.options, commandline_options)
 
         modules = self.prepare_repositories(repo_options)

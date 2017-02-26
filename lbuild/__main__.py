@@ -164,7 +164,9 @@ def run(args):
                 print(module)
         elif args.action in ['dependencies']:
             modules = parser.prepare_repositories(repo_options)
-            print(lbuild.builder.dependency.graphviz(parser.repositories))
+            dot_file = lbuild.builder.dependency.graphviz(parser.repositories)
+
+            print(dot_file)
         elif args.action in ['discover-module-options', 'options']:
             if len(args.modules) == 0 and len(config.selected_modules) == 0:
                 config.selected_modules.extend([":**"])

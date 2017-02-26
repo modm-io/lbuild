@@ -250,6 +250,86 @@ class Module:
         except Exception as error:
             raise BlobException("While parsing '%s': %s" % (module_filename, error))
 
+    @staticmethod
+    def find_modules(modules, modulename):
+        """ Get the module representation from a module name.
+
+        The name can either be fully qualified, have an empty repository/module
+        string or use a '*'. In the later two cases all repositories/modules are
+        searched for the module name.
+
+        It is also possible to use a double star ('**') as last entry in module
+        name. In this all modules at this depth including their submodules
+        are selected.
+
+        E.g. modules "a:b", "a:c" and "a:c:d" are available. The name "a:*"
+        selects "a:b" and "a:c" but not "a:c:d" while "a:**" would
+        select all three.
+
+        Args:
+        modulename -- Name of the module in the format
+            'repository:module:submodule:...'.
+            Each part but the last can be an empty string.
+
+        Returns:
+            List of possible modules.
+        """
+        verify_module_name(modulename)
+
+        canidates = []
+
+        target_parts = modulename.split(":")
+        target_depth = len(target_parts)
+
+        if target_parts[-1] == "**":
+            # Remove the double star entry
+            target_parts = target_parts[:-1]
+
+            for module in modules.values():
+                parts = module.fullname.split(":")
+                depth = len(parts)
+                if depth >= target_depth:
+                    parts = parts[:target_depth]
+                    canidates.append((parts, module))
+        else:
+            for module in modules.values():
+                parts = module.fullname.split(":")
+                depth = len(parts)
+                if depth == target_depth:
+                    canidates.append((parts, module))
+
+        found = []
+        for parts, module in canidates:
+            for target, canidate in zip(target_parts, parts):
+                if target == "" or target == "*":
+                    continue
+                elif target != canidate:
+                    break
+            else:
+                found.append(module)
+
+        if len(found) == 0:
+            raise BlobException("Module '{}' not found.".format(modulename))
+        return found
+
+    @staticmethod
+    def find_module(modules, modulename):
+        """
+        Find a single module.
+
+        Similar to find_modules(...) but returns only a single module and
+        raised an exception in case multiple modules are found.
+
+        Return:
+            Single module corresponding to the module name.
+        """
+        found = Module.find_modules(modules, modulename)
+        if len(found) > 1:
+            raise BlobException("Name '{}' is ambiguous "
+                                "between '{}'.".format(modulename,
+                                                       "', '".join([str(x) for x in found])))
+        return found[0]
+
     def __init__(self,
                  repository,
                  filename: str,
@@ -282,6 +362,10 @@ class Module:
         self.functions = {}
 
         # List of module names this module depends upon
+        self.__dependency_module_names = []
+
+        # List of module objects on which this module depends. Updated
+        # by calling `resovle_dependencies()`.
         self.dependencies = []
 
         # OptionNameResolver defined in the module configuration file. These
@@ -334,9 +418,27 @@ class Module:
         self.options[option.name] = option
 
     def add_dependencies(self, *dependencies):
+        """
+        Add a new dependencies.
+
+        The module name has not to be fully qualified.
+        """
         for dependency in dependencies:
             verify_module_name(dependency)
-            self.dependencies.append(dependency)
+            self.__dependency_module_names.append(dependency)
+
+    def resolve_dependencies(self, available_modules):
+        """
+        Update the internal list of dependencies.
+
+        Resolves the module names to the actual module objects.
+        """
+        dependencies = set()
+        for dependency_name in self.__dependency_module_names:
+            dependency = Module.find_module(available_modules, dependency_name)
+            dependencies.add(dependency)
+
+        self.dependencies = list(dependencies)
 
     def fill_partial_name(self, partial_name):
         """

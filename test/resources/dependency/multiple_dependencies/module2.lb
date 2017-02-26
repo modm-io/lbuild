@@ -1,0 +1,11 @@
+
+def init(module):
+	module.name = "module2"
+	module.description = ""
+
+def prepare(module, options):
+	module.depends(":module1", ":module1", "repo:module1")
+	return True
+
+def build(env):
+	pass

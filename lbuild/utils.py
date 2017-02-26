@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2015, Fabian Greif
+# Copyright (c) 2015, 2017, Fabian Greif
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -13,8 +13,10 @@ import uuid
 import importlib.util
 import importlib.machinery
 
+
 def listify(node):
     return [node, ] if (not isinstance(node, list)) else node
+
 
 def load_module_from_file(filename, local, modulename=None):
     """

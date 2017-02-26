@@ -10,10 +10,10 @@
 
 import re
 
-import lbuild.parser
 
 def get_valid_identifier(name):
     return re.sub(r'\W|^(?=\d)', '_', name)
+
 
 def graphviz(repositories, clustered=False):
     output = []
@@ -24,7 +24,7 @@ def graphviz(repositories, clustered=False):
     modules = {}
     for repository in repositories.values():
         for module in repository.modules.values():
-            modules[module.name] = module
+            modules[module.fullname] = module
 
     for name, repository in repositories.items():
         if clustered:
@@ -36,6 +36,8 @@ def graphviz(repositories, clustered=False):
         output.append("\t\tnode [style=filled, shape=box];")
         output.append("")
         for module in sorted(repository.modules.values()):
+            module.resolve_dependencies(modules)
+
             if clustered:
                 # Remove the repository name for the clusted output. The
                 # repository name is meantioned in the cluster already.
@@ -49,7 +51,6 @@ def graphviz(repositories, clustered=False):
 
     for module in sorted(modules.values()):
         for dep in sorted(module.dependencies):
-            dep = lbuild.parser.Parser.find_module(modules, dep)
             output.append("\t{} -> {};".format(get_valid_identifier(module.fullname),
                                                get_valid_identifier(dep.fullname)))
 

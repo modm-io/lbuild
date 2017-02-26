@@ -237,8 +237,8 @@ class ParserTest(unittest.TestCase):
         self.parser.parse_repository(self._get_path("optional_functions/repo.lb"))
         _, _, _ = self.prepare_modules(self.parser)
 
-        module1 = self.parser.find_module(self.parser.available_modules, ":module1")
-        module2 = self.parser.find_module(self.parser.available_modules, ":module2")
+        module1 = lbuild.module.Module.find_module(self.parser.available_modules, ":module1")
+        module2 = lbuild.module.Module.find_module(self.parser.available_modules, ":module2")
 
         self.assertIsNone(module1.functions["pre_build"])
         self.assertIsNone(module1.functions["post_build"])
