@@ -83,8 +83,10 @@ class DiscoverRepositoryAction(ManipulationActionBase):
         parser.set_defaults(execute_action=self.prepare_repositories)
 
     def perform(self, args, parser, config, repo_options):
+        ostream = []
         for option in sorted(list(repo_options.values())):
-            print(option.format())
+            ostream.append(option.format())
+        return "\n".join(ostream)
 
 
 class DiscoverModulesActions(ManipulationActionBase):
@@ -96,10 +98,11 @@ class DiscoverModulesActions(ManipulationActionBase):
         parser.set_defaults(execute_action=self.prepare_repositories)
 
     def perform(self, args, parser, config, repo_options):
+        ostream = []
         modules = parser.prepare_repositories(repo_options)
         for module in sorted(list(modules.values())):
-            print(module)
-
+            ostream.append(str(module))
+        return "\n".join(ostream)
 
 class DependenciesAction(ManipulationActionBase):
     def register(self, argument_parser):
@@ -133,7 +136,7 @@ class DependenciesAction(ManipulationActionBase):
                                                       selected_modules,
                                                       args.depth,
                                                       clustered=False)
-        print(dot_file)
+        return dot_file
 
 
 class DiscoverModuleOptionsAction(ManipulationActionBase):
@@ -158,13 +161,15 @@ class DiscoverModuleOptionsAction(ManipulationActionBase):
             config.selected_modules.extend(args.modules)
         _, options = get_modules(parser, repo_options, config.options, config.selected_modules)
 
+        ostream = []
         for option in sorted(list(options.values())):
-            print(option.format())
+            ostream.append(option.format())
 
             if option.short_description:
-                print()
-                print(textwrap.indent(option.short_description, "  "))
-                print()
+                ostream.append("")
+                ostream.append(textwrap.indent(option.short_description, "  "))
+                ostream.append("")
+        return "\n".join(ostream)
 
 
 class DiscoverOptionAction(ManipulationActionBase):
@@ -186,8 +191,7 @@ class DiscoverOptionAction(ManipulationActionBase):
             _, options = get_modules(parser, repo_options, config.options)
             option = lbuild.module.find_module(options, option_name)
 
-        print(option.factsheet())
-        print()
+        return option.factsheet() + "\n"
 
 
 class DiscoverOptionValuesAction(ManipulationActionBase):
@@ -209,8 +213,10 @@ class DiscoverOptionValuesAction(ManipulationActionBase):
             _, options = get_modules(parser, repo_options, config.options)
             option = lbuild.module.find_module(options, option_name)
 
+        ostream = []
         for value in lbuild.utils.listify(option.values):
-            print(value)
+            ostream.append(str(value))
+        return "\n".join(ostream)
 
 
 class BuildAction(ManipulationActionBase):
@@ -244,6 +250,7 @@ class BuildAction(ManipulationActionBase):
             logfilename = configfilename + ".log"
             with open(logfilename, "wb") as logfile:
                 logfile.write(log.to_xml(to_string=True))
+        return ""
 
 
 def prepare_argument_parser():
@@ -308,11 +315,13 @@ def prepare_argument_parser():
 
     return argument_parser
 
+
 def run(args):
     lbuild.logger.configure_logger(args.verbose)
 
     config = lbuild.config.Configuration.parse_configuration(args.config)
-    args.execute_action(args, config)
+    return args.execute_action(args, config)
+
 
 def main():
     """
@@ -324,7 +333,8 @@ def main():
         commandline_arguments = sys.argv[1:]
         args = argument_parser.parse_args(commandline_arguments)
 
-        run(args)
+        output = run(args)
+        print(output)
     except lbuild.exception.BlobArgumentException as error:
         argument_parser.print_help()
         print(error)
