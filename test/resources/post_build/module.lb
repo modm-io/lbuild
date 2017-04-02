@@ -1,0 +1,18 @@
+
+def init(module):
+	module.name = "module"
+	module.description = ""
+
+def prepare(module, options):
+	return True
+
+def pre_build(env):
+	print("Pre-Build")
+	pass
+
+def build(env):
+	pass
+
+def post_build(env, log):
+	print("Post-Build")
+	pass

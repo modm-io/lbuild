@@ -1,0 +1,6 @@
+
+def init(repo):
+    repo.name = "repo"
+
+def prepare(repo, options):
+    repo.add_modules(repo.glob("module*.lb"))

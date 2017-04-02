@@ -556,11 +556,27 @@ class Module:
 
         return available_modules
 
+    def pre_build(self, env):
+        pre_build = self.functions.get("pre_build", None)
+        if pre_build is not None:
+            LOGGER.info("Prepare for build %s", self.fullname)
+
+            # TODO add exception handling
+            pre_build(env)
+
     def build(self, env):
         LOGGER.info("Build %s", self.fullname)
 
         # TODO add exception handling
         self.functions["build"](env)
+
+    def post_build(self, env, buildlog):
+        post_build = self.functions.get("post_build", None)
+        if post_build is not None:
+            LOGGER.info("Post-Build %s", self.fullname)
+
+            # TODO add exception handling
+            post_build(env, buildlog)
 
     def __lt__(self, other):
         """

@@ -26,11 +26,19 @@ from . import config
 LOGGER = logging.getLogger('lbuild.parser')
 
 class Runner:
+
     def __init__(self, module, env):
         self.module = module
         self.env = env
-    def __call__(self):
+
+    def pre_build(self):
+        self.module.pre_build(self.env)
+
+    def build(self):
         self.module.build(self.env)
+
+    def post_build(self, buildlog):
+        self.module.post_build(self.env, buildlog)
 
 
 class Parser:
@@ -281,7 +289,21 @@ class Parser:
             random.shuffle(group)
 
             for runner in group:
-                runner()
+                runner.pre_build()
+
+        for index in sorted(groups, reverse=True):
+            group = groups[index]
+            random.shuffle(group)
+
+            for runner in group:
+                runner.build()
+
+        for index in sorted(groups, reverse=True):
+            group = groups[index]
+            random.shuffle(group)
+
+            for runner in group:
+                runner.post_build(buildlog)
 
     def configure_and_build_library(self, configfile, outpath, cmd_options=None):
         cmd_options = [] if cmd_options is None else cmd_options
