@@ -1,0 +1,30 @@
+
+
+class Submodule(Module):
+
+    def __init__(self, index):
+        self.index = index
+
+    def init(self, module):
+        module.name = "submodule{}".format(self.index)
+        module.description = ""
+
+    def prepare(self, module, options):
+        return True
+
+    def build(self, env):
+        pass
+
+
+def init(module):
+	module.name = "module2"
+	module.description = ""
+
+def prepare(module, options):
+	module.depends(":module1")
+	for index in range(0, 5):
+		module.add_submodule(Submodule(index))
+	return True
+
+def build(env):
+	pass
