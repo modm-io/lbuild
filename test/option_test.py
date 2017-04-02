@@ -52,6 +52,28 @@ class OptionTest(unittest.TestCase):
         self.assertTrue(output.startswith("repo:module:test"))
         self.assertTrue("value" in output)
 
+    def test_should_provide_short_description(self):
+        option = lbuild.option.Option("test", "first paragraph\n\nsecond paragraph", "value")
+        self.assertEqual("first paragraph", option.short_description)
+
+    def test_should_provide_factsheet(self):
+        option = lbuild.option.Option("test", "long description", "value")
+        output = option.factsheet()
+
+        self.assertIn("test", output, "Option name")
+        self.assertIn("Current value: value", output)
+        self.assertIn("Possible values: String", output)
+        self.assertIn("long description", output)
+
+    def test_should_provide_factsheet_without_value(self):
+        option = lbuild.option.Option("test", "long description")
+        output = option.factsheet()
+
+        self.assertIn("test", output, "Option name")
+        self.assertNotIn("Current value:", output)
+        self.assertIn("Possible values: String", output)
+        self.assertIn("long description", output)
+
     def test_should_be_constructable_from_enum(self):
         class TestEnum(enum.Enum):
             value1 = 1
@@ -98,6 +120,34 @@ class OptionTest(unittest.TestCase):
                                                  default=10,
                                                  enumeration=set(range(1, 21)))
         self.assertEqual(10, option.value)
+
+    def test_should_format_enumeration_option(self):
+        enum_list = [
+            "value1",
+            "value2",
+        ]
+        option = lbuild.option.EnumerationOption("test",
+                                                 "description",
+                                                 default="value1",
+                                                 enumeration=enum_list)
+
+        output = option.format()
+        self.assertIn("test = value1", output, "Current value")
+        self.assertIn("[value1, value2]", output, "List of all available values")
+
+    def test_should_format_enumeration_option_without_default_value(self):
+        enum_list = [
+            "value1",
+            "value2",
+        ]
+        option = lbuild.option.EnumerationOption("test",
+                                                 "description",
+                                                 enumeration=enum_list)
+
+        output = option.format()
+        self.assertNotIn("test = value1", output, "No current value")
+        self.assertNotIn("test = value2", output, "No current value")
+        self.assertIn("[value1, value2]", output, "List of all available values")
 
 if __name__ == '__main__':
     unittest.main()

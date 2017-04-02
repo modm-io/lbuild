@@ -278,7 +278,7 @@ class EnumerationOption(Option):
                 mark = " ..."
                 max_length = self.LINEWITH - overhead - len(mark)
                 values = values[0:max_length] + mark
-            return "{}{}  [{}]".format(name, self._value.value, values)
+            return "{}{}  [{}]".format(name, self.value, values)
 
     def as_enumeration(self, value):
         try:
