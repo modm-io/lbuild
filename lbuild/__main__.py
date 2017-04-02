@@ -72,7 +72,7 @@ class ManipulationActionBase:
         commandline_options = config.format_commandline_options(args.options)
         repo_options = parser.merge_repository_options(config.options, commandline_options)
 
-        self.perform(args, parser, config, repo_options)
+        return self.perform(args, parser, config, repo_options)
 
 
 class DiscoverRepositoryAction(ManipulationActionBase):
