@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<library>
+  <repositories>
+    <repository>
+      <vcs>
+        <git>
+          <name>{localpath}</name>
+          <url>{url}</url>
+          <branch>{branch}</branch>
+          {commit}
+        </git>
+      </vcs>
+      <path>repo.lb</path>
+    </repository>
+  </repositories>
+
+  <options>
+  </options>
+
+  <modules>
+    <module>repo:module1</module>
+    <module>repo:module2</module>
+  </modules>
+</library>

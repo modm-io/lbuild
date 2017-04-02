@@ -29,14 +29,15 @@ class Repository:
         self._repo = None
 
     def get_repository(self):
-        if os.path.exists(self.localpath):
-            LOGGER.debug("Found existing repository in %s", self.localpath)
-            self._repo = git.Repo(self.localpath)
-        else:
-            LOGGER.info("Initialize new repository in %s", self.localpath)
-            self._repo = git.Repo.clone_from(self.url,
-                                             self.localpath,
-                                             branch=self.branch)
+        if self._repo is None:
+            if os.path.exists(self.localpath):
+                LOGGER.debug("Found existing repository in %s", self.localpath)
+                self._repo = git.Repo(self.localpath)
+            else:
+                LOGGER.info("Initialize new repository in %s", self.localpath)
+                self._repo = git.Repo.clone_from(self.url,
+                                                 self.localpath,
+                                                 branch=self.branch)
         return self._repo
 
     def initialize(self):
@@ -56,15 +57,16 @@ class Repository:
     def switch_to_commit(repo, commit):
         if not repo.head.commit.hexsha.startswith(commit):
             LOGGER.debug("Switch to commit '%s'", commit)
-            commit = repo.create_head(commit)
-            repo.head.reference = commit
+            past_branch = repo.create_head("past_branch", commit)
+            repo.head.reference = past_branch
             repo.head.reset(index=True, working_tree=True)
-            commit.checkout()
+            repo.heads.past_branch.checkout()
 
     @staticmethod
     def switch_to_branch(repo, branch):
         active_branch = repo.active_branch
         if str(active_branch) != branch:
             LOGGER.debug("Switch to branch '%s' from '%s'", branch, active_branch)
-            branch = repo.create_head(branch)
-            branch.checkout()
+
+            git_cmd = repo.git
+            git_cmd.checkout(branch)

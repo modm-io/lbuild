@@ -17,6 +17,8 @@ from . import parser
 from . import repository
 from . import utils
 
+from . import __main__
+
 __all__ = [
     'builder',
     'buildlog',
