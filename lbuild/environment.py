@@ -12,6 +12,7 @@ import time
 import shutil
 import fnmatch
 import jinja2
+import logging
 
 import lbuild.filter
 
@@ -65,6 +66,7 @@ class Environment:
             'options': self.options,
         }
 
+        self.log = logging.getLogger("user." + module.fullname.replace(":", "."))
         self.outbasepath = None
         self.substitutions = {}
 
