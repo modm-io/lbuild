@@ -39,11 +39,30 @@ class PostBuildTest(unittest.TestCase):
         stdout_file = io.StringIO()
         with contextlib.redirect_stdout(stdout_file):
             # Build library
-            self.parser.configure_and_build_library(self._get_path("config.xml"), tempdir)
+            self.parser.configure_and_build_library(self._get_path("config.xml"),
+                                                    outpath=tempdir)
 
         output = stdout_file.getvalue()
         self.assertIn("Pre-Build", output)
         self.assertIn("Post-Build", output)
+
+    @testfixtures.tempdir()
+    def test_should_abort_after_pre_build_functions(self, tempdir):
+        self.parser.parse_repository(self._get_path("repo.lb"))
+
+        stdout_file = io.StringIO()
+        with contextlib.redirect_stdout(stdout_file):
+            # Build library
+            cmd_options = ["repo:module:fail=True"]
+
+            self.assertRaises(lbuild.exception.BlobAggregateException, lambda:
+                              self.parser.configure_and_build_library(self._get_path("config.xml"),
+                                                                      outpath=tempdir,
+                                                                      cmd_options=cmd_options))
+
+        output = stdout_file.getvalue()
+        self.assertIn("Pre-Build", output)
+        self.assertNotIn("Post-Build", output)
 
 if __name__ == '__main__':
     unittest.main()

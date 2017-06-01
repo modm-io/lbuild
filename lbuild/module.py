@@ -334,6 +334,8 @@ class Module:
                 'BooleanOption': lbuild.option.BooleanOption,
                 'NumericOption': lbuild.option.NumericOption,
                 'EnumerationOption': lbuild.option.EnumerationOption,
+
+                'PreBuildException': lbuild.exception.BlobPreBuildException,
             }
 
             LOGGER.debug("Parse module_filename '%s'", module_filename)

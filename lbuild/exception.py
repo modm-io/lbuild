@@ -45,6 +45,9 @@ class BlobTemplateException(BlobException):
     """
     pass
 
+class BlobPreBuildException(BlobException):
+    pass
+
 class BlobBuildException(BlobException):
     """
     Exceptions raised during the build of project.
@@ -54,3 +57,9 @@ class BlobBuildException(BlobException):
     """
     pass
 
+class BlobAggregateException(BlobException):
+    """
+    Collection of multiple exceptions.
+    """
+    def __init__(self, exceptions):
+        self.exceptions = exceptions

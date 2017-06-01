@@ -335,6 +335,10 @@ def main():
 
         output = run(args)
         print(output)
+    except lbuild.exception.BlobAggregateException as aggregate:
+        for error in aggregate.exceptions:
+            sys.stderr.write('\nERROR: %s\n' % error)
+        sys.exit(2)
     except lbuild.exception.BlobArgumentException as error:
         argument_parser.print_help()
         print(error)

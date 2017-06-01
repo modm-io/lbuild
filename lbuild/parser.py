@@ -282,6 +282,7 @@ class Parser:
             depth = len(module.fullname.split(":"))
             groups[depth].append(Runner(module, env))
 
+        exceptions = []
         # Enforce that the submodules are always build before their
         # parent modules.
         for index in sorted(groups, reverse=True):
@@ -289,7 +290,13 @@ class Parser:
             random.shuffle(group)
 
             for runner in group:
-                runner.pre_build()
+                try:
+                    runner.pre_build()
+                except lbuild.exception.BlobPreBuildException as error:
+                    exceptions.append(error)
+
+        if len(exceptions) > 0:
+            raise lbuild.exception.BlobAggregateException(exceptions)
 
         for index in sorted(groups, reverse=True):
             group = groups[index]
@@ -316,7 +323,7 @@ class Parser:
         modules = self.prepare_repositories(repo_options)
         selected_modules = lbuild.module.resolve_modules(modules, configuration.selected_modules)
         build_modules = self.resolve_dependencies(modules, selected_modules)
-        module_options = self.merge_module_options(build_modules, configuration.options)
+        module_options = self.merge_module_options(build_modules, configuration.options + commandline_options)
 
         log = lbuild.buildlog.BuildLog()
         self.build_modules(outpath, build_modules, repo_options, module_options, log)
