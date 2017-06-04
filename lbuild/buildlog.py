@@ -123,3 +123,5 @@ class BuildLog:
         else:
             return rootnode
 
+    def __iter__(self):
+        return iter(self.operations)
