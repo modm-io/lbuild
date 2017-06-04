@@ -285,4 +285,9 @@ class EnumerationOption(Option):
             # Try to access 'value' as if it where an enum
             return self.__values[value.name].value
         except AttributeError:
-            return self.__values[value]
+            try:
+                return self.__values[value]
+            except KeyError:
+                raise BlobException("Value '{}' not found in enumeration '{}'. "
+                                    "Possible values are:\n'{}'."
+                                    .format(value, self.name, "', '".join(self.__values)))
