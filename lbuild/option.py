@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright (c) 2016, Fabian Greif
+# Copyright (c) 2016-2017, Fabian Greif
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the

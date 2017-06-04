@@ -250,7 +250,8 @@ class Repository:
             repo.functions = Repository.get_global_functions(local, ['init', 'prepare'])
 
             # Execution init() function. In this function options are added.
-            repo.functions['init'](RepositoryFacade(repo))
+            lbuild.utils.with_forward_exception(repo,
+                    lambda: repo.functions['init'](RepositoryFacade(repo)))
 
             if repo.name is None:
                 raise BlobException("The init(repo) function must set a repository name! "
@@ -265,9 +266,10 @@ class Repository:
         return repo
 
     def prepare_repository(self, options):
-        self.functions["prepare"](RepositoryFacade(self),
-                                  OptionNameResolver(self,
-                                                     options))
+        lbuild.utils.with_forward_exception(self,
+                lambda: self.functions["prepare"](RepositoryFacade(self),
+                                                  OptionNameResolver(self,
+                                                                     options)))
 
         modules = {}
         # Parse the modules inside this repository

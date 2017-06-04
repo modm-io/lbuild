@@ -339,6 +339,13 @@ def main():
         for error in aggregate.exceptions:
             sys.stderr.write('\nERROR: %s\n' % error)
         sys.exit(2)
+    except lbuild.exception.BlobForwardException as error:
+        sys.stderr.write("\nERROR in '{}'\n".format(error.module))
+        traceback.print_exception(type(error.exception),
+                                  error.exception,
+                                  error.exception.__traceback__,
+                                  limit=-1)
+        sys.exit(4)
     except lbuild.exception.BlobArgumentException as error:
         argument_parser.print_help()
         print(error)

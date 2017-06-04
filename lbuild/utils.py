@@ -13,6 +13,9 @@ import uuid
 import importlib.util
 import importlib.machinery
 
+from .exception import BlobException
+from .exception import BlobForwardException
+
 
 def listify(node):
     return [node, ] if (not isinstance(node, list)) else node
@@ -54,3 +57,16 @@ def load_module_from_file(filename, local, modulename=None):
 
     sys.modules[modulename] = module
     return module.__dict__
+
+
+def with_forward_exception(module, function):
+    """
+    Run a function a store exceptions as forward exceptions.
+    """
+    try:
+        return function()
+    except BlobException as error:
+        raise
+    except Exception as error:
+        # Forward all exception which are not BlobExceptions
+        raise BlobForwardException(module, error)

@@ -25,6 +25,7 @@ from .repository import Repository
 
 from .exception import BlobException
 
+
 LOGGER = logging.getLogger('lbuild.module')
 
 
@@ -491,7 +492,7 @@ class Module:
 
     def init(self):
         # Execute init() function from module to get module name
-        self.functions['init'](ModuleInitFacade(self))
+        lbuild.utils.with_forward_exception(self, lambda: self.functions['init'](ModuleInitFacade(self)))
 
         if self.name is None:
             raise BlobException("The init(module) function must set a module name! " \
@@ -526,8 +527,9 @@ class Module:
         available_modules = {}
         name_resolver = lbuild.repository.OptionNameResolver(self.repository,
                                                              repo_options)
-        is_available = self.functions["prepare"](ModuleFacade(self),
-                                                 name_resolver)
+        is_available = lbuild.utils.with_forward_exception(self,
+                lambda: self.functions["prepare"](ModuleFacade(self),
+                                                  name_resolver))
         if is_available:
             self.register_module()
             available_modules[self.fullname] = self
@@ -562,23 +564,17 @@ class Module:
         pre_build = self.functions.get("pre_build", None)
         if pre_build is not None:
             LOGGER.info("Prepare for build %s", self.fullname)
-
-            # TODO add exception handling
-            pre_build(env)
+            lbuild.utils.with_forward_exception(self, lambda: pre_build(env))
 
     def build(self, env):
         LOGGER.info("Build %s", self.fullname)
-
-        # TODO add exception handling
-        self.functions["build"](env)
+        lbuild.utils.with_forward_exception(self, lambda: self.functions["build"](env))
 
     def post_build(self, env, buildlog):
         post_build = self.functions.get("post_build", None)
         if post_build is not None:
             LOGGER.info("Post-Build %s", self.fullname)
-
-            # TODO add exception handling
-            post_build(env, buildlog)
+            lbuild.utils.with_forward_exception(self, lambda: post_build(env, buildlog))
 
     def __lt__(self, other):
         """

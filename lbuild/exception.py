@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright (c) 2015-2016, Fabian Greif
+# Copyright (c) 2015-2017, Fabian Greif
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -39,14 +39,17 @@ class BlobAttributeException(BlobException):
                                ("The attribute {} may only be changed in "
                                 "the init(...) method".format(name)))
 
+
 class BlobTemplateException(BlobException):
     """
     Error in Jinja2 template evaluation.
     """
     pass
 
+
 class BlobPreBuildException(BlobException):
     pass
+
 
 class BlobBuildException(BlobException):
     """
@@ -57,9 +60,22 @@ class BlobBuildException(BlobException):
     """
     pass
 
+
 class BlobAggregateException(BlobException):
     """
     Collection of multiple exceptions.
     """
     def __init__(self, exceptions):
         self.exceptions = exceptions
+
+
+class BlobForwardException(BlobException):
+    """
+    Handler for regular Python exception thrown in user defined functions.
+
+    Use to forward the exception to the command line interface and provide
+    additional informations.
+    """
+    def __init__(self, module, exception):
+        self.module = module
+        self.exception = exception

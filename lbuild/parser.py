@@ -25,6 +25,7 @@ from . import config
 
 LOGGER = logging.getLogger('lbuild.parser')
 
+
 class Runner:
 
     def __init__(self, module, env):
