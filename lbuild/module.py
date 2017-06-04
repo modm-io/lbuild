@@ -530,7 +530,11 @@ class Module:
         is_available = lbuild.utils.with_forward_exception(self,
                 lambda: self.functions["prepare"](ModuleFacade(self),
                                                   name_resolver))
-        if is_available:
+
+        if is_available is None:
+            raise BlobException("The prepare() function for module '{}' must return True or False."
+                                .format(self.name))
+        elif is_available:
             self.register_module()
             available_modules[self.fullname] = self
 
