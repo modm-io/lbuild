@@ -64,5 +64,21 @@ class PostBuildTest(unittest.TestCase):
         self.assertIn("Pre-Build", output)
         self.assertNotIn("Post-Build", output)
 
+    @testfixtures.tempdir()
+    def test_should_contain_metadata(self, tempdir):
+        self.parser.parse_repository(self._get_path("repo.lb"))
+
+        stdout_file = io.StringIO()
+        with contextlib.redirect_stdout(stdout_file):
+            # Build library
+            buildlog = self.parser.configure_and_build_library(self._get_path("config.xml"),
+                                                               outpath=tempdir)
+
+        self.assertEqual(3, len(buildlog.metadata["include_path"]))
+        self.assertEqual(2, len(buildlog.metadata["required_libraries"]))
+
+        self.assertIn("test", buildlog.metadata["required_libraries"])
+        self.assertIn("test2", buildlog.metadata["required_libraries"])
+
 if __name__ == '__main__':
     unittest.main()

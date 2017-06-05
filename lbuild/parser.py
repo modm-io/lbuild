@@ -328,3 +328,4 @@ class Parser:
 
         log = lbuild.buildlog.BuildLog()
         self.build_modules(outpath, build_modules, repo_options, module_options, log)
+        return log

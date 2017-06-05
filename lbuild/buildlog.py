@@ -10,6 +10,7 @@
 
 import os
 import logging
+import collections
 import threading
 
 import lxml.etree
@@ -58,6 +59,8 @@ class BuildLog:
     """
     def __init__(self):
         self.operations = []
+        self.metadata = collections.defaultdict(list)
+
         self._build_files = {}
         self.__lock = threading.Lock()
 

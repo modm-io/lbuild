@@ -292,6 +292,23 @@ class Environment:
                 filenames.append(filename)
         return filenames
 
+    def append_metadata(self, key, value):
+        """
+        Append additional information to the build log which can be used in the
+        post-build step to generate additional files/data.
+        """
+        self.__buildlog.metadata[key].append(value)
+
+    def append_metadata_unique(self, key, value):
+        """
+        Append additional information build log if it is not already present.
+
+        See:
+        - append_metadata
+        """
+        if value not in self.__buildlog.metadata[key]:
+            self.__buildlog.metadata[key].append(value)
+
     def assert_new_option(self, key):
         """Query whether an option exists."""
         try:
