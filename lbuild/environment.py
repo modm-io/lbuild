@@ -56,6 +56,7 @@ class Environment:
         self.modules = modules
         self.__module = module
         self.__modulepath = module.path
+        self.__repopath = module.repository.path
         self.__outpath = outpath
 
         self.__buildlog = buildlog
@@ -87,6 +88,11 @@ class Environment:
 
         srcpath = os.path.normpath(src if os.path.isabs(src) else self.modulepath(src))
         destpath = os.path.normpath(dest if os.path.isabs(dest) else self.outpath(dest))
+
+        srcrelpath = os.path.relpath(srcpath, self.__repopath)
+        if srcrelpath.startswith(".."):
+            raise BlobException("Cannot access files outside of repository!\n"
+                                "'{}'".format(srcrelpath))
 
         if os.path.isdir(srcpath):
             _copytree(lambda src, dest, time: self.__buildlog.log(self.__module, src, dest, time),
@@ -160,7 +166,7 @@ class Environment:
                 path = os.path.join(os.path.dirname(parent), template)
                 return os.path.normpath(path)
 
-        environment = RelEnvironment(loader=jinja2.FileSystemLoader(self.__modulepath),
+        environment = RelEnvironment(loader=jinja2.FileSystemLoader(self.__repopath),
                                      extensions=['jinja2.ext.do'],
                                      undefined=jinja2.StrictUndefined)
 
@@ -202,6 +208,11 @@ class Environment:
                 dest = ".".join(parts[:-1])
             else:
                 dest = src
+
+        src = self.repopath(src)
+        if src.startswith(".."):
+            raise BlobException("Cannot access template outside of repository!\n"
+                                "'{}'".format(src))
 
         if substitutions is None:
             substitutions = {}
@@ -249,6 +260,10 @@ class Environment:
     def modulepath(self, *path):
         """Relocate given path to the path of the module file."""
         return os.path.join(self.__modulepath, *path)
+
+    def repopath(self, *path):
+        """Relocate given path to the path of the repo file."""
+        return os.path.relpath(self.modulepath(*path), self.__repopath)
 
     def outpath(self, *path):
         """Relocate given path to the output path."""
