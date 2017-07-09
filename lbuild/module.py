@@ -335,6 +335,7 @@ class Module:
                 'BooleanOption': lbuild.option.BooleanOption,
                 'NumericOption': lbuild.option.NumericOption,
                 'EnumerationOption': lbuild.option.EnumerationOption,
+                'SetOption': lbuild.option.SetOption,
 
                 'PreBuildException': lbuild.exception.BlobPreBuildException,
             }

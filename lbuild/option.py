@@ -10,6 +10,7 @@
 import enum
 import inspect
 import textwrap
+import collections
 
 import lbuild.filter
 from .exception import BlobException
@@ -223,22 +224,25 @@ class EnumerationOption(Option):
         Option.__init__(self, name, description)
         if inspect.isclass(enumeration) and issubclass(enumeration, enum.Enum):
             self.__values = enumeration
-        elif isinstance(enumeration, (list, tuple, set, range)) and \
+            if default is not None:
+                self.value = default
+            return
+
+        if isinstance(enumeration, (list, tuple, set, range)) and \
                 len(enumeration) == len(set(enumeration)):
             # If the argument is a list and the items in the list are unqiue,
             # convert it so that the value of the enum equals its name.
             self.__values = {str(entry): entry for entry in enumeration}
-
-            if default is not None:
-                default = str(default)
         elif isinstance(enumeration, (dict,)):
             self.__values = enumeration
-            if default is not None:
-                default = str(default)
         else:
             raise BlobException("Type {} currently not supported".format(type(enumeration)))
 
         if default is not None:
+            if isinstance(default, (list, tuple, set, range, dict)):
+                default = map(str, default)
+            else:
+                default = str(default)
             self.value = default
 
     @property
@@ -261,6 +265,9 @@ class EnumerationOption(Option):
     def values_hint(self):
         return ", ".join(self.values)
 
+    def value_hint(self):
+        return str(self.value)
+
     def format(self):
         name = self.fullname + " = "
         if self._value is None:
@@ -272,13 +279,14 @@ class EnumerationOption(Option):
             return "{}[{}]".format(name, output)
         else:
             values = self.values_hint()
+            value = self.value_hint()
             # The +4 is for the spacing and the two square brackets
             overhead = len(name) + 4
             if len(values) + overhead > self.LINEWITH:
                 mark = " ..."
                 max_length = self.LINEWITH - overhead - len(mark)
                 values = values[0:max_length] + mark
-            return "{}{}  [{}]".format(name, self.value, values)
+            return "{}{}  [{}]".format(name, value, values)
 
     def as_enumeration(self, value):
         try:
@@ -291,3 +299,18 @@ class EnumerationOption(Option):
                 raise BlobException("Value '{}' not found in enumeration '{}'. "
                                     "Possible values are:\n'{}'."
                                     .format(value, self.name, "', '".join(self.__values)))
+
+class SetOption(EnumerationOption):
+    @EnumerationOption.value.setter
+    def value(self, values):
+        if isinstance(values, str):
+            values = [v.strip() for v in values.split(",")]
+        self._value = self.as_set(values)
+
+    def value_hint(self):
+        return "[{}]".format(", ".join(self.value))
+
+    def as_set(self, values):
+        # remove duplicates, but retain order with OrderedDict
+        return [self.as_enumeration(value) for value in
+                collections.OrderedDict.fromkeys(values)]
