@@ -24,6 +24,7 @@ from .repository import LocalFileReaderFactory
 from .repository import Repository
 
 from .exception import BlobException
+from lbuild.exception import BlobForwardException
 
 
 LOGGER = logging.getLogger('lbuild.module')
@@ -173,9 +174,8 @@ class OptionNameResolver:
         self.module_options = module_options
 
     def __getitem__(self, key: str):
-        option_parts = key.split(":")
-
         try:
+            option_parts = key.split(":")
             depth = len(option_parts)
             if depth < 2:
                 key = "{}:{}".format(self.module.fullname, key)
@@ -198,6 +198,15 @@ class OptionNameResolver:
         except KeyError:
             raise BlobException("Unknown option name '{}' in "
                                 "module '{}'".format(key, self.module.fullname))
+        except AttributeError as error:
+            raise BlobForwardException("Invalid option '{}'".format(key), error)
+
+    def __contains__(self, key):
+        try:
+            _ = self.__getitem__(key)
+            return True
+        except:
+            return False
 
     def __repr__(self):
         # Create representation of merged module and repository options
@@ -462,7 +471,12 @@ class Module:
         """
         dependencies = set()
         for dependency_name in self.__dependency_module_names:
-            dependency = find_module(available_modules, dependency_name)
+            try:
+                dependency = find_module(available_modules, dependency_name)
+            except lbuild.exception.BlobException:
+                raise lbuild.exception.BlobException(" Module '{}' not found, "
+                                                     "required by '{}'".format(dependency_name,
+                                                                               self.fullname))
             dependencies.add(dependency)
 
         self.dependencies = list(dependencies)

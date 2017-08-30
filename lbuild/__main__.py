@@ -320,7 +320,11 @@ def run(args):
     lbuild.logger.configure_logger(args.verbose)
 
     config = lbuild.config.Configuration.parse_configuration(args.config)
-    return args.execute_action(args, config)
+    try:
+        command = args.execute_action
+    except AttributeError:
+        raise lbuild.exception.BlobArgumentException("No command specified")
+    return command(args, config)
 
 
 def main():

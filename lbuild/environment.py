@@ -16,7 +16,7 @@ import logging
 
 import lbuild.filter
 
-from .exception import BlobException, BlobTemplateException
+from .exception import BlobException, BlobTemplateException, BlobForwardException
 
 
 def _copytree(logger, src, dst, ignore=None):
@@ -243,6 +243,10 @@ class Environment:
         except BlobException as error:
             raise BlobException("Error in template '{}': \n"
                                 "{}".format(self.modulepath(src), error))
+        except Exception as error:
+            raise BlobForwardException("Error in template '{}': \n"
+                                       "{}".format(self.modulepath(src), error),
+                                       error)
 
         outfile_name = self.outpath(dest)
 
