@@ -18,6 +18,7 @@ import lbuild.utils
 
 from .exception import BlobException
 from . import utils
+from lbuild.utils import listify
 
 LOGGER = logging.getLogger('lbuild.repository')
 
@@ -129,7 +130,7 @@ class RepositoryFacade:
         pattern = os.path.abspath(self.__repository.relocate_relative_path(pattern))
         return glob.glob(pattern)
 
-    def find_modules_recursive(self, basepath="", modulefile="module.lb"):
+    def find_modules_recursive(self, basepath="", modulefile="module.lb", ignore=[]):
         """
         Find all module files following a specific pattern.
 
@@ -138,8 +139,16 @@ class RepositoryFacade:
             modulefile : Filename of the module files to search
                 for (default: "module.lb").
         """
+        ignore = utils.listify(ignore)
         basepath = self.__repository.relocate_relative_path(basepath)
         for path, _, files in os.walk(basepath):
+            skip = False
+            for ignore_path in ignore:
+                if ignore_path in path:
+                    skip = True
+            if skip:
+                continue
+
             if modulefile in files:
                 modulefilepath = os.path.normpath(os.path.join(path, modulefile))
                 self.__repository.module_files.append(modulefilepath)
