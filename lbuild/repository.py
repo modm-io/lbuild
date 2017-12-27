@@ -18,7 +18,6 @@ import lbuild.utils
 
 from .exception import BlobException
 from . import utils
-from lbuild.utils import listify
 
 LOGGER = logging.getLogger('lbuild.repository')
 
@@ -56,6 +55,7 @@ class OptionNameResolver:
     """
     Option name resolver for repository options.
     """
+
     def __init__(self, repository, options):
         """
 
@@ -94,6 +94,7 @@ class RepositoryFacade:
 
     Used when execution the repository files.
     """
+
     def __init__(self, repository):
         self.__repository = repository
 
@@ -175,6 +176,7 @@ class Repository:
     """
     A repository is a set of modules.
     """
+
     def __init__(self, path, name=None):
         # Path to the repository file. All relative paths refer to this path.
         self.path = path
@@ -255,7 +257,8 @@ class Repository:
                 'EnumerationOption': lbuild.option.EnumerationOption,
             }
 
-            local = lbuild.utils.load_module_from_file(repofilename, local)
+            local = lbuild.utils.with_forward_exception(repo,
+                    lambda: lbuild.utils.load_module_from_file(repofilename, local))
             repo.functions = Repository.get_global_functions(local, ['init', 'prepare'])
 
             # Execution init() function. In this function options are added.
@@ -290,3 +293,15 @@ class Repository:
     def __lt__(self, other):
         return self.name.__cmp__(other.name)
 
+    def __repr__(self):
+        return "Repository({})".format(self.path)
+
+    def __str__(self):
+        """ Get string representation of repository.  """
+        if self.name is not None:
+            # The name must not always be set, e.g. during load
+            # the repository name is only known after calling the
+            # init function.
+            return "{} at {}".format(self.name, self.path)
+        else:
+            return self.path
