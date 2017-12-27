@@ -9,7 +9,6 @@
 # governing this code.
 
 import os
-import io
 import sys
 import unittest
 
@@ -32,7 +31,7 @@ class RepositoryTest(unittest.TestCase):
         with self.assertRaises(lbuild.exception.BlobForwardException) as cm:
             self.parser.parse_repository(self._get_path("invalid_import.lb"))
 
-        self.assertEqual(ModuleNotFoundError, cm.exception.exception.__class__)
+        self.assertTrue(issubclass(cm.exception.exception.__class__, ImportError))
 
 
 if __name__ == '__main__':
