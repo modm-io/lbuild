@@ -26,7 +26,6 @@ from .repository import Repository
 from .exception import BlobException
 from lbuild.exception import BlobForwardException
 
-
 LOGGER = logging.getLogger('lbuild.module')
 
 
@@ -167,6 +166,7 @@ class OptionNameResolver:
     """
     Option name resolver for module options.
     """
+
     def __init__(self, repository, module, repo_options, module_options):
         self.repository = repository
         self.module = module
@@ -223,6 +223,7 @@ class ModuleNameResolver:
     """
     Module name resolver for modules.
     """
+
     def __init__(self, repository, module, modules):
         self.repository = repository
         self.module = module
@@ -284,6 +285,7 @@ class ModuleInitFacade(ModuleFacade):
 
     Allows to set the module name, description and parent.
     """
+
     def __init__(self, module):
         ModuleFacade.__init__(self, module)
 
@@ -529,8 +531,14 @@ class Module:
                                          self._parent,
                                          self._name)
         self._fullname = fullname
-        if self.repository.modules.get(fullname, None) is not None:
-            raise BlobException("Module name '{}' is not unique".format(fullname))
+        exisiting_module = self.repository.modules.get(fullname, None)
+        if exisiting_module is not None:
+            raise BlobException("Module name '{}' is not unique. "
+                                "Found at {} and {}"
+                                .format(fullname,
+                                        os.path.join(exisiting_module.path,
+                                                     exisiting_module.filename),
+                                        os.path.join(self.path, self.filename)))
         self.repository.modules[fullname] = self
 
     def prepare(self, repo_options):
