@@ -178,6 +178,12 @@ class Repository:
     """
 
     def __init__(self, path, name=None):
+        """
+        Construct a new repository object.
+
+        At the construction time of the object, the name of repository may not
+        be known e.g. if the repository is loaded from a `repo.lb` file.
+        """
         # Path to the repository file. All relative paths refer to this path.
         self.path = path
         self.name = name

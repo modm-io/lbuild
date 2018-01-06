@@ -19,6 +19,20 @@ import lbuild.filter
 from .exception import BlobException, BlobTemplateException, BlobForwardException
 
 
+def _copyfile(sourcepath, destpath):
+    """
+    Copy a file if the source file time stamp is newer than the destination
+    timestamp.
+    """
+    if not os.path.exists(destpath):
+        shutil.copy2(sourcepath, destpath)
+    else:
+        time_diff = os.stat(sourcepath).st_mtime - os.stat(destpath).st_mtime
+        if time_diff > 1:
+            print(destpath, "override")
+            shutil.copy2(sourcepath, destpath)
+
+
 def _copytree(logger, src, dst, ignore=None):
     """
     Implementation of shutil.copytree that overwrites files instead
@@ -31,6 +45,7 @@ def _copytree(logger, src, dst, ignore=None):
         ignored = ignore(src, files)
     else:
         ignored = set()
+
     for filename in files:
         if filename not in ignored:
             sourcepath = os.path.join(src, filename)
@@ -39,11 +54,7 @@ def _copytree(logger, src, dst, ignore=None):
                 _copytree(logger, sourcepath, destpath, ignore)
             else:
                 starttime = time.time()
-
-                time_diff = os.stat(src).st_mtime - os.stat(dst).st_mtime
-                if not os.path.exists(destpath) or time_diff > 1:
-                    shutil.copy2(sourcepath, destpath)
-
+                _copyfile(sourcepath, destpath)
                 endtime = time.time()
                 total = endtime - starttime
                 logger(sourcepath, destpath, total)
@@ -91,7 +102,7 @@ class Environment:
 
         srcrelpath = os.path.relpath(srcpath, self.__repopath)
         if srcrelpath.startswith(".."):
-            raise BlobException("Cannot access files outside of repository!\n"
+            raise BlobException("Cannot access files outside of the repository!\n"
                                 "'{}'".format(srcrelpath))
 
         if os.path.isdir(srcpath):
@@ -102,7 +113,7 @@ class Environment:
         else:
             if not os.path.exists(os.path.dirname(destpath)):
                 os.makedirs(os.path.dirname(destpath))
-            shutil.copy2(srcpath, destpath)
+            _copyfile(srcpath, destpath)
 
             endtime = time.time()
             total = endtime - starttime
@@ -134,6 +145,7 @@ class Environment:
         This ignores all files in the `platform` sub-directory with the
         ending `.lb`.
         """
+
         def check(path, files):
             ignored = set()
             for pattern in patterns:
@@ -143,6 +155,7 @@ class Environment:
                         # which files should be ignored, not the absolute path.
                         ignored.add(filename)
             return ignored
+
         return check
 
     def __reload_template_environment(self, filters):
@@ -162,6 +175,7 @@ class Environment:
             Take care of paths. Jinja seems to use '/' as path separator in
             templates.
             """
+
             def join_path(self, template, parent):
                 path = os.path.join(os.path.dirname(parent), template)
                 return os.path.normpath(path)
