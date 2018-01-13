@@ -11,6 +11,7 @@
 import os
 import glob
 import logging
+import fnmatch
 
 import lbuild.option
 import lbuild.filter
@@ -137,22 +138,19 @@ class RepositoryFacade:
 
         Args:
             basepath   : Rootpath for the search.
-            modulefile : Filename of the module files to search
-                for (default: "module.lb").
+            modulefile : Filename pattern of the module files to search
+                         for (default: "module.lb").
+            ignore     : Filename pattern to ignore during search
         """
         ignore = utils.listify(ignore)
         basepath = self.__repository.relocate_relative_path(basepath)
         for path, _, files in os.walk(basepath):
-            skip = False
-            for ignore_path in ignore:
-                if ignore_path in path:
-                    skip = True
-            if skip:
-                continue
-
-            if modulefile in files:
-                modulefilepath = os.path.normpath(os.path.join(path, modulefile))
-                self.__repository.module_files.append(modulefilepath)
+            for file in files:
+                if any(fnmatch.fnmatch(file, i) for i in ignore):
+                    continue
+                if fnmatch.fnmatch(file, modulefile):
+                    modulefilepath = os.path.normpath(os.path.join(path, file))
+                    self.__repository.module_files.append(modulefilepath)
 
     def add_modules(self, modules):
         """
