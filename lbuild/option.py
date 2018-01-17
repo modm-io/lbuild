@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright (c) 2016-2017, Fabian Greif
+# Copyright (c) 2016-2018, Fabian Greif
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -22,6 +22,7 @@ class Option:
 
     Can be used for string based options.
     """
+
     def __init__(self, name, description, default=None):
         if ":" in name:
             raise BlobException("Character ':' is not allowed in options "
@@ -210,16 +211,16 @@ class EnumerationOption(Option):
         """
         Construct an enumeration option.
 
-        Keyword arguments:
-        name -- Name of the option.
-        description -- Short description of the option. Can contain markdown
-            markup.
-        enumeration -- If `enumeration` is an enum.Enum subclass it is used
-            directly, otherwise it is converted into a dictionary. During
-            the conversion the names are converted to string.
-        default -- Default value which is used if no value is given in the
-            configuration. If the default value is not set, the build will
-            fail if no value is specified.
+        Args:
+            name: Name of the option.
+            description: Short description of the option. Can contain markdown
+                markup.
+            enumeration: If `enumeration` is an enum.Enum subclass it is used
+                directly, otherwise it is converted into a dictionary. During
+                the conversion the names are converted to string.
+            default: Default value which is used if no value is given in the
+                configuration. If the default value is not set, the build will
+                fail if no value is specified.
         """
         Option.__init__(self, name, description)
         if inspect.isclass(enumeration) and issubclass(enumeration, enum.Enum):
@@ -300,7 +301,9 @@ class EnumerationOption(Option):
                                     "Possible values are:\n'{}'."
                                     .format(value, self.name, "', '".join(self.__values)))
 
+
 class SetOption(EnumerationOption):
+
     @EnumerationOption.value.setter
     def value(self, values):
         if isinstance(values, str):

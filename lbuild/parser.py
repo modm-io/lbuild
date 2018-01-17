@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright (c) 2015-2017, Fabian Greif
+# Copyright (c) 2015-2018, Fabian Greif
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -142,11 +142,12 @@ class Parser:
 
     def prepare_repositories(self,
                              repo_options):
-        """ Prepare and select modules which are available given the set of
+        """
+        Prepare and select modules which are available given the set of
         repository repo_options.
 
         Returns:
-            Dict of modules, key is the qualified module name.
+            dict: Available modules, key is the qualified module name.
         """
         self.verify_options_are_defined(repo_options)
         for repo in self.repositories.values():
@@ -203,8 +204,8 @@ class Parser:
         Return the list of options used for building the selected modules.
 
         Returns:
-            Dictionary mapping the full qualified option name to the option
-            object.
+            dict: Mapping of the full qualified option names to the option
+            objects.
         """
         canidates = {}
         options = {}

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2015-2017, Fabian Greif
+# Copyright (c) 2015-2018, Fabian Greif
+# Copyright (c) 2018, Niklas Hauser
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -60,10 +61,10 @@ class OptionNameResolver:
     def __init__(self, repository, options):
         """
 
-        Keyword arguments:
-        repository -- Default repository. This name is used when the repository
-            name is left empty (e.g. ":option").
-        options --
+        Args:
+            repository: Default repository. This name is used when the repository
+                name is left empty (e.g. ":option").
+            options:
         """
         self.repository = repository
         self.options = options
@@ -137,10 +138,10 @@ class RepositoryFacade:
         Find all module files following a specific pattern.
 
         Args:
-            basepath   : Rootpath for the search.
-            modulefile : Filename pattern of the module files to search
-                         for (default: "module.lb").
-            ignore     : Filename pattern to ignore during search
+            basepath: Rootpath for the search.
+            modulefile: Filename pattern of the module files to search
+                for (default: "module.lb").
+            ignore: Filename pattern to ignore during search
         """
         ignore = utils.listify(ignore)
         basepath = self.__repository.relocate_relative_path(basepath)
@@ -223,9 +224,9 @@ class Repository:
         """
         Get global functions from the environment.
 
-        Keyword arguments:
-        required -- List of required functions.
-        optional -- List of optional functions.
+        Args:
+            required: List of required functions.
+            optional: List of optional functions.
         """
         functions = {}
         for functionname in required:

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright (c) 2015-2017, Fabian Greif
+# Copyright (c) 2015-2018, Fabian Greif
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -321,8 +321,7 @@ class Environment:
         """
         Append additional information build log if it is not already present.
 
-        See:
-        - append_metadata
+        See also `append_metadata`.
         """
         if value not in self.__buildlog.metadata[key]:
             self.__buildlog.metadata[key].append(value)

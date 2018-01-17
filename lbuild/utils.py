@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2015, 2017, Fabian Greif
+# Copyright (c) 2015, 2017-2018, Fabian Greif
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -25,11 +25,11 @@ def load_module_from_file(filename, local, modulename=None):
     """
     Load a python module from a local file.
 
-    Keyword arguments:
-    filename -- Name of the file to load. The file extension is ignored.
-    local -- dictionary of symbols which will be added to the global
-        namespace when executing the module code.
-    modulename -- Name of the module. When set to `None`
+    Args:
+        filename: Name of the file to load. The file extension is ignored.
+        local: dictionary of symbols which will be added to the global
+            namespace when executing the module code.
+        modulename: Name of the module. When set to `None`.
 
     Returns:
         Namespace of the module.

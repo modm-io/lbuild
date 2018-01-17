@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright (c) 2015-2017, Fabian Greif
+# Copyright (c) 2015-2018, Fabian Greif
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -57,12 +57,12 @@ def find_modules(modules, modulename):
     select all three.
 
     Args:
-    modulename -- Name of the module in the format
-        'repository:module:submodule:...'.
-        Each part but the last can be an empty string.
+        modulename: Name of the module in the format
+            'repository:module:submodule:...'.
+            Each part but the last can be an empty string.
 
     Returns:
-        List of possible modules.
+        list: Possible modules.
     """
     verify_module_name(modulename)
 
@@ -110,7 +110,7 @@ def find_module(modules, modulename):
     Similar to find_modules(...) but returns only a single module and
     raised an exception in case multiple modules are found.
 
-    Return:
+    Returns:
         Single module corresponding to the module name.
     """
     found = find_modules(modules, modulename)
@@ -130,7 +130,7 @@ def resolve_modules(available_modules, module_names):
         available_modules: List of all available modules.
         module_names: List of module names.
 
-    Return:
+    Returns:
         List of module objects.
     """
     selected_modules = set()
@@ -270,8 +270,8 @@ class ModuleFacade:
         """
         Add one or more dependencies for the module.
 
-        Keyword arguments:
-        dependencies -- one or several dependencies as comma separated arguments.
+        Args:
+            dependencies: One or several dependencies as comma separated arguments.
         """
         self._module.add_dependencies(*dependencies)
 
@@ -359,9 +359,10 @@ class Module:
                             modulepath)
 
             # Get the required global functions
-            module.functions = Repository.get_global_functions(local,
-                                                               required=['init', 'prepare', 'build'],
-                                                               optional=['pre_build', 'post_build'])
+            module.functions = Repository.get_global_functions(
+                local,
+                required=['init', 'prepare', 'build'],
+                optional=['pre_build', 'post_build'])
             module.init()
 
             return module
@@ -377,10 +378,10 @@ class Module:
         Create new module definition.
 
         Args:
-            repository : Parent repository of the module.
-            filename   : Full path of the module file.
-            path       : Path to the module file. Used as base for relative
-                paths during the building step of the module.
+            repository: Parent repository of the module.
+            filename: Full path of the module file.
+            path: Path to the module file. Used as base for relative paths
+                during the building step of the module.
         """
         self.repository = repository
         self.filename = filename
@@ -555,7 +556,8 @@ class Module:
                                                   name_resolver))
 
         if is_available is None:
-            raise BlobException("The prepare() function for module '{}' must return True or False."
+            raise BlobException("The prepare() function for module '{}' must "
+                                "return True or False."
                                 .format(self.name))
         elif is_available:
             self.register_module()

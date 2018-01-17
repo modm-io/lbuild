@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2015-2017, Fabian Greif
+# Copyright (c) 2015-2018, Fabian Greif
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -21,6 +21,7 @@ import lbuild.module
 LOGGER = logging.getLogger('lbuild.config')
 DEFAULT_CACHE_FOLDER = ".lbuild_cache"
 
+
 class Option:
     """
     Option in the configuration file.
@@ -30,9 +31,9 @@ class Option:
         """
         Construct a new option.
 
-        Keyword arguments:
-        name -- Option name. Can be not fully qualified.
-        value -- Value of the option.
+        Args:
+            name: Option name. Can be not fully qualified.
+            value: Value of the option.
         """
         self.name = name
         self.value = value
@@ -96,7 +97,7 @@ class Configuration:
         and how they are configured.
 
         Returns:
-        Populated Configuration object.
+            Populated Configuration object.
         """
         if childconfig is None:
             childconfig = Configuration()

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2016-2017, Fabian Greif
+# Copyright (c) 2016-2018, Fabian Greif
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -26,6 +26,7 @@ class Operation:
     Stores the connection between a generated file and its template and module
     from within it was generated.
     """
+
     def __init__(self, module, filename_in: str, filename_out: str, time=None):
         self.modulename = module.fullname
         self.modulepath = module.path
@@ -57,6 +58,7 @@ class BuildLog:
     another module. Also allow to later find out which module has generated
     a specific file.
     """
+
     def __init__(self):
         self.operations = []
         self.metadata = collections.defaultdict(list)
@@ -89,8 +91,8 @@ class BuildLog:
         Get all operations which have been performed for the given module and
         its submodules.
 
-        Keyword arguments:
-        modulename -- Full module name.
+        Args:
+            modulename: Full module name.
         """
         with self.__lock:
             module_operations = [operation for operation in self.operations if
