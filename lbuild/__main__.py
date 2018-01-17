@@ -31,6 +31,7 @@ def get_modules(parser, repo_options, config_options, selected_module_names=None
 
     return build_modules, module_options
 
+
 def is_repository_option(option_name):
     parts = option_name.split(":")
     if len(parts) < 2:
@@ -42,6 +43,7 @@ def is_repository_option(option_name):
 
 
 class InitAction:
+
     def register(self, argument_parser):
         parser = argument_parser.add_parser("init",
             help="Load remote repositories into the cache folder.")
@@ -52,6 +54,7 @@ class InitAction:
 
 
 class UpdateAction:
+
     def register(self, argument_parser):
         parser = argument_parser.add_parser("update",
             help="Update the content of remote repositories in the cache folder.")
@@ -65,6 +68,7 @@ class ManipulationActionBase:
     """
     Base class for actions that interact directly with the parser repositories.
     """
+
     def prepare_repositories(self, args, config):
         parser = lbuild.parser.Parser()
         parser.load_repositories(config, args.repositories)
@@ -76,6 +80,7 @@ class ManipulationActionBase:
 
 
 class DiscoverRepositoryAction(ManipulationActionBase):
+
     def register(self, argument_parser):
         parser = argument_parser.add_parser("discover-repository",
             aliases=['repo'],
@@ -90,6 +95,7 @@ class DiscoverRepositoryAction(ManipulationActionBase):
 
 
 class DiscoverModulesActions(ManipulationActionBase):
+
     def register(self, argument_parser):
         parser = argument_parser.add_parser("discover-modules",
             aliases=['modules'],
@@ -104,7 +110,9 @@ class DiscoverModulesActions(ManipulationActionBase):
             ostream.append(str(module))
         return "\n".join(ostream)
 
+
 class DependenciesAction(ManipulationActionBase):
+
     def register(self, argument_parser):
         parser = argument_parser.add_parser("dependencies",
             help="Generate a grahpviz representation of the module dependencies.")
@@ -140,6 +148,7 @@ class DependenciesAction(ManipulationActionBase):
 
 
 class DiscoverModuleOptionsAction(ManipulationActionBase):
+
     def register(self, argument_parser):
         parser = argument_parser.add_parser("discover-module-options",
             aliases=['options'],
@@ -173,6 +182,7 @@ class DiscoverModuleOptionsAction(ManipulationActionBase):
 
 
 class DiscoverOptionAction(ManipulationActionBase):
+
     def register(self, argument_parser):
         parser = argument_parser.add_parser("discover-option",
             aliases=['option'],
@@ -195,6 +205,7 @@ class DiscoverOptionAction(ManipulationActionBase):
 
 
 class DiscoverOptionValuesAction(ManipulationActionBase):
+
     def register(self, argument_parser):
         parser = argument_parser.add_parser("discover-option-values",
             aliases=['option-values'],
@@ -220,6 +231,7 @@ class DiscoverOptionValuesAction(ManipulationActionBase):
 
 
 class BuildAction(ManipulationActionBase):
+
     def register(self, argument_parser):
         parser = argument_parser.add_parser("build",
             help="Generate the library source code blob with the given options.")
@@ -250,6 +262,33 @@ class BuildAction(ManipulationActionBase):
             logfilename = configfilename + ".log"
             with open(logfilename, "wb") as logfile:
                 logfile.write(log.to_xml(to_string=True))
+        return ""
+
+
+class CleanAction(ManipulationActionBase):
+
+    def register(self, argument_parser):
+        parser = argument_parser.add_parser("clean",
+            help="Remove previously generated files.")
+        parser.add_argument("--buildlog",
+            dest="buildlog",
+            help="Use the given buildlog to identify the files to remove.")
+        parser.set_defaults(execute_action=self.prepare_repositories)
+
+    def perform(self, args, parser, config, repo_options):
+        if args.buildlog is not None:
+            print(args.buildlog)
+        else:
+            log = lbuild.buildlog.BuildLog()
+
+            build_modules, module_options = get_modules(parser, repo_options, config.options, config.selected_modules)
+            parser.build_modules(args.path, build_modules, repo_options, module_options, log)
+
+            if args.buildlog:
+                configfilename = args.config
+                logfilename = configfilename + ".log"
+                with open(logfilename, "wb") as logfile:
+                    logfile.write(log.to_xml(to_string=True))
         return ""
 
 
@@ -309,6 +348,7 @@ def prepare_argument_parser():
         DiscoverOptionAction(),
         DiscoverOptionValuesAction(),
         BuildAction(),
+        CleanAction(),
     ]
     for action in actions:
         action.register(subparsers)
@@ -364,5 +404,8 @@ def main():
             traceback.print_exc()
         sys.exit(1)
 
+
 if __name__ == '__main__':
+
+
     main()
