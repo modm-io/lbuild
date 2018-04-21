@@ -94,7 +94,7 @@ class DiscoverRepositoryAction(ManipulationActionBase):
         return "\n".join(ostream)
 
 
-class DiscoverModulesActions(ManipulationActionBase):
+class DiscoverModulesAction(ManipulationActionBase):
 
     def register(self, argument_parser):
         parser = argument_parser.add_parser("discover-modules",
@@ -190,7 +190,7 @@ class DiscoverOptionAction(ManipulationActionBase):
         parser.add_argument("-o", "--option-name",
             dest="option_name",
             required=True,
-            help="Select a specific module")
+            help="Select a specific option")
         parser.set_defaults(execute_action=self.prepare_repositories)
 
     def perform(self, args, parser, config, repo_options):
@@ -213,7 +213,7 @@ class DiscoverOptionValuesAction(ManipulationActionBase):
         parser.add_argument("-o", "--option-name",
             dest="option_name",
             required=True,
-            help="Select a specific module")
+            help="Select a specific option")
         parser.set_defaults(execute_action=self.prepare_repositories)
 
     def perform(self, args, parser, config, repo_options):
@@ -342,7 +342,7 @@ def prepare_argument_parser():
         InitAction(),
         UpdateAction(),
         DiscoverRepositoryAction(),
-        DiscoverModulesActions(),
+        DiscoverModulesAction(),
         DependenciesAction(),
         DiscoverModuleOptionsAction(),
         DiscoverOptionAction(),
