@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 #
 # Copyright (c) 2015-2018, Fabian Greif
@@ -11,6 +12,7 @@ import os
 import shutil
 import logging
 import itertools
+import textwrap
 
 import lbuild.utils
 import lbuild.filter
@@ -239,6 +241,15 @@ class ModuleNameResolver:
             raise BlobException("Unknown module name '{}' in "
                                 "repository '{}'".format(key, self.repository.name))
 
+    def __iter__(self):
+        return iter(self.modules.keys())
+
+    def items(self):
+        return self.modules.items()
+
+    def values(self):
+        return self.modules.values()
+
     def __repr__(self):
         return repr(self.modules)
 
@@ -397,7 +408,7 @@ class Module:
         self._submodules = []
 
         self._name = name
-        self.description = ""
+        self._description = ""
 
         # Required functions declared in the module configuration file
         self.functions = {}
@@ -412,6 +423,54 @@ class Module:
         # OptionNameResolver defined in the module configuration file. These
         # options are configurable through the project configuration file.
         self.options = {}
+
+    @property
+    def description(self):
+        try:
+            return self._description.read()
+        except AttributeError:
+            return self._description
+
+    @description.setter
+    def description(self, description):
+        self._description = description
+
+    @property
+    def short_description(self):
+        """
+        Returns the wrapped first paragraph of the description.
+
+        A paragraph is defined by non-whitespace text followed by an empty
+        line.
+        """
+        description = self.description
+        if description is not None:
+            lines = description.splitlines()
+            title = []
+            for line in lines:
+                line = line.strip()
+                if line == "":
+                    if len(title) > 0:
+                        break
+                else:
+                    title.append(line)
+            description = "\n".join(textwrap.wrap("\n".join(title), 80))
+
+        return description
+
+    def factsheet(self):
+        output = []
+        output.append(self.fullname)
+        output.append("=" * len(self.fullname))
+        output.append("")
+
+        description = self.description.strip()
+        if len(description) > 0:
+            output.append(description)
+        for option in self.options.values():
+            output.append("")
+            output.append(option.factsheet() + "\n")
+        return "\n".join(output)
 
     @property
     def name(self):

@@ -108,8 +108,29 @@ class DiscoverModulesAction(ManipulationActionBase):
         modules = parser.prepare_repositories(repo_options)
         for module in sorted(list(modules.values())):
             ostream.append(str(module))
+            if module.short_description:
+                ostream.append("")
+                ostream.append(textwrap.indent(module.short_description, "  "))
+                ostream.append("")
         return "\n".join(ostream)
 
+class DiscoverModuleAction(ManipulationActionBase):
+
+    def register(self, argument_parser):
+        parser = argument_parser.add_parser("discover-module",
+            aliases=['option'],
+            help="Print the description of one module.")
+        parser.add_argument("-m", "--module-name",
+            dest="module_name",
+            required=True,
+            help="Select a specific module")
+        parser.set_defaults(execute_action=self.prepare_repositories)
+
+    def perform(self, args, parser, config, repo_options):
+        ostream = []
+        modules = parser.prepare_repositories(repo_options)
+        module = lbuild.module.find_module(modules, args.module_name)
+        return module.factsheet() + "\n"
 
 class DependenciesAction(ManipulationActionBase):
 
@@ -343,6 +364,7 @@ def prepare_argument_parser():
         UpdateAction(),
         DiscoverRepositoryAction(),
         DiscoverModulesAction(),
+        DiscoverModuleAction(),
         DependenciesAction(),
         DiscoverModuleOptionsAction(),
         DiscoverOptionAction(),
