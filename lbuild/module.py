@@ -19,7 +19,7 @@ import lbuild.repository
 
 from . import exception
 
-from .repository import Localpath
+from .repository import RelocatePath
 from .repository import LocalFileReaderFactory
 from .repository import Repository
 
@@ -331,11 +331,13 @@ class Module:
         """
         try:
             modulepath = os.path.dirname(os.path.realpath(module_filename))
+            repopath = os.path.realpath(repository.path)
 
             local = {
                 # The localpath(...) function can be used to create
                 # a local path form the folder of the repository file.
-                'localpath': Localpath(modulepath),
+                'localpath': RelocatePath(modulepath),
+                'repopath': RelocatePath(repopath),
                 'FileReader': LocalFileReaderFactory(modulepath),
                 'listify': lbuild.filter.listify,
                 'ignore_patterns': shutil.ignore_patterns,

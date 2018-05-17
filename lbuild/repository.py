@@ -24,7 +24,7 @@ from . import utils
 LOGGER = logging.getLogger('lbuild.repository')
 
 
-class Localpath:
+class RelocatePath:
 
     def __init__(self, basepath):
         self.basepath = basepath
@@ -252,7 +252,7 @@ class Repository:
             local = {
                 # The localpath(...) function can be used to create
                 # a local path form the folder of the repository file.
-                'localpath': Localpath(repopath),
+                'localpath': RelocatePath(repopath),
                 'FileReader': LocalFileReaderFactory(repopath),
                 'listify': lbuild.filter.listify,
 
