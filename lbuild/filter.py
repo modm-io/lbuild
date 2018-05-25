@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #
 # Copyright (c) 2015-2016, Fabian Greif
+# Copyright (c) 2018, Niklas Hauser
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -8,6 +9,7 @@
 # governing this code.
 
 import textwrap
+import lbuild.utils
 
 
 def wordwrap(value, width=79):
@@ -50,8 +52,14 @@ def values(dictionaries, key):
     return value_list
 
 
-def listify(node):
-    if isinstance(node, list) or isinstance(node, tuple):
-        return node
-    else:
-        return [node]
+def listify(*node):
+    return lbuild.utils.listify(*node)
+
+default_filters = {
+    'lbuild.wordwrap': wordwrap,
+    'lbuild.indent': indent,
+    'lbuild.pad': pad,
+    'lbuild.values': values,
+    'lbuild.split': split,
+    'lbuild.listify': listify,
+}

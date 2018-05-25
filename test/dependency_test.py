@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright (c) 2017, Fabian Greif
+# Copyright (c) 2018, Niklas Hauser
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -30,8 +31,7 @@ class DepedencyTest(unittest.TestCase):
         self.parser.parse_repository(self._get_path("multiple_dependencies/repo.lb"))
         self.parser.prepare_repositories({})
 
-        module = lbuild.module.find_module(self.parser.available_modules, ":module2")
-        module.resolve_dependencies(self.parser.available_modules)
+        module = self.parser.find_module(":module2")
 
         self.assertEqual(1, len(module.dependencies))
         self.assertEqual("repo:module1", module.dependencies[0].fullname)

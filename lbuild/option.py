@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #
 # Copyright (c) 2016-2018, Fabian Greif
+# Copyright (c) 2018, Niklas Hauser
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -13,94 +14,63 @@ import textwrap
 import collections
 
 import lbuild.filter
-from .exception import BlobException
+from .exception import LbuildException
+from .node import BaseNode
+from .format import color_str as c
 
 
-class Option:
-    """
-    Base class for repository and module options.
-
-    Can be used for string based options.
-    """
-
-    def __init__(self, name, description, default=None):
-        if ":" in name:
-            raise BlobException("Character ':' is not allowed in options "
-                                "name '{}'".format(name))
-
-        self.name = name
+class Option(BaseNode):
+    def __init__(self, name, description, default=None, dependencies=None, convert_input=str, convert_output=str):
+        BaseNode.__init__(self, name, BaseNode.Type.OPTION)
+        self._dependency_handlers = lbuild.utils.listify(dependencies)
         self._description = description
+        self._in = convert_input
+        self._out = convert_output
+        self._input = None
+        self._output = None
+        self._default = None
+        self._set_default(default)
 
-        # Parent repository for this option
-        self.repository = None
-        # Parent module. Is set to none if the option is a repository
-        # option and not a module option.
-        self.module = None
+    def _set_default(self, default):
+        if default is not None:
+            self._input = self._in(default)
+            self._output = self._out(default)
+            self._default = self._in(default)
 
-        self._value = default
+    def _update_dependencies(self):
+        self._dependencies_resolved = False
+        for handler in self._dependency_handlers:
+            self._dependency_module_names += lbuild.utils.listify(handler(self._input))
+
+    def _set_value(self, value):
+        self._input = self._in(value)
+        self._output = self._out(value)
+        self._update_dependencies()
 
     @property
-    def description(self):
-        try:
-            return self._description.read()
-        except AttributeError:
-            return self._description
-
-    @property
-    def short_description(self):
-        """
-        Returns the wrapped first paragraph of the description.
-
-        A paragraph is defined by non-whitespace text followed by an empty
-        line.
-        """
-        description = self.description
-        if description is not None:
-            lines = description.splitlines()
-            title = []
-            for line in lines:
-                line = line.strip()
-                if line == "":
-                    if len(title) > 0:
-                        break
-                else:
-                    title.append(line)
-            description = "\n".join(textwrap.wrap("\n".join(title), 80))
-
-        return description
+    def module(self):
+        return self.parent
 
     @property
     def value(self):
-        return self._value
+        return self._output
 
     @value.setter
     def value(self, value):
-        self._value = value
+        self._set_value(value)
 
-    @property
-    def values(self):
-        return "String"
+    def is_default(self):
+        return self._input == self._default
 
-    def values_hint(self):
-        return self.values
+    def format_value(self):
+        value = str(self._input).strip(" \n")
+        if value is "": value = '""';
+        return value
 
-    def format(self):
-        values = self.values_hint()
-        if self.value is None:
-            return "{} = [{}]".format(self.fullname, values)
-        else:
-            return "{} = {}  [{}]".format(self.fullname, self._value, values)
-
-    @property
-    def fullname(self):
-        name = []
-        if self.module is not None:
-            name.append(self.module.fullname)
-        elif self.repository is not None:
-            name.append(self.repository.name)
-
-        name.append(self.name)
-        return ':'.join(name)
+    def format_values(self):
+        if self.is_default() or self._default == "":
+            return c("String")
+        return c("String: ") + c(str(self._default)).wrap("underlined")
 
     def __lt__(self, other):
         return self.fullname.__lt__(other.fullname)
@@ -108,40 +78,25 @@ class Option:
     def __str__(self):
         return self.fullname
 
-    def factsheet(self):
-        output = []
-        output.append(self.fullname)
-        output.append("=" * len(self.fullname))
-        output.append("")
-        if self.value is not None:
-            output.append("Current value: {}".format(self.value))
-        output.append("Possible values: {}".format(self.values_hint()))
+    def __repr__(self):
+        return "{}({})".format(self.__class__.__name__, self.fullname)
 
-        description = self.description.strip()
-        if len(description) > 0:
-            output.append("")
-            output.append(description)
-        return "\n".join(output)
+
+class StringOption(Option):
+    def __init__(self, name, description, default=None, dependencies=None):
+        Option.__init__(self, name, description, default, dependencies)
 
 
 class BooleanOption(Option):
+    def __init__(self, name, description, default=False, dependencies=None):
+        Option.__init__(self, name, description, default, dependencies,
+                        convert_input=self.as_boolean,
+                        convert_output=self.as_boolean)
 
-    def __init__(self, name, description, default=False):
-        Option.__init__(self, name, description)
-        if default is not None:
-            self.value = default
-
-    @property
-    def value(self):
-        return self._value
-
-    @value.setter
-    def value(self, value):
-        self._value = self.as_boolean(value)
-
-    @property
-    def values(self):
-        return "True, False"
+    def format_values(self):
+        if self._default:
+            return c("True").wrap("underlined") + c(", False")
+        return c("True, ") + c("False").wrap("underlined")
 
     @staticmethod
     def as_boolean(value):
@@ -154,38 +109,48 @@ class BooleanOption(Option):
         elif str(value).lower() in ['false', 'no', '0']:
             return False
 
-        raise BlobException("Value '%s' (%s) must be boolean" %
-                            (value, type(value).__name__))
+        raise LbuildException("Value '{}' ({}) must be boolean!".format(value, type(value).__name__))
 
 
 class NumericOption(Option):
-
-    def __init__(self, name, description, minimum=None, maximum=None, default=None):
-        Option.__init__(self, name, description)
-
+    def __init__(self, name, description, minimum=None, maximum=None, default=None, dependencies=None):
+        Option.__init__(self, name, description, default, dependencies,
+                        convert_input=str,
+                        convert_output=self.as_numeric_value)
         self.minimum = minimum
         self.maximum = maximum
+        if self.minimum is not None and self.maximum is not None:
+            if self.minimum >= self.maximum:
+                raise LbuildException("Minimum '{}' must be smaller than maximum '{}'!".format(self.minimum, self.maximum))
 
-        if default is not None:
-            self.value = default
-
-    @property
-    def value(self):
-        return self._value
-
-    @value.setter
+    @Option.value.setter
     def value(self, value):
         numeric_value = self.as_numeric_value(value)
         if self.minimum is not None and numeric_value < self.minimum:
-            BlobException("Value '{}' must be smaller than '{}'".format(self.name, self.minimum))
-        if self.maximum is not None and numeric_value < self.maximum:
-            BlobException("Value '{}' must be greater than '{}'".format(self.name, self.maximum))
-        self._value = numeric_value
+            raise LbuildException("Value '{}' of '{}' must be greater than '{}'".format(
+                                  numeric_value, self.fullname, self.minimum))
+        if self.maximum is not None and numeric_value > self.maximum:
+            raise LbuildException("Value '{}' of '{}' must be smaller than '{}'".format(
+                                  numeric_value, self.fullname, self.maximum))
+        self._set_value(value)
 
-    @property
-    def values(self):
-        return "{} ... {}".format("-Inf" if self.minimum is None else str(self.minimum),
-                                  "+Inf" if self.maximum is None else str(self.maximum))
+    def format_values(self):
+        minimum = c("-Inf" if self.minimum is None else str(self.minimum))
+        maximum = c("+Inf" if self.maximum is None else str(self.maximum))
+        if self._default is None:
+            return minimum + c(" ... ") + maximum
+
+        default = c(str(self._default)).wrap("underlined")
+        if minimum != default and maximum != default:
+            return minimum + c(" .. ") + default + c(" .. ") + maximum
+
+        if maximum == default:
+            return minimum + c(" ... ") + default
+
+        if minimum == default:
+            return default + c(" ... ") + maximum
+
+        return default
 
     @staticmethod
     def as_numeric_value(value):
@@ -199,121 +164,79 @@ class NumericOption(Option):
             except ValueError:
                 pass
 
-        raise BlobException("Value '%s' (%s) must be numeric" %
-                            (value, type(value).__name__))
+        raise LbuildException("Value '{}' ({}) must be numeric!".format(value, type(value).__name__))
 
 
 class EnumerationOption(Option):
-
-    LINEWITH = 120
-
-    def __init__(self, name, description, enumeration, default=None):
-        """
-        Construct an enumeration option.
-
-        Args:
-            name: Name of the option.
-            description: Short description of the option. Can contain markdown
-                markup.
-            enumeration: If `enumeration` is an enum.Enum subclass it is used
-                directly, otherwise it is converted into a dictionary. During
-                the conversion the names are converted to string.
-            default: Default value which is used if no value is given in the
-                configuration. If the default value is not set, the build will
-                fail if no value is specified.
-        """
-        Option.__init__(self, name, description)
-        if inspect.isclass(enumeration) and issubclass(enumeration, enum.Enum):
-            self.__values = enumeration
-            if default is not None:
-                self.value = default
-            return
-
-        if isinstance(enumeration, (list, tuple, set, range)) and \
-                len(enumeration) == len(set(enumeration)):
-            # If the argument is a list and the items in the list are unqiue,
+    def __init__(self, name, description, enumeration, default=None, dependencies=None):
+        Option.__init__(self, name, description, None, dependencies,
+                        convert_input=self._obj_to_str,
+                        convert_output=self.as_enumeration)
+        if self._is_enum(enumeration):
+            self._enumeration = {self._obj_to_str(entry): entry.value for entry in enumeration}
+        elif isinstance(enumeration, (list, tuple, set, range)) and \
+           len(enumeration) == len(set(enumeration)):
+            # If the argument is a list and the items in the list are unique,
             # convert it so that the value of the enum equals its name.
-            self.__values = {str(entry): entry for entry in enumeration}
-        elif isinstance(enumeration, (dict,)):
-            self.__values = enumeration
+            self._enumeration = {self._obj_to_str(entry): entry for entry in enumeration}
+        elif isinstance(enumeration, dict):
+            self._enumeration = enumeration
+            for key in self._enumeration:
+                if not isinstance(key, str):
+                    raise LbuildException("All enumeration keys must be of type string!")
         else:
-            raise BlobException("Type {} currently not supported".format(type(enumeration)))
+            raise LbuildException("Type {} currently not supported".format(type(enumeration).__name__))
 
-        if default is not None:
-            if isinstance(default, (list, tuple, set, range, dict)):
-                default = map(str, default)
-            else:
-                default = str(default)
-            self.value = default
+        self._set_default(default)
 
-    @property
-    def value(self):
-        if self._value is None:
-            return None
-        else:
-            return self._value
+    @staticmethod
+    def _is_enum(obj):
+        return inspect.isclass(obj) and issubclass(obj, enum.Enum)
 
-    @value.setter
-    def value(self, value):
-        self._value = self.as_enumeration(value)
+    @staticmethod
+    def _obj_to_str(obj):
+        if EnumerationOption._is_enum(obj):
+            return str(obj.name)
+        return str(obj).strip()
 
-    @property
-    def values(self):
-        values = list(self.__values.keys())
-        values.sort()
+    def _format_values(self):
+        values = list(map(str, self._enumeration.keys()))
+        values.sort(key=lambda v: (float(v) if v.isdigit() else 0, v))
         return values
 
-    def values_hint(self):
-        return ", ".join(self.values)
-
-    def value_hint(self):
-        return str(self.value)
-
-    def format(self):
-        name = self.fullname + " = "
-        if self._value is None:
-            values = self.values_hint()
-            # This +1 is for the first square brackets
-            output = lbuild.filter.indent(lbuild.filter.wordwrap(values,
-                                                                 self.LINEWITH - len(name) - 1),
-                                          len(name) + 1)
-            return "{}[{}]".format(name, output)
-        else:
-            values = self.values_hint()
-            value = self.value_hint()
-            # The +4 is for the spacing and the two square brackets
-            overhead = len(name) + 4
-            if len(values) + overhead > self.LINEWITH:
-                mark = " ..."
-                max_length = self.LINEWITH - overhead - len(mark)
-                values = values[0:max_length] + mark
-            return "{}{}  [{}]".format(name, value, values)
+    def format_values(self):
+        values = [c(v).wrap("underlined") if v == self._default else c(v) for v in self._format_values()]
+        return c(", ").join(values)
 
     def as_enumeration(self, value):
         try:
-            # Try to access 'value' as if it where an enum
-            return self.__values[value.name].value
-        except AttributeError:
-            try:
-                return self.__values[value]
-            except KeyError:
-                raise BlobException("Value '{}' not found in enumeration '{}'. "
-                                    "Possible values are:\n'{}'."
-                                    .format(value, self.name, "', '".join(self.__values)))
+            return self._enumeration[self._obj_to_str(value)]
+        except KeyError:
+            raise LbuildException("Value '{}' not found in enumeration '{}'. " \
+                                  "Possible values are:\n'{}'.".format(self.fullname, value, "', '".join(self._enumeration)))
 
 
 class SetOption(EnumerationOption):
+    def __init__(self, name, description, enumeration, default=None, dependencies=None):
+        EnumerationOption.__init__(self, name, description, enumeration, None, dependencies)
+        self._in = self.str_to_set
+        self._out = self.as_set
+        self._set_default(default)
 
-    @EnumerationOption.value.setter
-    def value(self, values):
+    def format_value(self):
+        return "{{{}}}".format(", ".join(map(str, self._output)))
+
+    def format_values(self):
+        values = [c(v).wrap("underlined") if v in self._default else c(v) for v in self._format_values()]
+        return c(", ").join(values)
+
+    @staticmethod
+    def str_to_set(values):
         if isinstance(values, str):
             values = [v.strip() for v in values.split(",")]
-        self._value = self.as_set(values)
-
-    def value_hint(self):
-        return "[{}]".format(", ".join(self.value))
+        return list(map(str, lbuild.utils.listify(values)))
 
     def as_set(self, values):
+        values = self.str_to_set(values)
         # remove duplicates, but retain order with OrderedDict
-        return [self.as_enumeration(value) for value in
-                collections.OrderedDict.fromkeys(values)]
+        return [self.as_enumeration(value) for value in collections.OrderedDict.fromkeys(values)]

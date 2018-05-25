@@ -2,14 +2,13 @@
 
 def init(module):
     module.name = "subsubmodule1"
-    
+
+def prepare(module, options):
     module.add_option(
         NumericOption(name="price",
                       description="Something",
                       default=12,
                       maximum=10000))
-
-def prepare(module, options):
     return True
 
 def build(env):

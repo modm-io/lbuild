@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #
 # Copyright (c) 2015, Fabian Greif
+# Copyright (c) 2018, Niklas Hauser
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -10,12 +11,16 @@
 from setuptools import setup, find_packages
 from lbuild.__init__ import __version__
 
+with open("README.md") as f:
+    long_description = f.read()
+
 setup(
-    name = "modm-lbuild",
+    name = "lbuild",
     version = __version__,
+    python_requires=">=3.5.0",
     entry_points={
-        'console_scripts': [
-            'lbuild = lbuild.main:main',
+        "console_scripts": [
+            "lbuild = lbuild.main:main",
         ],
     },
 
@@ -26,22 +31,23 @@ setup(
 	# Make sure all files are unzipped during installation
 	#zip_safe = False,
 
-    install_requires = ['lxml', 'jinja2', 'gitpython'],
+    install_requires = ["lxml", "jinja2", "gitpython", "anytree", "colorful"],
 
     extras_require = {
-        "test": ['testfixtures', 'coverage'],
+        "test": ["testfixtures", "coverage"],
     },
 
     # Metadata
-    author = "Fabian Greif",
-    author_email = "fabian.greif@rwth-aachen.de",
-    description = "Library builder to create a compilable library from " \
-    			  "a set of template files for different target environments",
+    author = "Fabian Greif, Niklas Hauser",
+    author_email = "fabian.greif@rwth-aachen.de, niklas@salkinium.com",
+    description = "Generic, modular code generator using the Jinja2 template engine.",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     license = "BSD",
     keywords = "library builder generator",
-    url = "https://github.com/modm-io/library-builder",
+    url = "https://github.com/modm-io/lbuild",
     classifiers = [
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "Environment :: Console",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: BSD License",
@@ -49,6 +55,8 @@ setup(
         "Operating System :: OS Independent",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
         "Topic :: Software Development",
         "Topic :: Software Development :: Code Generators",
         "Topic :: Software Development :: Embedded Systems",

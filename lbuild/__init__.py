@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #
 # Copyright (c) 2015, 2018, Fabian Greif
+# Copyright (c) 2018, Niklas Hauser
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -25,7 +26,9 @@ __all__ = [
     'buildlog',
     'environment',
     'exception',
+    'facade',
     'module',
+    'node',
     'option',
     'parser',
     'repository',

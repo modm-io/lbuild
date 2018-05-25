@@ -1,9 +1,0 @@
-
-<library>
-  <options>
-    <option name=":target" value="Embedded" />
-  </options>
-  <modules>
-    <module>:module2</module>
-  </modules>
-</library>

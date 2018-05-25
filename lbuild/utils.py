@@ -2,23 +2,114 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright (c) 2015, 2017-2018, Fabian Greif
+# Copyright (c) 2018, Niklas Hauser
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
 # 2-clause BSD license. See the file `LICENSE.txt` for the full license
 # governing this code.
 
+import os
+import re
 import sys
 import uuid
+import shutil
+import fnmatch
+import colorful
 import importlib.util
 import importlib.machinery
 
-from .exception import BlobException
-from .exception import BlobForwardException
+from .exception import LbuildException
+from .exception import LbuildForwardException
+
+import lbuild
+
+default_ignore_patterns = [
+    "*/.git*",
+    "*/.DS_Store*",
+    "*/__pycache__",
+    "*/module.lb",
+    "*/repo.lb",
+    "*/*.pyc"
+]
+
+def ignore_files(*files):
+    """
+    Ignore file and folder names without checking the full path.
+
+    Example: the following code with ignore all files with the ending `.lb`:
+    ```
+    env.copy(".", ignore=env.ignore_files("*.lb"))
+    ```
+
+    Based on the shutil.ignore_patterns() function.
+    """
+    return shutil.ignore_patterns(*files)
+
+def ignore_patterns(*patterns):
+    """
+    Ignore patterns based on the absolute file path.
+
+    Use an `*` at the beginning to match relative paths:
+    ```
+    env.copy(".", ignore=env.ignore_patterns("*platform/*.lb"))
+    ```
+    This ignores all files in the `platform` sub-directory with the
+    ending `.lb`.
+    """
+
+    def check(path, files):
+        ignored = set()
+        for pattern in patterns:
+            for filename in files:
+                if fnmatch.fnmatch(os.path.join(path, filename), pattern):
+                    # The copytree function uses only the filename to check
+                    # which files should be ignored, not the absolute path.
+                    ignored.add(filename)
+        return ignored
+
+    return check
 
 
-def listify(node):
-    return [node, ] if (not isinstance(node, list)) else node
+def _listify(obj):
+    if obj is None:
+        return list()
+    if isinstance(obj, (list, tuple, set, range)):
+        return list(obj)
+    if hasattr(obj, "__iter__") and not hasattr(obj, "__getitem__"):
+        return list(obj)
+    return [obj, ]
+
+
+def listify(*objs):
+    return [l for o in objs for l in _listify(o)]
+
+
+def get_global_functions(env, required, optional=None):
+    """
+    Get global functions an environment.
+
+    Args:
+        required: List of required functions.
+        optional: List of optional functions.
+    """
+    def get(name, required=True):
+        if isinstance(env, dict):
+            val = env.get(name, None)
+        else:
+            val = getattr(env, name, None)
+        if required and val is None:
+            raise LbuildException("No function '{}' found!".format(functionname))
+        return val
+
+    if optional is None: optional = [];
+    functions = {}
+    for name in (required + optional):
+        function = get(name, name in required)
+        if function is not None:
+            functions[name] = function
+
+    return functions
 
 
 def load_module_from_file(filename, local, modulename=None):
@@ -65,8 +156,8 @@ def with_forward_exception(module, function):
     """
     try:
         return function()
-    except BlobException as error:
+    except LbuildException as error:
         raise
     except Exception as error:
-        # Forward all exception which are not BlobExceptions
-        raise BlobForwardException(module, error)
+        # Forward all exception which are not LbuildExceptions
+        raise LbuildForwardException(module, error)

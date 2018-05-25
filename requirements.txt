@@ -1,5 +1,7 @@
 lxml
 jinja2
+anytree
+colorful
 
 # Required for the tests
 testfixtures

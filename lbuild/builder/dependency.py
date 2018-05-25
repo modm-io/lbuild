@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright (c) 2016, Fabian Greif
+# Copyright (c) 2018, Niklas Hauser
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -17,18 +18,16 @@ def get_valid_identifier(name):
     return re.sub(r'\W|^(?=\d)', '_', name)
 
 
-def graphviz(available_modules, selected_modules, depth, clustered=False):
+def graphviz(parser, selected_modules, depth, clustered=False):
     output = []
     output.append("digraph dependencies")
     output.append("{")
     # output.append("\trankdir=LR;")
 
-    modules = lbuild.parser.Parser.resolve_dependencies(available_modules,
-                                                        selected_modules,
-                                                        depth)
+    modules = parser.resolve_dependencies(selected_modules, depth)
 
     # Check whether all available modules are selected for displaying
-    all_selected = (len(available_modules) == len(modules))
+    all_selected = (len(parser.modules) == len(modules))
 
     # Sort modules by repository
     repositories = collections.defaultdict(list)

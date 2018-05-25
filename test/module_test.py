@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright (c) 2015-2017, Fabian Greif
+# Copyright (c) 2018, Niklas Hauser
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -16,6 +17,7 @@ import unittest
 sys.path.append(os.path.abspath("."))
 
 import lbuild
+from lbuild.option import *
 
 
 class ModuleTest(unittest.TestCase):
@@ -24,65 +26,50 @@ class ModuleTest(unittest.TestCase):
         self.repo = lbuild.repository.Repository(".")
         self.repo.name = "repo1"
 
-        self.module = lbuild.module.Module(self.repo, "module.lb", ".")
-        self.module.name = "other"
-        self.module.register_module()
+        module = lbuild.module.ModuleInit(self.repo, "./module.lb")
+        module.name = "other"
+        module.available = True
+        self.module, = lbuild.module.build_modules([module])
+
+        self.repo.add_option(Option("target", "", default="hosted"))
+        self.repo.add_option(NumericOption("foo", "", default=43))
+
+        self.module.add_option(NumericOption("foo", "", default=456))
+        self.module.add_option(NumericOption("bar", "", default=768))
+        self.module.add_option(BooleanOption("xyz", "", default="Yes"))
+        self.module.add_option(Option("abc", "", default="Hello World!"))
 
     def test_resolver_should_reject_invalid_names(self):
-        resolver = lbuild.module.OptionNameResolver(self.repo, self.module, {}, {})
+        resolver = self.module.module_resolver
 
-        with self.assertRaises(lbuild.exception.BlobException):
+        with self.assertRaises(lbuild.exception.LbuildException):
             resolver["value"]
 
-        with self.assertRaises(lbuild.exception.BlobException):
+        with self.assertRaises(lbuild.exception.LbuildException):
             resolver[":::value"]
 
     def test_resolver_should_reject_unknown_names(self):
-        resolver = lbuild.module.OptionNameResolver(self.repo, self.module, {}, {})
+        resolver = self.module.module_resolver
 
-        with self.assertRaises(lbuild.exception.BlobException):
+        with self.assertRaises(lbuild.exception.LbuildException):
             resolver["::value"]
 
     def test_resolver_should_resolve_option_names(self):
-        repo_options = {
-            "repo1:target": lbuild.option.Option("target", "", default="hosted"),
-            "repo1:foo": lbuild.option.NumericOption("foo", "", default=43),
-        }
 
-        module_options = {
-            "repo1:other:foo": lbuild.option.NumericOption("foo", "", default=456),
-            "repo1:other:bar": lbuild.option.NumericOption("bar", "", default=768),
-            "repo1:other:xyz": lbuild.option.BooleanOption("bar", "", default="Yes"),
-            "repo1:other:bla:abc": lbuild.option.Option("abc", "", default="Hello World!"),
-        }
-
-        resolver = lbuild.module.OptionNameResolver(self.repo, self.module, repo_options, module_options)
-
+        resolver = self.repo.option_value_resolver
         self.assertEqual("hosted", resolver[':target'])
         self.assertEqual(43, resolver['repo1:foo'])
 
+        resolver = self.module.option_value_resolver
         self.assertEqual(456, resolver["repo1:other:foo"])
         self.assertEqual(768, resolver["repo1::bar"])
         self.assertEqual(True, resolver[":other:xyz"])
-        self.assertEqual("Hello World!", resolver["::bla:abc"])
+        self.assertEqual("Hello World!", resolver["::abc"])
 
     def test_should_create_correct_representation(self):
-        repo_options = {
-            "repo1:target": None,
-            "repo1:foo": None,
-        }
-
-        module_options = {
-            "repo1:other:foo": None,
-            "repo1:other:bar": None,
-            "repo1:other:xyz": None,
-            "repo1:other:abc": None,
-        }
-
-        resolver = lbuild.module.OptionNameResolver(self.repo, self.module, repo_options, module_options)
-
-        self.assertEqual(6, len(repr(resolver).split(",")))
-        self.assertEqual(6, len(resolver))
+        resolver = self.module.option_value_resolver
+        self.assertEqual(4, repr(resolver).count("Option("))
+        self.assertEqual(4, len(resolver))
 
 
 if __name__ == '__main__':

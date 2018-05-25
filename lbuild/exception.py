@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #
 # Copyright (c) 2015-2017, Fabian Greif
+# Copyright (c) 2018, Niklas Hauser
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -8,50 +9,50 @@
 # governing this code.
 
 
-class BlobException(Exception):
+class LbuildException(Exception):
     """
     Base class for exception thrown by lbuild.
     """
     pass
 
 
-class BlobArgumentException(BlobException):
+class LbuildArgumentException(LbuildException):
     """
     Raised if something is wrong with the command line arguments.
     """
     pass
 
 
-class BlobOptionFormatException(BlobException):
+class LbuildOptionFormatException(LbuildException):
     """
     Exception for all invalid option names.
     """
     def __init__(self, name):
-        BlobException.__init__(self,
+        LbuildException.__init__(self,
                                "Invalid option format for '{}'. Option must "
                                "options are one (repository option) or "
                                "two and more (module option) colons.".format(name))
 
 
-class BlobAttributeException(BlobException):
+class LbuildAttributeException(LbuildException):
     def __init__(self, name):
-        BlobException.__init__(self,
-                               ("The attribute {} may only be changed in "
+        LbuildException.__init__(self,
+                               ("The attribute '{}' may only be changed in "
                                 "the init(...) method".format(name)))
 
 
-class BlobTemplateException(BlobException):
+class LbuildTemplateException(LbuildException):
     """
     Error in Jinja2 template evaluation.
     """
     pass
 
 
-class BlobPreBuildException(BlobException):
+class LbuildValidateException(LbuildException):
     pass
 
 
-class BlobBuildException(BlobException):
+class LbuildBuildException(LbuildException):
     """
     Exceptions raised during the build of project.
 
@@ -61,7 +62,7 @@ class BlobBuildException(BlobException):
     pass
 
 
-class BlobAggregateException(BlobException):
+class LbuildAggregateException(LbuildException):
     """
     Collection of multiple exceptions.
     """
@@ -69,7 +70,7 @@ class BlobAggregateException(BlobException):
         self.exceptions = exceptions
 
 
-class BlobForwardException(BlobException):
+class LbuildForwardException(LbuildException):
     """
     Handler for regular Python exception thrown in user defined functions.
 

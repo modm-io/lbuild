@@ -4,13 +4,13 @@ def init(module):
 	module.description = ""
 
 def prepare(module, options):
-	module.add_option(BooleanOption("fail", "Exit after pre-build", False))
+	module.add_option(BooleanOption("fail", "Exit after validate", False))
 	return True
 
-def pre_build(env):
-	print("Pre-Build")
+def validate(env):
+	print("Validate")
 	if env["::fail"]:
-		raise PreBuildException("Error during pre-build step!")
+		raise ValidateException("Error during validate step!")
 
 def build(env):
 	env.append_metadata("include_path", "src")

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #
 # Copyright (c) 2015-2018, Fabian Greif
+# Copyright (c) 2018, Niklas Hauser
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -15,9 +16,13 @@ import collections
 import lbuild.module
 import lbuild.environment
 
-from .exception import BlobException
-from .exception import BlobBuildException
-from .exception import BlobOptionFormatException
+from .exception import LbuildException
+from .exception import LbuildBuildException
+from .exception import LbuildOptionFormatException
+
+from .node import BaseNode, NameResolver
+from .config import ConfigNode
+from .facade import BuildLogFacade
 
 from . import repository
 from . import utils
@@ -25,48 +30,75 @@ from . import config
 
 LOGGER = logging.getLogger('lbuild.parser')
 
-
 class Runner:
-
-    def __init__(self, module, env):
-        self.module = module
+    def __init__(self, node, env):
+        self.node = node
         self.env = env
 
-    def pre_build(self):
-        self.module.pre_build(self.env)
+    def validate(self):
+        if hasattr(self.node, "validate"):
+            self.node.validate(self.env.facade_validate)
 
     def build(self):
-        self.module.build(self.env)
+        self.node.build(self.env.facade_build)
 
     def post_build(self, buildlog):
-        self.module.post_build(self.env, buildlog)
+        if hasattr(self.node, "post_build"):
+            self.node.post_build(self.env.facade_post_build, BuildLogFacade(buildlog))
 
 
-class Parser:
+class Parser(BaseNode):
+    def __init__(self, config=None):
+        BaseNode.__init__(self, "lbuild", BaseNode.Type.PARSER)
+        self._config = config if config else ConfigNode()
+        self._config_flat = self._config.flatten()
 
-    def __init__(self):
-        # All repositories
-        # Name -> Repository()
-        self.repositories = {}
-        self.modules = {}
+    @property
+    def config(self):
+        return self._config_flat
 
-        # All modules which are available with the given set of
-        # configuration options.
-        #
-        # Only available after prepare_modules() has been called.
-        #
-        # Module name -> Module()
-        self.available_modules = {}
+    @property
+    def modules(self):
+        return {m.fullname:m for m in self.all_modules()}
 
-    def load_repositories(self,
-                          configuration: config.Configuration,
-                          repofilenames=None):
-        if repofilenames is not None:
-            for repofile in utils.listify(repofilenames):
-                self.parse_repository(repofile)
+    @property
+    def repositories(self):
+        return {r.fullname:r for r in self._findall(BaseNode.Type.REPOSITORY)}
 
-        for repository_filename in configuration.repositories:
-            self.parse_repository(repository_filename)
+    def load_repositories(self, repofilenames=None):
+        repofiles = set(utils.listify(repofilenames))
+        parsed = set()
+        config_map = {}
+
+        while True:
+            # flatten configuration and collect repositories
+            self._config_flat = self._config.flatten()
+            repofiles = (repofiles | set(self._config_flat.repositories)) - parsed
+            if not (len(repofiles) + len(parsed)):
+                LOGGER.error("\n" + str(self._config.render()))
+                raise LbuildException("No repositories loaded!")
+            parsed |= repofiles
+
+            # Parse only new repositories
+            for repofile in repofiles:
+                config_map.update(self.parse_repository(repofile)._config_map)
+
+            # nothing more to extend
+            if not len(self._config_flat._extends):
+                break
+
+            for filename, aliases in self._config_flat._extends.items():
+                node = self._config.find(filename)
+                for alias in aliases:
+                    if alias not in config_map:
+                        raise LbuildException("Configuration alias '{}' not found in any map! "
+                                              "Available aliases: '{}'".format(alias, "', '".join(config_map)))
+                    self._config.extend(node, ConfigNode.from_file(config_map[alias]))
+                del node._extends[filename]
+
+        self._update_format();
+        LOGGER.info("\n" + str(self._config.render()))
+        return self._config_flat
 
     def parse_repository(self, repofilename: str) -> repository.Repository:
         """
@@ -76,72 +108,24 @@ class Parser:
         structure.
         """
         repo = repository.Repository.parse_repository(repofilename)
+        if repo.name in [c.name for c in self.children]:
+            raise LbuildException("Repository name '{}' is ambiguous. Name must be unique.".format(repo.name))
+        repo.parent = self
 
-        if repo.name in self.repositories:
-            raise BlobException("Repository name '{}' is ambiguous. "
-                                "Name must be unique.".format(repo.name))
-        else:
-            self.repositories[repo.name] = repo
         return repo
 
-    @staticmethod
-    def _overwrite_repository_options(options_full_name,
-                                      options_option_name,
-                                      option_name,
-                                      option_value):
-        try:
-            name_parts = option_name.split(':')
-            if len(name_parts) == 2:
-                # repository option
-                repo_name, option_part = name_parts
+    def merge_repository_options(self):
+        # only deal with repo options that contain one `:`
+        resolver = self.option_resolver
+        for name, value in {n:v for n,v in self.config.options.items() if n.count(":") == 1}.items():
+            try:
+                resolver[name].value = value
+            except LbuildException as e:
+                raise LbuildException("Failed to merge repository options!\n" + str(e))
+        # return all repo options in tree
+        return {o.fullname:o for o in self.all_options(depth=3)}
 
-                if repo_name == "" or repo_name == "*":
-                    key = option_part
-                    for option in options_option_name[key]:
-                        option.value = option_value
-                else:
-                    key = option_name
-                    options_full_name[key].value = option_value
-            elif len(name_parts) < 2:
-                raise BlobOptionFormatException(option_name)
-        except KeyError:
-            raise BlobException("Repository option '{}' not found in any "
-                                "repository.".format(option_name))
-
-    def merge_repository_options(self, config_options, cmd_options=None):
-        repo_options_by_full_name = {}
-        repo_options_by_option_name = {}
-
-        # Get all the repository options and store them in a
-        # dictionary with their full qualified name ('repository:option').
-        for repo_name, repo in self.repositories.items():
-            for config_name, value in repo.options.items():
-                name = "%s:%s" % (repo_name, config_name)
-                repo_options_by_full_name[name] = value
-
-                # Add an additional reference to find options without
-                # the repository name but only but option name
-                option_list = repo_options_by_option_name.get(config_name, [])
-                option_list.append(value)
-                repo_options_by_option_name[config_name] = option_list
-
-        # Overwrite the values in the options with the values provided
-        # in the configuration file
-        for option in config_options:
-            self._overwrite_repository_options(repo_options_by_full_name,
-                                               repo_options_by_option_name,
-                                               option.name, option.value)
-
-        # Overwrite again with the values for the command line.
-        if cmd_options is not None:
-            for option in cmd_options:
-                self._overwrite_repository_options(repo_options_by_full_name,
-                                                   repo_options_by_option_name,
-                                                   option.name, option.value)
-        return repo_options_by_full_name
-
-    def prepare_repositories(self,
-                             repo_options):
+    def prepare_repositories(self, repo_options):
         """
         Prepare and select modules which are available given the set of
         repository repo_options.
@@ -149,24 +133,38 @@ class Parser:
         Returns:
             dict: Available modules, key is the qualified module name.
         """
-        self.verify_options_are_defined(repo_options)
-        for repo in self.repositories.values():
-            modules = repo.prepare_repository(repo_options)
-            self.available_modules.update(modules)
+        undefined = self._undefined_options(repo_options)
+        if len(undefined):
+            raise LbuildException("Unknown values for options '{}'. Please provide a value in the "
+                                  "configuration file or on the command line.".format("', '".join(undefined)))
+        modules = []
+        for repo in self._findall(BaseNode.Type.REPOSITORY):
+            modules.extend(repo.prepare(repo_options))
+        modules = lbuild.module.build_modules(modules)
+        if len(modules) == 0:
+            raise LbuildBuildException("No module found with the selected repository options!")
 
-        # Update the list of modules. Must be done after the prepare loop,
-        # because submodules are only added there.
-        for repo in self.repositories.values():
-            for module in repo.modules.values():
-                self.modules[module.fullname] = module
+        self._resolve_dependencies(ignore_failure=True)
+        self._update_format()
+        return modules
 
-        if len(self.available_modules) == 0:
-            raise BlobBuildException("No module found with the selected repository options!")
+    def merge_module_options(self):
+        # only deal with repo options that contain one `:`
+        resolver = self.option_resolver
+        for name, value in {n:v for n,v in self.config.options.items() if n.count(":") > 1}.items():
+            try:
+                resolver[name].value = value
+            except LbuildException as e:
+                raise LbuildException("Failed to merge module options!\n" + str(e))
+        # return all module options in tree
+        return {o.fullname:o for o in self.all_options() if o.depth > 2}
 
-        return self.available_modules
+    def resolve_dependencies(self, requested_modules, depth=sys.maxsize):
+        # map the dependency names to the node objects
+        self._resolve_dependencies()
+        return self._filter_dependencies(requested_modules, depth)
 
-    @staticmethod
-    def resolve_dependencies(modules, requested_modules, depth=sys.maxsize):
+    def _filter_dependencies(self, requested_modules, depth=sys.maxsize):
         """
         Resolve dependencies by adding missing modules.
 
@@ -179,23 +177,18 @@ class Parser:
         Returns:
             list: Required modules for the given list of modules.
         """
-        for module in modules.values():
-            module.resolve_dependencies(modules)
-
         selected_modules = requested_modules.copy()
 
-        LOGGER.info("Selected modules: %s",
-                    ", ".join(sorted([module.fullname for module in selected_modules])))
+        LOGGER.info("Selected modules: {}".format(
+                    ", ".join(sorted([module.fullname for module in selected_modules]))))
 
         current = selected_modules
         while depth > 0:
             additional = []
             for module in current:
                 for dependency in module.dependencies:
-                    if dependency not in selected_modules and \
-                            dependency not in additional:
-                        LOGGER.debug("Add dependency: %s",
-                                     dependency.fullname)
+                    if dependency not in selected_modules and dependency not in additional:
+                        LOGGER.debug("Add dependency: " + dependency.fullname)
                         additional.append(dependency)
             if not additional:
                 # Abort if no new dependencies are being found
@@ -205,102 +198,72 @@ class Parser:
             additional = []
             depth -= 1
 
+        # disable all non-selected modules
+        for module in self.all_modules():
+            if module._available:
+                module._available = module in selected_modules
+                # if not module._available:
+                #     LOGGER.debug("Disabled: " + module.fullname)
+        self._update();
+
         return selected_modules
 
-    @staticmethod
-    def merge_module_options(build_modules, config_options):
-        """
-        Return the list of options used for building the selected modules.
+    def find_module(self, name):
+        return self.module_resolver[name]
 
-        Args:
-            build_modules (list): Modules which have been selected.
-            config_options (list): Options from the configuration files
-                 with partial names.
+    def find_option(self, name):
+        return self.option_resolver[name]
 
-        Returns:
-            dict: Mapping of the full qualified option names to the option
-            objects.
-        """
-        canidates = {}
-        options = {}
-        for module in build_modules:
-            for option in module.options.values():
-                fullname = ":".join([module.fullname,
-                                     option.name])
-                options[fullname] = option
+    def find(self, name):
+        if ":" not in name:
+            if name not in self.repositories:
+                raise LbuildException("No repository found for '{}'!".format(name))
+            return self.repositories[name]
 
-                parts = fullname.split(":")
-                depth = len(parts)
-                canidate_list = canidates.get(depth, [])
-                canidate_list.append([parts, option])
-                canidates[depth] = canidate_list
+        try:
+            return self.find_module(name)
+        except LbuildException as e:
+            if not "but searching for" in str(e):
+                raise e
+        return self.find_option(name)
 
-        for option in config_options:
-            target_parts = option.name.split(":")
-            target_depth = len(target_parts)
+    def find_modules(self, queries):
+        return self.find_any(queries, self.Type.MODULE)
 
-            if target_depth < 3:
-                # Option is a repository option
-                continue
-
-            found_options = []
-            for canidate_parts, canidate_option in canidates.get(target_depth, []):
-                for target, canidate in zip(target_parts, canidate_parts):
-                    if target == "" or target == "*":
-                        continue
-                    elif target != canidate:
-                        break
-                else:
-                    found_options.append(canidate_option)
-
-            if len(found_options) == 0:
-                LOGGER.warning("Option '%s' not found in selected modules!", option.name)
-
-            for found_option in found_options:
-                found_option.value = option.value
-
-        return options
+    def find_any(self, queries, types=None):
+        nodes = set()
+        for query in utils.listify(queries):
+            nodes |= set(self._resolve_partial(query, set()))
+        if types:
+            types = lbuild.utils.listify(types)
+            nodes = filter(lambda n: any(n.type == t for t in types), nodes)
+        return list(nodes)
 
     @staticmethod
-    def verify_options_are_defined(options):
-        """
-        Check that all given options have an assigned value.
-
-        Args:
-            options (list): Options which have been selected from the given
-                modules.
-        """
+    def _undefined_options(options):
+        undefined = []
         for fullname, option in options.items():
             if option.value is None:
-                raise BlobException("Unknown value for option '{}'. Please "
-                                    "provide a value in the configuration file "
-                                    "or on the command line.".format(fullname))
+                undefined.append(fullname)
+        return undefined
 
     @staticmethod
-    def build_modules(outpath, build_modules, repo_options, module_options, buildlog):
-        """
-        Go through all to build and call their 'build' function.
-        """
-        Parser.verify_options_are_defined(module_options)
-        all_modules = {m.fullname: m for m in build_modules}
+    def validate_modules(build_modules):
+        Parser.build_modules(None, build_modules, None)
+
+    @staticmethod
+    def build_modules(outpath, build_modules, buildlog):
+        if not len(build_modules):
+            raise LbuildException("No modules selected, aborting!")
 
         groups = collections.defaultdict(list)
-        for module in build_modules:
-            option_resolver = lbuild.module.OptionNameResolver(module.repository,
-                                                               module,
-                                                               repo_options,
-                                                               module_options)
-            module_resolver = lbuild.module.ModuleNameResolver(module.repository,
-                                                               module,
-                                                               all_modules)
-            env = lbuild.environment.Environment(option_resolver,
-                                                 module_resolver,
-                                                 module,
+        for node in (build_modules + list(set(m.repository for m in build_modules))):
+            env = lbuild.environment.Environment(node.option_value_resolver,
+                                                 node.module_resolver,
+                                                 node,
                                                  outpath,
                                                  buildlog)
-
-            depth = len(module.fullname.split(":"))
-            groups[depth].append(Runner(module, env))
+            groups[node.depth].append(Runner(node, env))
 
         exceptions = []
         # Enforce that the submodules are always build before their
@@ -311,12 +274,16 @@ class Parser:
 
             for runner in group:
                 try:
-                    runner.pre_build()
-                except lbuild.exception.BlobPreBuildException as error:
+                    runner.validate()
+                except lbuild.exception.LbuildValidateException as error:
                     exceptions.append(error)
 
         if len(exceptions) > 0:
-            raise lbuild.exception.BlobAggregateException(exceptions)
+            raise lbuild.exception.LbuildAggregateException(exceptions)
+
+        # Cannot build with these settings, just pre_build
+        if outpath is None or buildlog is None:
+            return
 
         for index in sorted(groups, reverse=True):
             group = groups[index]
@@ -332,19 +299,3 @@ class Parser:
             for runner in group:
                 runner.post_build(buildlog)
 
-    def configure_and_build_library(self, configfile, outpath, cmd_options=None):
-        cmd_options = [] if cmd_options is None else cmd_options
-
-        configuration = config.Configuration.parse_configuration(configfile)
-
-        commandline_options = config.Configuration.format_commandline_options(cmd_options)
-        repo_options = self.merge_repository_options(configuration.options, commandline_options)
-
-        modules = self.prepare_repositories(repo_options)
-        selected_modules = lbuild.module.resolve_modules(modules, configuration.selected_modules)
-        build_modules = self.resolve_dependencies(modules, selected_modules)
-        module_options = self.merge_module_options(build_modules, configuration.options + commandline_options)
-
-        log = lbuild.buildlog.BuildLog()
-        self.build_modules(outpath, build_modules, repo_options, module_options, log)
-        return log

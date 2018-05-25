@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright (c) 2017, Fabian Greif
+# Copyright (c) 2018, Niklas Hauser
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -29,6 +30,22 @@ class PostBuildTest(unittest.TestCase):
     def _parse_config(self, filename):
         return lbuild.config.Configuration.parse_configuration(self._get_path(filename))
 
+    def _configure_and_build_library(self, configfile, outpath, cmd_options=[]):
+        configuration = lbuild.config.ConfigNode.from_file(configfile)
+        configuration.add_commandline_options(cmd_options)
+        self.parser._config_flat = configuration
+
+        repo_options = self.parser.merge_repository_options()
+        modules = self.parser.prepare_repositories(repo_options)
+
+        module_options = self.parser.merge_module_options()
+        selected_modules = self.parser.find_modules(self.parser.config.modules)
+        build_modules = self.parser.resolve_dependencies(selected_modules)
+
+        log = lbuild.buildlog.BuildLog(str(outpath))
+        self.parser.build_modules(outpath, build_modules, log)
+        return log
+
     def setUp(self):
         self.parser = lbuild.parser.Parser()
 
@@ -39,15 +56,15 @@ class PostBuildTest(unittest.TestCase):
         stdout_file = io.StringIO()
         with contextlib.redirect_stdout(stdout_file):
             # Build library
-            self.parser.configure_and_build_library(self._get_path("config.xml"),
-                                                    outpath=tempdir)
+            self._configure_and_build_library(self._get_path("config.xml"),
+                                              outpath=tempdir)
 
         output = stdout_file.getvalue()
-        self.assertIn("Pre-Build", output)
+        self.assertIn("Validate", output)
         self.assertIn("Post-Build", output)
 
     @testfixtures.tempdir()
-    def test_should_abort_after_pre_build_functions(self, tempdir):
+    def test_should_abort_after_validate_functions(self, tempdir):
         self.parser.parse_repository(self._get_path("repo.lb"))
 
         stdout_file = io.StringIO()
@@ -55,13 +72,13 @@ class PostBuildTest(unittest.TestCase):
             # Build library
             cmd_options = ["repo:module:fail=True"]
 
-            self.assertRaises(lbuild.exception.BlobAggregateException, lambda:
-                              self.parser.configure_and_build_library(self._get_path("config.xml"),
-                                                                      outpath=tempdir,
-                                                                      cmd_options=cmd_options))
+            self.assertRaises(lbuild.exception.LbuildAggregateException, lambda:
+                              self._configure_and_build_library(self._get_path("config.xml"),
+                                                                outpath=tempdir,
+                                                                cmd_options=cmd_options))
 
         output = stdout_file.getvalue()
-        self.assertIn("Pre-Build", output)
+        self.assertIn("Validate", output)
         self.assertNotIn("Post-Build", output)
 
     @testfixtures.tempdir()
@@ -71,8 +88,8 @@ class PostBuildTest(unittest.TestCase):
         stdout_file = io.StringIO()
         with contextlib.redirect_stdout(stdout_file):
             # Build library
-            buildlog = self.parser.configure_and_build_library(self._get_path("config.xml"),
-                                                               outpath=tempdir)
+            buildlog = self._configure_and_build_library(self._get_path("config.xml"),
+                                                         outpath=tempdir)
 
         self.assertEqual(3, len(buildlog.metadata["include_path"]))
         self.assertEqual(2, len(buildlog.metadata["required_libraries"]))

@@ -8,9 +8,7 @@ def prepare(module, options):
 		module.depends(":module1", "repo2:module4")
 	elif options[":target"] == "stm32":
 		module.depends(":module1")
-	else:
-		return False
-	
+
 	module.add_option(NumericOption(name="foo", default=123, description="A option"))
 	module.add_option(NumericOption(name="bar", default=12, description="A second option"))
 	module.add_option(BooleanOption(name="xyz", default=False, description="Bla"))

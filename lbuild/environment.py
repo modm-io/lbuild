@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #
 # Copyright (c) 2015-2018, Fabian Greif
+# Copyright (c) 2018, Niklas Hauser
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -15,8 +16,12 @@ import jinja2
 import logging
 
 import lbuild.filter
+import lbuild.utils
 
-from .exception import BlobException, BlobTemplateException, BlobForwardException
+from .facade import EnvironmentValidateFacade, EnvironmentBuildFacade, EnvironmentPostBuildFacade
+from .exception import LbuildException, LbuildTemplateException, LbuildForwardException
+
+simulate = False
 
 
 def _copyfile(sourcepath, destpath):
@@ -25,12 +30,14 @@ def _copyfile(sourcepath, destpath):
     timestamp.
     """
     if not os.path.exists(destpath):
-        shutil.copy2(sourcepath, destpath)
+        if not simulate:
+            shutil.copy2(sourcepath, destpath)
     else:
         time_diff = os.stat(sourcepath).st_mtime - os.stat(destpath).st_mtime
         if time_diff > 1:
             print(destpath, "override")
-            shutil.copy2(sourcepath, destpath)
+            if not simulate:
+                shutil.copy2(sourcepath, destpath)
 
 
 def _copytree(logger, src, dst, ignore=None):
@@ -38,8 +45,6 @@ def _copytree(logger, src, dst, ignore=None):
     Implementation of shutil.copytree that overwrites files instead
     of aborting.
     """
-    if not os.path.exists(dst):
-        os.makedirs(dst)
     files = os.listdir(src)
     if ignore is not None:
         ignored = ignore(src, files)
@@ -54,6 +59,8 @@ def _copytree(logger, src, dst, ignore=None):
                 _copytree(logger, sourcepath, destpath, ignore)
             else:
                 starttime = time.time()
+                if not os.path.exists(dst):
+                    os.makedirs(dst)
                 _copyfile(sourcepath, destpath)
                 endtime = time.time()
                 total = endtime - starttime
@@ -66,8 +73,8 @@ class Environment:
         self.options = options
         self.modules = modules
         self.__module = module
-        self.__modulepath = module.path
-        self.__repopath = module.repository.path
+        self.__modulepath = module._filepath
+        self.__repopath = module.repository._filepath
         self.__outpath = outpath
 
         self.__buildlog = buildlog
@@ -82,6 +89,18 @@ class Environment:
         self.outbasepath = None
         self.substitutions = {}
 
+    @property
+    def facade_validate(self):
+        return EnvironmentValidateFacade(self)
+
+    @property
+    def facade_build(self):
+        return EnvironmentBuildFacade(self)
+
+    @property
+    def facade_post_build(self):
+        return EnvironmentPostBuildFacade(self)
+
     def copy(self, src, dest=None, ignore=None):
         """
         Copy file or directory from the modulepath to the buildpath.
@@ -92,6 +111,13 @@ class Environment:
         If dest is empty the same name as src is used (relocated to
         the output path).
         """
+        def wrap_ignore(path, files):
+            ignored = lbuild.utils.ignore_patterns(*self.__module._ignore_patterns)(path, files)
+            ignored.add(self.__module._filename)
+            if ignore:
+                ignored |= set(ignore(path, files))
+            return ignored
+
         if dest is None:
             dest = src
 
@@ -102,14 +128,14 @@ class Environment:
 
         srcrelpath = os.path.relpath(srcpath, self.__repopath)
         if srcrelpath.startswith(".."):
-            raise BlobException("Cannot access files outside of the repository!\n"
+            raise LbuildException("Cannot access files outside of the repository!\n"
                                 "'{}'".format(srcrelpath))
 
         if os.path.isdir(srcpath):
             _copytree(lambda src, dest, time: self.__buildlog.log(self.__module, src, dest, time),
                       srcpath,
                       destpath,
-                      ignore)
+                      wrap_ignore)
         else:
             if not os.path.exists(os.path.dirname(destpath)):
                 os.makedirs(os.path.dirname(destpath))
@@ -118,45 +144,6 @@ class Environment:
             endtime = time.time()
             total = endtime - starttime
             self.__buildlog.log(self.__module, srcpath, destpath, total)
-
-    @staticmethod
-    def ignore_files(*files):
-        """
-        Ignore file and folder names without checking the full path.
-
-        Example: the following code with ignore all files with the ending `.lb`:
-        ```
-        env.copy(".", ignore=env.ignore_files("*.lb"))
-        ```
-
-        Based on the shutil.ignore_patterns() function.
-        """
-        return shutil.ignore_patterns(*files)
-
-    @staticmethod
-    def ignore_patterns(*patterns):
-        """
-        Ignore patterns based on the absolute file path.
-
-        Use an `*` at the beginning to match relative paths:
-        ```
-        env.copy(".", ignore=env.ignore_patterns("*platform/*.lb"))
-        ```
-        This ignores all files in the `platform` sub-directory with the
-        ending `.lb`.
-        """
-
-        def check(path, files):
-            ignored = set()
-            for pattern in patterns:
-                for filename in files:
-                    if fnmatch.fnmatch(os.path.join(path, filename), pattern):
-                        # The copytree function uses only the filename to check
-                        # which files should be ignored, not the absolute path.
-                        ignored.add(filename)
-            return ignored
-
-        return check
 
     def __reload_template_environment(self, filters):
         if self.__template_environment_filters == filters:
@@ -184,13 +171,7 @@ class Environment:
                                      extensions=['jinja2.ext.do'],
                                      undefined=jinja2.StrictUndefined)
 
-        environment.filters['lbuild.wordwrap'] = lbuild.filter.wordwrap
-        environment.filters['lbuild.indent'] = lbuild.filter.indent
-        environment.filters['lbuild.pad'] = lbuild.filter.pad
-        environment.filters['lbuild.values'] = lbuild.filter.values
-        environment.filters['lbuild.split'] = lbuild.filter.split
-        environment.filters['lbuild.listify'] = lbuild.filter.listify
-
+        environment.filters.update(self.__module._filters)
         environment.filters.update(filters)
 
         # Jinja2 Line Statements
@@ -225,7 +206,7 @@ class Environment:
 
         src = self.repopath(src)
         if src.startswith(".."):
-            raise BlobException("Cannot access template outside of repository!\n"
+            raise LbuildException("Cannot access template outside of repository!\n"
                                 "'{}'".format(src))
 
         if substitutions is None:
@@ -241,35 +222,36 @@ class Environment:
             template = self.template_environment.get_template(src.replace('\\','/'), globals=self.__template_global_substitutions)
             output = template.render(substitutions)
         except jinja2.TemplateNotFound as error:
-            raise BlobException('Failed to retrieve Template: %s' % error)
+            raise LbuildException('Failed to retrieve Template: %s' % error)
         except (jinja2.exceptions.TemplateAssertionError,
                 jinja2.exceptions.TemplateSyntaxError) as error:
-            raise BlobException("Error in template '{}:{}':\n"
+            raise LbuildException("Error in template '{}:{}':\n"
                                 " {}: {}".format(error.filename,
                                                  error.lineno,
                                                  error.__class__.__name__,
                                                  error))
         except jinja2.exceptions.UndefinedError as error:
-            raise BlobTemplateException("Error in template '{}':\n"
+            raise LbuildTemplateException("Error in template '{}':\n"
                                         " {}: {}".format(self.modulepath(src),
                                                          error.__class__.__name__,
                                                          error))
-        except BlobException as error:
-            raise BlobException("Error in template '{}': \n"
+        except LbuildException as error:
+            raise LbuildException("Error in template '{}': \n"
                                 "{}".format(self.modulepath(src), error))
         except Exception as error:
-            raise BlobForwardException("Error in template '{}': \n"
+            raise LbuildForwardException("Error in template '{}': \n"
                                        "{}".format(self.modulepath(src), error),
                                        error)
 
         outfile_name = self.outpath(dest)
 
         # Create folder structure if it doesn't exists
-        if not os.path.exists(os.path.dirname(outfile_name)):
-            os.makedirs(os.path.dirname(outfile_name))
+        if not simulate:
+            if not os.path.exists(os.path.dirname(outfile_name)):
+                os.makedirs(os.path.dirname(outfile_name))
 
-        with open(outfile_name, 'w') as outfile:
-            outfile.write(output)
+            with open(outfile_name, 'w') as outfile:
+                outfile.write(output)
 
         endtime = time.time()
         total = endtime - starttime
@@ -283,14 +265,16 @@ class Environment:
         """Relocate given path to the path of the repo file."""
         return os.path.relpath(self.modulepath(*path), self.__repopath)
 
-    def outpath(self, *path):
+    def outpath(self, *path, basepath=None):
         """Relocate given path to the output path."""
-        if self.outbasepath is None:
+        if basepath is None:
+            basepath = self.outbasepath
+        if basepath is None:
             return os.path.join(self.__outpath, *path)
         else:
-            return os.path.join(self.__outpath, self.outbasepath, *path)
+            return os.path.join(self.__outpath, basepath, *path)
 
-    def get_generated_local_files(self, filterfunc=None):
+    def generated_local_files(self, filterfunc=None):
         """
         Get all files which have been generated by this module and its
         submodules so far.
@@ -301,7 +285,7 @@ class Environment:
             the path is added.
         """
         filenames = []
-        operations = self.__buildlog.get_operations_per_module(self.__module.fullname)
+        operations = self.__buildlog.operations_per_module(self.__module.fullname)
         for operation in operations:
             filename = os.path.normpath(os.path.join(os.path.relpath(os.path.dirname(operation.filename_out),
                                                                      self.outpath('.')),
@@ -326,12 +310,20 @@ class Environment:
         if value not in self.__buildlog.metadata[key]:
             self.__buildlog.metadata[key].append(value)
 
-    def assert_new_option(self, key):
+    def has_option(self, key):
         """Query whether an option exists."""
         try:
             _ = self.options[key]
             return True
-        except BlobException:
+        except LbuildException:
+            return False
+
+    def has_module(self, key):
+        """Query whether a module exists."""
+        try:
+            _ = self.modules[key]
+            return True
+        except LbuildException:
             return False
 
     def get_option(self, key, default=None):
@@ -342,16 +334,8 @@ class Environment:
         """
         try:
             return self.options[key]
-        except BlobException:
+        except LbuildException:
             return default
-
-    def has_module(self, key):
-        """Query whether a module exists."""
-        try:
-            _ = self.modules[key]
-            return True
-        except BlobException:
-            return False
 
     def __getitem__(self, key):
         """

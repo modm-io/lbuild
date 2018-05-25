@@ -8,11 +8,11 @@
 			<path>repo2/repo2.lb</path>
 		</repository>
 	</repositories>
-	
+
 	<options>
-		<option name=":target">hosted</option>
+		<option name="repo1:target">hosted</option>
 		<option name="repo1:foo">43</option>
-		
+
 		<option name="repo1:other:foo">456</option>
 		<option name="repo1::bar">768</option>
 		<option name=":other:xyz">No</option>

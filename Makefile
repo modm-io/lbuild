@@ -1,6 +1,6 @@
 
 test:
-	@python3 -m unittest discover -p *test.py
+	@python3 -W ignore::DeprecationWarning -m unittest discover -p *test.py
 
 coverage:
 	@coverage run --branch --source=lbuild -m unittest discover -p *test.py
@@ -14,7 +14,7 @@ pylint-gui:
 	@cd lbuild; pylint-gui3
 
 dist:
-	@rm -r dist
+	@rm -rf dist
 	@python3 setup.py sdist bdist_wheel
 
 install:

@@ -2,6 +2,7 @@
 #!/usr/bin/env python3
 #
 # Copyright (c) 2015-2018, Fabian Greif
+# Copyright (c) 2018, Niklas Hauser
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -9,10 +10,8 @@
 # governing this code.
 
 import os
-import shutil
 import logging
 import itertools
-import textwrap
 
 import lbuild.utils
 import lbuild.filter
@@ -21,372 +20,135 @@ import lbuild.repository
 
 from . import exception
 
-from .repository import RelocatePath
-from .repository import LocalFileReaderFactory
 from .repository import Repository
 
-from .exception import BlobException
-from lbuild.exception import BlobForwardException
+from .exception import LbuildException
+from .exception import LbuildForwardException
+
+from .node import BaseNode
+from .facade import ModuleInitFacade, ModulePrepareFacade
 
 LOGGER = logging.getLogger('lbuild.module')
 
 
-def verify_module_name(modulename):
-    """
-    Verify that the given name is a valid module name.
-
-    Raises an exception if the name is not valid.
-    """
-    if len(modulename.split(":")) < 2:
-        raise BlobException("Modulename '{}' must contain one or more ':' as "
-                            "separator between repository and module "
-                            "names".format(modulename))
-
-
-def find_modules(modules, modulename):
-    """ Get the module representation from a module name.
-
-    The name can either be fully qualified, have an empty repository/module
-    string or use a '*'. In the later two cases all repositories/modules are
-    searched for the module name.
-
-    It is also possible to use a double star ('**') as last entry in module
-    name. In this all modules at this depth including their submodules
-    are selected.
-
-    E.g. modules "a:b", "a:c" and "a:c:d" are available. The name "a:*"
-    selects "a:b" and "a:c" but not "a:c:d" while "a:**" would
-    select all three.
-
-    Args:
-        modulename: Name of the module in the format
-            'repository:module:submodule:...'.
-            Each part but the last can be an empty string.
-
-    Returns:
-        list: Possible modules.
-    """
-    verify_module_name(modulename)
-
-    canidates = []
-
-    target_parts = modulename.split(":")
-    target_depth = len(target_parts)
-
-    if target_parts[-1] == "**":
-        # Remove the double star entry
-        target_parts = target_parts[:-1]
-
-        for module in modules.values():
-            parts = module.fullname.split(":")
-            depth = len(parts)
-            if depth >= target_depth:
-                parts = parts[:target_depth]
-                canidates.append((parts, module))
-    else:
-        for module in modules.values():
-            parts = module.fullname.split(":")
-            depth = len(parts)
-            if depth == target_depth:
-                canidates.append((parts, module))
-
-    found = []
-    for parts, module in canidates:
-        for target, canidate in zip(target_parts, parts):
-            if target == "" or target == "*":
-                continue
-            elif target != canidate:
-                break
-        else:
-            found.append(module)
-
-    if len(found) == 0:
-        raise BlobException("Module '{}' not found.".format(modulename))
-    return found
-
-
-def find_module(modules, modulename):
-    """
-    Find a single module.
-
-    Similar to find_modules(...) but returns only a single module and
-    raised an exception in case multiple modules are found.
-
-    Returns:
-        Single module corresponding to the module name.
-    """
-    found = find_modules(modules, modulename)
-    if len(found) > 1:
-        raise BlobException("Name '{}' is ambiguous "
-                            "between '{}'.".format(modulename,
-                                                   "', '".join([str(x) for x in found])))
-    return found[0]
-
-
-def resolve_modules(available_modules, module_names):
-    """
-    Convert a list of not fully quailfied module names into a list of
-    module objects.
-
-    Args:
-        available_modules: List of all available modules.
-        module_names: List of module names.
-
-    Returns:
-        List of module objects.
-    """
-    selected_modules = set()
-    for modulename in module_names:
-        module_list = find_modules(available_modules, modulename)
-
-        # Only add modules which are not already selected
-        for module in module_list:
-            selected_modules.add(module)
-
-    return list(selected_modules)
-
-
 class ModuleBase:
-
-    def init(self, module):
-        pass
-
-    def prepare(self, module, options):
-        pass
-
-    def pre_build(self, env):
-        pass
-
-    def build(self, env):
-        pass
-
-    def post_build(self, env, log):
-        pass
+    pass
 
 
-class OptionNameResolver:
-    """
-    Option name resolver for module options.
-    """
+def load_module_from_file(repository, repo_options, filename, parent=None):
+    module = ModuleInit(repository, filename)
+    if parent: module.parent = parent;
+    module.functions = lbuild.node.load_functions_from_file(
+        repository, filename,
+        required=['init', 'prepare', 'build'],
+        optional=['pre_build', 'validate', 'post_build'],
+        local={
+            'Module': ModuleBase,
+            'PreBuildException': lbuild.exception.LbuildValidateException,
+            'ValidateException': lbuild.exception.LbuildValidateException,
+        })
+    module.init()
+    return module.prepare(repo_options)
 
-    def __init__(self, repository, module, repo_options, module_options):
+
+def load_module_from_object(repository, repo_options, module_obj, filename=None, parent=None):
+    module = ModuleInit(repository, filename)
+    if parent: module.parent = parent;
+    module.functions = lbuild.utils.get_global_functions(module_obj,
+            required=['init', 'prepare', 'build'],
+            optional=['pre_build', 'validate', 'post_build'])
+    module.init()
+    return module.prepare(repo_options)
+
+
+def build_modules(initmodules):
+    rmodules = {}
+    modules = []
+    # First convert the modules into node objects
+    for initmodule in initmodules:
+        module = Module(initmodule)
+        rmodules[module.fullname] = module
+        modules.append(module)
+
+    # then connect the entire tree
+    for module in modules:
+        parent = ":".join(module.fullname.split(":")[:-1])
+        module.parent = rmodules[parent] if ":" in parent else module._repository
+
+    # Now update the tree
+    for module in modules:
+        module._update()
+
+    return modules
+
+
+class ModuleInit:
+    def __init__(self, repository, filename=None):
+        self.filename = os.path.realpath(filename)
+        self.filepath = os.path.dirname(self.filename) if filename else None
         self.repository = repository
-        self.module = module
-        self.repo_options = repo_options
-        self.module_options = module_options
 
-    def __getitem__(self, key: str):
-        try:
-            option_parts = key.split(":")
-            depth = len(option_parts)
-            if depth < 2:
-                key = "{}:{}".format(self.module.fullname, key)
-                return self.module_options[key].value
-            if depth == 2:
-                # Repository option
-                repo, option = option_parts
-                if repo == "":
-                    key = "%s:%s" % (self.repository.name, option)
+        self.name = None
+        self.parent = self.repository.name
+        self.description = ""
+        self.functions = {}
+        self.available = False
 
-                return self.repo_options[key].value
+        self._submodules = []
+        self._options = []
+        self._dependencies = []
+        self._filters = {}
+
+    @property
+    def fullname(self):
+        return self.parent + ":" + self.name
+
+    def init(self):
+        # Execute init() function from module to get module name
+        lbuild.utils.with_forward_exception(self, lambda: self.functions['init'](ModuleInitFacade(self)))
+
+        if self.name is None:
+            raise LbuildException("The init(module) function must set a module name! " \
+                                "Please set the 'name' attribute.")
+
+        if self.parent.startswith(":"):
+            self.parent = self.repository.name + self.parent
+        if not self.parent.startswith(self.repository.name):
+            self.parent = self.repository.name + ":" + self.parent
+
+    def prepare(self, repo_options):
+        is_available = lbuild.utils.with_forward_exception(self,
+                lambda: self.functions["prepare"](ModulePrepareFacade(self), self.repository.option_value_resolver))
+
+        available_modules = []
+        if is_available is None:
+            raise LbuildException("The prepare() function for module '{}' must "
+                                "return True or False."
+                                .format(self.name))
+        elif is_available:
+            available_modules.append(self)
+        self.available = is_available
+
+        for submodule in self._submodules:
+            if isinstance(submodule, ModuleBase):
+                modules = load_module_from_object(repository=self.repository,
+                                                  repo_options=repo_options,
+                                                  module_obj=submodule,
+                                                  filename=self.filename,
+                                                  parent=self.fullname)
             else:
-                option_name = option_parts[-1]
-                partial_module_name = option_parts[:-1]
+                modules = load_module_from_file(repository=self.repository,
+                                                repo_options=repo_options,
+                                                filename=os.path.join(self.filepath, submodule),
+                                                parent=self.fullname)
 
-                name = self.module.fill_partial_name(partial_module_name)
-                name.append(option_name)
-                key = ":".join(name)
-                return self.module_options[key].value
-        except KeyError:
-            raise BlobException("Unknown option name '{}' in "
-                                "module '{}'".format(key, self.module.fullname))
-        except AttributeError as error:
-            raise BlobForwardException("Invalid option '{}'".format(key), error)
+            available_modules.extend(modules)
 
-    def __contains__(self, key):
-        try:
-            _ = self.__getitem__(key)
-            return True
-        except:
-            return False
-
-    def __repr__(self):
-        # Create representation of merged module and repository options
-        options = self.module_options.copy()
-        options.update(self.repo_options)
-
-        return repr(options)
-
-    def __len__(self):
-        return len(self.module_options) + len(self.repo_options)
+        return available_modules
 
 
-class ModuleNameResolver:
-    """
-    Module name resolver for modules.
-    """
-
-    def __init__(self, repository, module, modules):
-        self.repository = repository
-        self.module = module
-        self.modules = modules
-
-    def __getitem__(self, key: str):
-        partial_name = key.split(":")
-        try:
-            name = self.module.fill_partial_name(partial_name)
-            key = ":".join(name)
-            return self.modules[key]
-        except KeyError:
-            raise BlobException("Unknown module name '{}' in "
-                                "repository '{}'".format(key, self.repository.name))
-
-    def __iter__(self):
-        return iter(self.modules.keys())
-
-    def items(self):
-        return self.modules.items()
-
-    def values(self):
-        return self.modules.values()
-
-    def __repr__(self):
-        return repr(self.modules)
-
-    def __len__(self):
-        return len(self.modules)
-
-
-class ModuleFacade:
-
-    def __init__(self, module):
-        self._module = module
-
-    @property
-    def name(self):
-        return self._module.name
-
-    @property
-    def description(self):
-        return self._module.description
-
-    @property
-    def parent(self):
-        return self._module.parent
-
-    def add_option(self, option):
-        self._module.add_unique_option(option)
-
-    def depends(self, *dependencies):
-        """
-        Add one or more dependencies for the module.
-
-        Args:
-            dependencies: One or several dependencies as comma separated arguments.
-        """
-        self._module.add_dependencies(*dependencies)
-
-    def add_submodule(self, modulename):
-        self._module._submodules.append(modulename)
-
-
-class ModuleInitFacade(ModuleFacade):
-    """
-    Module API for the initialization phase of module.
-
-    Allows to set the module name, description and parent.
-    """
-
-    def __init__(self, module):
-        ModuleFacade.__init__(self, module)
-
-    @property
-    def name(self):
-        return self._module.name
-
-    @name.setter
-    def name(self, value):
-        self._module.name = value
-
-    @property
-    def description(self):
-        return self._module.description
-
-    @description.setter
-    def description(self, value):
-        self._module.description = value
-
-    @property
-    def parent(self):
-        return self._module.parent
-
-    @parent.setter
-    def parent(self, name):
-        """
-        Set a parent for the current module.
-
-        Modules always have a dependency on their parent modules.
-        """
-        self._module.parent = name
-
-
-class Module:
-
-    @staticmethod
-    def parse_module_file(repository, module_filename: str):
-        """
-        Parse a specific module file.
-
-        Returns:
-            Module() module definition object.
-        """
-        try:
-            modulepath = os.path.dirname(os.path.realpath(module_filename))
-            repopath = os.path.realpath(repository.path)
-
-            local = {
-                # The localpath(...) function can be used to create
-                # a local path form the folder of the repository file.
-                'localpath': RelocatePath(modulepath),
-                'repopath': RelocatePath(repopath),
-                'FileReader': LocalFileReaderFactory(modulepath),
-                'listify': lbuild.filter.listify,
-                'ignore_patterns': shutil.ignore_patterns,
-
-                'Module': ModuleBase,
-
-                'StringOption': lbuild.option.Option,
-                'BooleanOption': lbuild.option.BooleanOption,
-                'NumericOption': lbuild.option.NumericOption,
-                'EnumerationOption': lbuild.option.EnumerationOption,
-                'SetOption': lbuild.option.SetOption,
-
-                'PreBuildException': lbuild.exception.BlobPreBuildException,
-            }
-
-            LOGGER.debug("Parse module_filename '%s'", module_filename)
-            local = lbuild.utils.load_module_from_file(module_filename, local)
-
-            module = Module(repository,
-                            module_filename,
-                            modulepath)
-
-            # Get the required global functions
-            module.functions = Repository.get_global_functions(
-                local,
-                required=['init', 'prepare', 'build'],
-                optional=['pre_build', 'post_build'])
-            module.init()
-
-            return module
-        except Exception as error:
-            raise BlobException("While parsing '%s': %s" % (module_filename, error))
-
-    def __init__(self,
-                 repository,
-                 filename: str,
-                 path: str,
-                 name: str=None):
+class Module(BaseNode):
+    def __init__(self, module: ModuleInit):
         """
         Create new module definition.
 
@@ -396,291 +158,40 @@ class Module:
             path: Path to the module file. Used as base for relative paths
                 during the building step of the module.
         """
-        self.repository = repository
-        self.filename = filename
-        self.path = path
-
-        # Parent module. May be empty
-        self._parent = None
-        # Full qualified name ('repository:module:submodule:...')
-        self._fullname = None
-
-        self._submodules = []
-
-        self._name = name
-        self._description = ""
-
-        # Required functions declared in the module configuration file
-        self.functions = {}
-
-        # List of module names this module depends upon
-        self.__dependency_module_names = []
-
-        # List of module objects on which this module depends. Updated
-        # by calling `resovle_dependencies()`.
-        self.dependencies = []
+        BaseNode.__init__(self, module.name, self.Type.MODULE, module.repository)
+        self._filename = module.filename
+        self._functions = module.functions
+        self._description = module.description
+        self._fullname = module.fullname
+        self._available = module.available
+        self._filters.update({self._repository.name + ":" + name: func for name, func in module._filters})
 
         # OptionNameResolver defined in the module configuration file. These
         # options are configurable through the project configuration file.
-        self.options = {}
+        for o in module._options:
+            self.add_option(o)
 
-    @property
-    def description(self):
-        try:
-            return self._description.read()
-        except AttributeError:
-            return self._description
+        self.add_dependencies(*module._dependencies)
+        if ":" in module.parent:
+            self.add_dependencies(module.parent)
 
-    @description.setter
-    def description(self, description):
-        self._description = description
-
-    @property
-    def short_description(self):
-        """
-        Returns the wrapped first paragraph of the description.
-
-        A paragraph is defined by non-whitespace text followed by an empty
-        line.
-        """
-        description = self.description
-        if description is not None:
-            lines = description.splitlines()
-            title = []
-            for line in lines:
-                line = line.strip()
-                if line == "":
-                    if len(title) > 0:
-                        break
-                else:
-                    title.append(line)
-            description = "\n".join(textwrap.wrap("\n".join(title), 80))
-
-        return description
-
-    def factsheet(self):
-        output = []
-        output.append(self.fullname)
-        output.append("=" * len(self.fullname))
-        output.append("")
-
-        description = self.description.strip()
-        if len(description) > 0:
-            output.append(description)
-        for option in self.options.values():
-            output.append("")
-            output.append(option.factsheet() + "\n")
-        return "\n".join(output)
-
-    @property
-    def name(self):
-        return self._name
-
-    @name.setter
-    def name(self, name):
-        if self._fullname is None:
-            self._name = name
-        else:
-            raise exception.BlobAttributeException("name")
-
-    @property
-    def parent(self):
-        return self._parent
-
-    @parent.setter
-    def parent(self, name):
-        """
-        Set a parent for the current module.
-
-        Modules always have a dependency on their parent modules.
-        """
-        if self._fullname is None:
-            if not (name.startswith("{}:".format(self.repository.name)) or name.startswith(":")):
-                name = ":{}".format(name)
-            self._parent = self.repository.name + name if name.startswith(":") else name
-            self.add_dependencies(name)
-        else:
-            raise exception.BlobAttributeException("name")
-
-    @property
-    def fullname(self):
-        return self._fullname
-
-    def add_unique_option(self, option):
-        """
-        Define new option for this module.
-
-        The module options only influence the build process but not the
-        selection and dependencies of modules.
-        """
-        if option.name in self.options:
-            raise BlobException("Option name '%s' is already defined" % option.name)
-        option.repository = self.repository
-        option.module = self
-        self.options[option.name] = option
-
-    def add_dependencies(self, *dependencies):
-        """
-        Add a new dependencies.
-
-        The module name has not to be fully qualified.
-        """
-        for dependency in dependencies:
-            verify_module_name(dependency)
-            self.__dependency_module_names.append(dependency)
-
-    def resolve_dependencies(self, available_modules):
-        """
-        Update the internal list of dependencies.
-
-        Resolves the module names to the actual module objects.
-        """
-        dependencies = set()
-        for dependency_name in self.__dependency_module_names:
-            try:
-                if dependency_name.startswith(":"):
-                    dependency_name = self.repository.name + dependency_name
-                dependency = find_module(available_modules, dependency_name)
-            except lbuild.exception.BlobException:
-                raise lbuild.exception.BlobException(" Module '{}' not found, "
-                                                     "required by '{}'".format(dependency_name,
-                                                                               self.fullname))
-            dependencies.add(dependency)
-
-        self.dependencies = list(dependencies)
-
-    def fill_partial_name(self, partial_name):
-        """
-        Fill the array of the module name with the parts of the full name
-        of the current module.
-
-        Returns an array of the full name.
-        """
-        module_fullname_parts = self.fullname.split(":")
-
-        # Limit length of the module name to the length of the requested
-        # name
-        depth = len(partial_name)
-        if len(module_fullname_parts) > depth:
-            module_fullname_parts = module_fullname_parts[:depth]
-
-        # Using zip_longest restricts the name to the length of full name
-        # if it is shorted than the requested module name.
-        name = []
-        for part, fill in itertools.zip_longest(partial_name,
-                                                module_fullname_parts,
-                                                fillvalue=""):
-            name.append(fill if (part == "") else part)
-        return name
-
-    def init(self):
-        # Execute init() function from module to get module name
-        lbuild.utils.with_forward_exception(self, lambda: self.functions['init'](ModuleInitFacade(self)))
-
-        if self.name is None:
-            raise BlobException("The init(module) function must set a module name! " \
-                                "Please set the 'name' attribute.")
-
-        LOGGER.info("Found module '%s'", self.name)
-
-    def register_module(self):
-        """
-        Update the fullname attribute and register module at its repository.
-        """
-        if self._fullname is not None:
-            return
-
-        if self._parent is None:
-            fullname = "{}:{}".format(self.repository.name, self._name)
-        else:
-            fullname = "{}:{}".format(self._parent, self._name)
-        self._fullname = fullname
-        exisiting_module = self.repository.modules.get(fullname, None)
-        if exisiting_module is not None:
-            raise BlobException("Module name '{}' is not unique. "
-                                "Found at {} and {}"
-                                .format(fullname,
-                                        os.path.join(exisiting_module.path,
-                                                     exisiting_module.filename),
-                                        os.path.join(self.path, self.filename)))
-        self.repository.modules[fullname] = self
-
-    def prepare(self, repo_options):
-        """
-        Prepare module.
-
-        Recursively appends all submodules.
-
-        Args:
-            repo_options (dict): Repository options.
-
-        Returns:
-            list: Available modules. May be an empty list if the module is
-                not selectable for the given repository options.
-        """
-        available_modules = {}
-        name_resolver = lbuild.repository.OptionNameResolver(self.repository,
-                                                             repo_options)
-        is_available = lbuild.utils.with_forward_exception(self,
-                lambda: self.functions["prepare"](ModuleFacade(self),
-                                                  name_resolver))
-
-        if is_available is None:
-            raise BlobException("The prepare() function for module '{}' must "
-                                "return True or False."
-                                .format(self.name))
-        elif is_available:
-            self.register_module()
-            available_modules[self.fullname] = self
-
-        for submodule in self._submodules:
-            if isinstance(submodule, ModuleBase):
-                module = Module(repository=self.repository,
-                                filename=None,
-                                path=self.path)
-
-                module.functions = {
-                    'init': submodule.init,
-                    'prepare': submodule.prepare,
-                    'build': submodule.build,
-                }
-                module.init()
-            else:
-                module = Module.parse_module_file(repository=self.repository,
-                                                  module_filename=os.path.join(self.path,
-                                                                               submodule))
-
-            # Set parent for new module
-            if self._parent:
-                module.parent = "{}:{}".format(self._parent, self._name)
-            else:
-                module.parent = "{}:{}".format(self.repository.name, self._name)
-            available_modules.update(module.prepare(repo_options))
-
-        return available_modules
-
-    def pre_build(self, env):
-        pre_build = self.functions.get("pre_build", None)
-        if pre_build is not None:
-            LOGGER.info("Prepare for build %s", self.fullname)
-            lbuild.utils.with_forward_exception(self, lambda: pre_build(env))
+    def validate(self, env):
+        validate = self._functions.get("validate", self._functions.get("pre_build", None))
+        if validate is not None:
+            LOGGER.info("Validate " + self.fullname)
+            lbuild.utils.with_forward_exception(self, lambda: validate(env))
 
     def build(self, env):
-        LOGGER.info("Build %s", self.fullname)
-        lbuild.utils.with_forward_exception(self, lambda: self.functions["build"](env))
+        LOGGER.info("Build " + self.fullname)
+        lbuild.utils.with_forward_exception(self, lambda: self._functions["build"](env))
 
     def post_build(self, env, buildlog):
-        post_build = self.functions.get("post_build", None)
+        post_build = self._functions.get("post_build", None)
         if post_build is not None:
-            LOGGER.info("Post-Build %s", self.fullname)
+            LOGGER.info("Post-Build " + self.fullname)
             lbuild.utils.with_forward_exception(self, lambda: post_build(env, buildlog))
 
     def __lt__(self, other):
-        """
-        Compare the full name of two modules.
-
-        Used to sort modules by their full name.
-        """
         return self.fullname.__lt__(other.fullname)
 
     def __repr__(self):

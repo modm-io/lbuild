@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright (c) 2016, Fabian Greif
+# Copyright (c) 2018, Niklas Hauser
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -21,9 +22,24 @@ import lbuild
 class FilterTest(unittest.TestCase):
 
     def test_should_convert_string_to_list(self):
-        node = lbuild.filter.listify("test")
-        self.assertEqual(1, len(node))
-        self.assertEqual(node[0], "test")
+        obj = lbuild.filter.listify( None )
+        self.assertEqual(obj, [])
+        obj = lbuild.filter.listify( [] )
+        self.assertEqual(obj, [])
+        obj = lbuild.filter.listify( [0,1,2] )
+        self.assertEqual(obj, [0,1,2])
+        obj = lbuild.filter.listify( (0,1,2) )
+        self.assertEqual(obj, [0,1,2])
+        obj = lbuild.filter.listify( set([0,1,2]) )
+        self.assertEqual(obj, [0,1,2])
+        lbuild.filter.listify( range(0,3) )
+        self.assertEqual(obj, [0,1,2])
+        obj = lbuild.filter.listify( reversed(range(0,3)) )
+        self.assertEqual(obj, [2,1,0])
+        obj = lbuild.filter.listify( "string" )
+        self.assertEqual(obj, ["string"])
+        obj = lbuild.filter.listify( ["string"] )
+        self.assertEqual(obj, ["string"])
 
     def test_should_rewrap_text(self):
         text = lbuild.filter.wordwrap("This is a long text which can be re-wrapped.", 20)

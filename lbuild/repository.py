@@ -15,126 +15,88 @@ import shutil
 import logging
 import fnmatch
 
-import lbuild.option
 import lbuild.filter
 import lbuild.utils
 
-from .exception import BlobException
+from .facade import RepositoryInitFacade, RepositoryPrepareFacade
+from .node import BaseNode, NameResolver
+from .exception import LbuildException
 from . import utils
 
 LOGGER = logging.getLogger('lbuild.repository')
 
 
-class RelocatePath:
-
-    def __init__(self, basepath):
-        self.basepath = basepath
-
-    def __call__(self, *args):
-        return os.path.join(self.basepath, *args)
-
-
-class LocalFileReader:
-
-    def __init__(self, basepath, filename):
-        self.basepath = basepath
-        self.filename = filename
-
-    def read(self):
-        with open(os.path.join(self.basepath, self.filename)) as file:
-            return file.read()
-
-
-class LocalFileReaderFactory:
-
-    def __init__(self, basepath):
-        self.basepath = basepath
-
-    def __call__(self, filename):
-        return LocalFileReader(self.basepath, filename)
-
-
-class OptionNameResolver:
+class Repository(BaseNode):
     """
-    Option name resolver for repository options.
+    A repository is a set of modules.
     """
 
-    def __init__(self, repository, options):
+    def __init__(self, filename, name=None):
         """
+        Construct a new repository object.
 
-        Args:
-            repository: Default repository. This name is used when the repository
-                name is left empty (e.g. ":option").
-            options:
+        At the construction time of the object, the name of repository may not
+        be known e.g. if the repository is loaded from a `repo.lb` file.
         """
-        self.repository = repository
-        self.options = options
+        BaseNode.__init__(self, name, self.Type.REPOSITORY, self)
+        # Path to the repository file. All relative paths refer to this path.
+        self._filename = os.path.realpath(filename)
+        self._config_map = {}
+        self._new_filters = {}
 
-    def __getitem__(self, key):
-        parts = key.split(":")
-        if len(parts) != 2:
-            raise BlobException("Option name '%s' must contain exactly one "
-                                "colon to separate repository and option name.")
-        repo, option = parts
-        if repo == "":
-            key = "%s:%s" % (self.repository.name, option)
-
-        try:
-            return self.options[key].value
-        except KeyError:
-            raise BlobException("Unknown option name '{}'".format(key))
-
-    def __repr__(self):
-        return repr(self.options)
-
-    def __len__(self):
-        return len(self.options)
-
-
-class RepositoryFacade:
-    """
-    External access to the repository.
-
-    Used when execution the repository files.
-    """
-
-    def __init__(self, repository):
-        self.__repository = repository
+        # List of module filenames which are later transfered into
+        # module objects
+        self._module_files = []
 
     @property
-    def name(self):
-        return self.__repository.name
+    def modules(self):
+        return {m.fullname:m for m in self.all_modules()}
 
-    @name.setter
-    def name(self, value):
-        self.__repository.name = value
+    @staticmethod
+    def parse_repository(repofilename: str):
+        LOGGER.debug("Parse repository '%s'", repofilename)
 
-    @property
-    def description(self):
-        return self.__repository.description
+        repo = Repository(repofilename)
+        repo._functions = lbuild.node.load_functions_from_file(
+                repo, repofilename, required=['init', 'prepare'], optional=['build'])
 
-    @description.setter
-    def description(self, value):
-        self.__repository.description = value
+        # Execution init() function. In this function options are added.
+        repo._functions['init'](RepositoryInitFacade(repo))
 
-    def add_option(self, option: lbuild.option.Option):
-        """
-        Define new repository wide option.
+        if repo.name is None:
+            raise LbuildException("The init(repo) function must set a repository name! "
+                                "Please write the 'name' attribute.")
 
-        These options can be used by modules to decide whether they are
-        available and what options they provide for a specific set of
-        repository options.
-        """
-        option.repository = self.__repository
-        option.module = None
+        # Prefix the global filters with the `repo.` name
+        for name, func in repo._new_filters.items():
+            repo._filters[repo.name + "." + name] = func
 
-        self.__repository.add_unique_option(option)
+        # Prefix the global configuration map with the `repo:` name
+        config_map = repo._config_map.copy()
+        repo._config_map = {}
+        for name, path in config_map.items():
+            repo._config_map[repo.name + ":" + name] = path
 
-    def glob(self, pattern):
-        pattern = os.path.abspath(self.__repository.relocate_relative_path(pattern))
-        return glob.glob(pattern)
+        return repo
 
-    def find_modules_recursive(self, basepath="", modulefile="module.lb", ignore=[]):
+    def prepare(self, options):
+        lbuild.utils.with_forward_exception(self,
+                lambda: self._functions["prepare"](RepositoryPrepareFacade(self), self.option_value_resolver))
+
+        modules = []
+        # Parse the modules inside this repository
+        for modulefile in self._module_files:
+            module = lbuild.module.load_module_from_file(self, options, modulefile)
+            modules.extend(module)
+
+        return modules
+
+    def build(self, env):
+        build = self._functions.get("build", None)
+        if build is not None:
+            lbuild.utils.with_forward_exception(self, lambda: build(env))
+
+    def add_modules_recursive(self, basepath="", modulefile="module.lb", ignore=None):
         """
         Find all module files following a specific pattern.
 
@@ -144,170 +106,43 @@ class RepositoryFacade:
                 for (default: "module.lb").
             ignore: Filename pattern to ignore during search
         """
-        ignore = utils.listify(ignore)
-        basepath = self.__repository.relocate_relative_path(basepath)
+        ignore = utils.listify(ignore) + self._ignore_patterns
+        ignore.append(os.path.relpath(self._filename, self._filepath))
+        basepath = self._relocate_relative_path(basepath)
         for path, _, files in os.walk(basepath):
             for file in files:
                 if any(fnmatch.fnmatch(file, i) for i in ignore):
                     continue
                 if fnmatch.fnmatch(file, modulefile):
                     modulefilepath = os.path.normpath(os.path.join(path, file))
-                    self.__repository.module_files.append(modulefilepath)
+                    self._module_files.append(modulefilepath)
 
-    def add_modules(self, modules):
+    def add_modules(self, *modules):
         """
         Add one or more module files.
 
         Args:
             modules: List of filenames
         """
-        module_files = utils.listify(modules)
-
-        for file in module_files:
-            file = self.__repository.relocate_relative_path(file)
+        modules = [lbuild.utils.listify(m) for m in modules]
+        modules = [inner for outer in modules for inner in outer]
+        for file in modules:
+            file = self._relocate_relative_path(file)
 
             if not os.path.isfile(file):
-                raise BlobException("Module file not found '%s'" % file)
+                raise LbuildException("Module file not found '%s'" % file)
 
-            self.__repository.module_files.append(file)
+            self._module_files.append(file)
 
-
-class Repository:
-    """
-    A repository is a set of modules.
-    """
-
-    def __init__(self, path, name=None):
-        """
-        Construct a new repository object.
-
-        At the construction time of the object, the name of repository may not
-        be known e.g. if the repository is loaded from a `repo.lb` file.
-        """
-        # Path to the repository file. All relative paths refer to this path.
-        self.path = path
-        self.name = name
-
-        self.functions = None
-
-        # List of module filenames which are later transfered into
-        # module objects
-        self.module_files = []
-
-        # List of available module objects (modules that returned True in
-        # the `prepare` step).
-        self.modules = {}
-
-        # Name -> Option()
-        self.options = {}
-
-    def relocate_relative_path(self, path):
-        """
-        Relocate relative paths to the path of the repository
-        configuration file.
-        """
-        if not os.path.isabs(path):
-            path = os.path.join(self.path, path)
-        return os.path.normpath(path)
-
-    def add_unique_option(self, option):
-        """
-        Add a new repository option.
-
-        Raises an exception if the option is already defined for the repository.
-        """
-        if option.name in self.options:
-            raise BlobException("Option name '%s' is already defined" % option.name)
-        self.options[option.name] = option
-
-    @staticmethod
-    def get_global_functions(local, required, optional=None):
-        """
-        Get global functions from the environment.
-
-        Args:
-            required: List of required functions.
-            optional: List of optional functions.
-        """
-        functions = {}
-        for functionname in required:
-            function = local.get(functionname)
-            if function is None:
-                raise BlobException("No function '{}' found!".format(functionname))
-            functions[functionname] = function
-
-        if optional is not None:
-            for functionname in optional:
-                function = local.get(functionname)
-                functions[functionname] = function
-
-        return functions
-
-    @staticmethod
-    def parse_repository(repofilename: str):
-        LOGGER.debug("Parse repository '%s'", repofilename)
-
-        repopath = os.path.dirname(os.path.realpath(repofilename))
-        repo = Repository(repopath)
-        try:
-            local = {
-                # The localpath(...) function can be used to create
-                # a local path form the folder of the repository file.
-                'localpath': RelocatePath(repopath),
-                'repopath': RelocatePath(repopath),
-                'FileReader': LocalFileReaderFactory(repopath),
-                'listify': lbuild.filter.listify,
-                'ignore_patterns': shutil.ignore_patterns,
-
-                'StringOption': lbuild.option.Option,
-                'BooleanOption': lbuild.option.BooleanOption,
-                'NumericOption': lbuild.option.NumericOption,
-                'EnumerationOption': lbuild.option.EnumerationOption,
-                'SetOption': lbuild.option.SetOption,
-            }
-
-            local = lbuild.utils.with_forward_exception(repo,
-                    lambda: lbuild.utils.load_module_from_file(repofilename, local))
-            repo.functions = Repository.get_global_functions(local, ['init', 'prepare'])
-
-            # Execution init() function. In this function options are added.
-            lbuild.utils.with_forward_exception(repo,
-                    lambda: repo.functions['init'](RepositoryFacade(repo)))
-
-            if repo.name is None:
-                raise BlobException("The init(repo) function must set a repository name! "
-                                    "Please write the 'name' attribute.")
-        except FileNotFoundError as error:
-            raise BlobException("Repository configuration file not found '{}'.".format(repofilename))
-        except KeyError as error:
-            raise BlobException("Invalid repository configuration file '{}':\n"
-                                " {}: {}".format(repofilename,
-                                                 error.__class__.__name__,
-                                                 error))
-        return repo
-
-    def prepare_repository(self, options):
-        lbuild.utils.with_forward_exception(self,
-                lambda: self.functions["prepare"](RepositoryFacade(self),
-                                                  OptionNameResolver(self,
-                                                                     options)))
-
-        modules = {}
-        # Parse the modules inside this repository
-        for modulefile in self.module_files:
-            module = lbuild.module.Module.parse_module_file(self, modulefile)
-            modules.update(module.prepare(options))
-        return modules
-
-    def remove_modules_without_parent(self):
-        for name, module in self.modules.items():
-            print(name, module.parent)
+    def glob(self, pattern):
+        pattern = os.path.abspath(self._relocate_relative_path(pattern))
+        return glob.glob(pattern)
 
     def __lt__(self, other):
-        return self.name.__cmp__(other.name)
+        return self.fullname.__lt__(other.fullname)
 
     def __repr__(self):
-        return "Repository({})".format(self.path)
+        return "Repository({})".format(self._filepath)
 
     def __str__(self):
         """ Get string representation of repository.  """
@@ -315,6 +150,6 @@ class Repository:
             # The name must not always be set, e.g. during load
             # the repository name is only known after calling the
             # init function.
-            return "{} at {}".format(self.name, self.path)
+            return "{} at {}".format(self.name, self._filepath)
         else:
-            return self.path
+            return self._filepath

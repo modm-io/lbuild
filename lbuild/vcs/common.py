@@ -12,7 +12,7 @@ import enum
 import logging
 
 import lbuild.config
-from ..exception import BlobException
+from ..exception import LbuildException
 
 LOGGER = logging.getLogger('lbuild.vcs')
 
@@ -22,7 +22,7 @@ class Action(enum.Enum):
     update = 1
 
 
-def _parse_vcs(config: lbuild.config.Configuration,
+def _parse_vcs(config: lbuild.config.ConfigNode,
                action):
     LOGGER.debug("Initialize VCS repositories")
 
@@ -34,7 +34,7 @@ def _parse_vcs(config: lbuild.config.Configuration,
                 from . import git
                 repo = git.Repository(config.cachefolder, repoconfig)
             else:
-                raise BlobException("Unsupported VCS type '{}'".format(tag))
+                raise LbuildException("Unsupported VCS type '{}'".format(tag))
 
             if action == Action.init:
                 repo.initialize()

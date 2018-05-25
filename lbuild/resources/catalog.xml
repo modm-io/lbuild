@@ -2,5 +2,5 @@
 <catalog xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">
   <uri name="http://www.w3.org/2001/XInclude" uri="schema/xinclude.xsd" />
   <uri name="http://www.w3.org/2001/xml.xsd" uri="schema/xml.xsd" />
-  <uri name="https://github.com/dergraaf/library-builder/lbuild/resources/configuration.xsd" uri="configuration.xsd" />
+  <uri name="https://github.com/modm-io/lbuild/lbuild/resources/configuration.xsd" uri="configuration.xsd" />
 </catalog>

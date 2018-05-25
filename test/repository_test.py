@@ -28,7 +28,7 @@ class RepositoryTest(unittest.TestCase):
         self.parser = lbuild.parser.Parser()
 
     def test_should_generate_exception_on_import_error(self):
-        with self.assertRaises(lbuild.exception.BlobForwardException) as cm:
+        with self.assertRaises(lbuild.exception.LbuildForwardException) as cm:
             self.parser.parse_repository(self._get_path("invalid_import.lb"))
 
         self.assertTrue(issubclass(cm.exception.exception.__class__, ImportError))
