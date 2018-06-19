@@ -495,8 +495,10 @@ class Module:
         Modules always have a dependency on their parent modules.
         """
         if self._fullname is None:
-            self._parent = name
-            self.add_dependencies(":{}".format(name))
+            if not (name.startswith("{}:".format(self.repository.name)) or name.startswith(":")):
+                name = ":{}".format(name)
+            self._parent = self.repository.name + name if name.startswith(":") else name
+            self.add_dependencies(name)
         else:
             raise exception.BlobAttributeException("name")
 
@@ -591,9 +593,7 @@ class Module:
         if self._parent is None:
             fullname = "{}:{}".format(self.repository.name, self._name)
         else:
-            fullname = "{}:{}:{}".format(self.repository.name,
-                                         self._parent,
-                                         self._name)
+            fullname = "{}:{}".format(self._parent, self._name)
         self._fullname = fullname
         exisiting_module = self.repository.modules.get(fullname, None)
         if exisiting_module is not None:
@@ -654,7 +654,7 @@ class Module:
             if self._parent:
                 module.parent = "{}:{}".format(self._parent, self._name)
             else:
-                module.parent = self._name
+                module.parent = "{}:{}".format(self.repository.name, self._name)
             available_modules.update(module.prepare(repo_options))
 
         return available_modules
