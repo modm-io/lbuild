@@ -536,6 +536,8 @@ class Module:
         dependencies = set()
         for dependency_name in self.__dependency_module_names:
             try:
+                if dependency_name.startswith(":"):
+                    dependency_name = self.repository.name + dependency_name
                 dependency = find_module(available_modules, dependency_name)
             except lbuild.exception.BlobException:
                 raise lbuild.exception.BlobException(" Module '{}' not found, "
