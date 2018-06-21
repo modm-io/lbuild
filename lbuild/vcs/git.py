@@ -15,6 +15,7 @@ import git
 
 LOGGER = logging.getLogger('lbuild.vcs.git')
 
+
 class Repository:
 
     def __init__(self, cachefolder, config):
@@ -47,11 +48,17 @@ class Repository:
         else:
             self.switch_to_branch(repo, self.branch)
 
+        for submodule in repo.submodules:
+            submodule.update(init=True, recursive=True)
+
     def update(self):
         repo = self.get_repository()
         LOGGER.debug("Pull from origin")
         origin = repo.remotes.origin
         origin.pull()
+
+        for submodule in repo.submodules:
+            submodule.update(recursive=True)
 
     @staticmethod
     def switch_to_commit(repo, commit):
