@@ -114,6 +114,7 @@ class DiscoverModulesAction(ManipulationActionBase):
                 ostream.append("")
         return "\n".join(ostream)
 
+
 class DiscoverModuleAction(ManipulationActionBase):
 
     def register(self, argument_parser):
@@ -131,6 +132,7 @@ class DiscoverModuleAction(ManipulationActionBase):
         modules = parser.prepare_repositories(repo_options)
         module = lbuild.module.find_module(modules, args.module_name)
         return module.factsheet() + "\n"
+
 
 class DependenciesAction(ManipulationActionBase):
 
