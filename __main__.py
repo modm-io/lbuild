@@ -51,6 +51,7 @@ class InitAction:
 
     def perform(self, args, config):
         lbuild.vcs.common.initialize(config)
+        return ""
 
 
 class UpdateAction:
@@ -62,6 +63,7 @@ class UpdateAction:
 
     def perform(self, args, config):
         lbuild.vcs.common.update(config)
+        return ""
 
 
 class ManipulationActionBase:
@@ -128,7 +130,6 @@ class DiscoverModuleAction(ManipulationActionBase):
         parser.set_defaults(execute_action=self.prepare_repositories)
 
     def perform(self, args, parser, config, repo_options):
-        ostream = []
         modules = parser.prepare_repositories(repo_options)
         module = lbuild.module.find_module(modules, args.module_name)
         return module.factsheet() + "\n"
