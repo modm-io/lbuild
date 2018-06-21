@@ -295,6 +295,10 @@ class Repository:
             modules.update(module.prepare(options))
         return modules
 
+    def remove_modules_without_parent(self):
+        for name, module in self.modules.items():
+            print(name, module.parent)
+
     def __lt__(self, other):
         return self.name.__cmp__(other.name)
 

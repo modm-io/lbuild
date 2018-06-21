@@ -608,6 +608,13 @@ class Module:
         Prepare module.
 
         Recursively appends all submodules.
+
+        Args:
+            repo_options (dict): Repository options.
+
+        Returns:
+            list: Available modules. May be an empty list if the module is
+                not selectable for the given repository options.
         """
         available_modules = {}
         name_resolver = lbuild.repository.OptionNameResolver(self.repository,

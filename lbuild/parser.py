@@ -169,6 +169,15 @@ class Parser:
     def resolve_dependencies(modules, requested_modules, depth=sys.maxsize):
         """
         Resolve dependencies by adding missing modules.
+
+        Args:
+            modules (list): All modules available in the system
+            requested_modules (list): Selected modules. Sub-set of all modules.
+            depth (int): Maximum depth of dependencies. If not set to maximum
+                not all dependencies might be resolved.
+
+        Returns:
+            list: Required modules for the given list of modules.
         """
         for module in modules.values():
             module.resolve_dependencies(modules)
@@ -202,6 +211,11 @@ class Parser:
     def merge_module_options(build_modules, config_options):
         """
         Return the list of options used for building the selected modules.
+
+        Args:
+            build_modules (list): Modules which have been selected.
+            config_options (list): Options from the configuration files
+                 with partial names.
 
         Returns:
             dict: Mapping of the full qualified option names to the option
@@ -251,6 +265,10 @@ class Parser:
     def verify_options_are_defined(options):
         """
         Check that all given options have an assigned value.
+
+        Args:
+            options (list): Options which have been selected from the given
+                modules.
         """
         for fullname, option in options.items():
             if option.value is None:
