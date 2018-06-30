@@ -32,7 +32,7 @@ class DepedencyBuilderTest(unittest.TestCase):
 
         Adds the path to the generated config file.
         """
-        argument_parser = lbuild.__main__.prepare_argument_parser()
+        argument_parser = lbuild.main.prepare_argument_parser()
         commandline_arguments = ["-c{}".format(self._get_path("config.xml")), ]
         commandline_arguments.extend(commands)
         args = argument_parser.parse_args(commandline_arguments)
@@ -40,7 +40,7 @@ class DepedencyBuilderTest(unittest.TestCase):
 
     def test_should_create_dependency_graph(self):
         args = self.prepare_arguments(["dependencies", ])
-        output = lbuild.__main__.run(args)
+        output = lbuild.main.run(args)
         self.assertIsNotNone(output)
 
         self.assertIn("repo_module2 -> repo_module1;", output)
@@ -52,7 +52,7 @@ class DepedencyBuilderTest(unittest.TestCase):
 
     def test_should_create_dependency_graph_for_selection(self):
         args = self.prepare_arguments(["dependencies", "-mrepo:module2:submodule0"])
-        output = lbuild.__main__.run(args)
+        output = lbuild.main.run(args)
         self.assertIsNotNone(output)
 
         self.assertIn("repo_module2 -> repo_module1;", output)
@@ -60,7 +60,7 @@ class DepedencyBuilderTest(unittest.TestCase):
 
     def test_should_create_dependency_graph_for_selection_with_limited_length(self):
         args = self.prepare_arguments(["dependencies", "-mrepo:module2:submodule0", "-n1"])
-        output = lbuild.__main__.run(args)
+        output = lbuild.main.run(args)
         self.assertIsNotNone(output)
 
         self.assertIn("repo_module2_submodule0 -> repo_module2;", output)

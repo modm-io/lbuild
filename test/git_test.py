@@ -58,7 +58,7 @@ class GitTest(unittest.TestCase):
 
         Adds the path to the generated config file.
         """
-        argument_parser = lbuild.__main__.prepare_argument_parser()
+        argument_parser = lbuild.main.prepare_argument_parser()
         commandline_arguments = ["-c{}".format(config_file), ]
         commandline_arguments.extend(commands)
         args = argument_parser.parse_args(commandline_arguments)
@@ -71,7 +71,7 @@ class GitTest(unittest.TestCase):
         args = self.prepare_arguments(config_file, ["init", ])
 
         # Run the command
-        output = lbuild.__main__.run(args)
+        output = lbuild.main.run(args)
         self.assertIsNone(output)
 
         tempdir.compare([
@@ -88,10 +88,10 @@ class GitTest(unittest.TestCase):
         args = self.prepare_arguments(config_file, ["init", ])
 
         # Run the command
-        output = lbuild.__main__.run(args)
+        output = lbuild.main.run(args)
         self.assertIsNone(output)
 
-        output = lbuild.__main__.run(args)
+        output = lbuild.main.run(args)
         self.assertIsNone(output)
 
         tempdir.compare([
@@ -108,13 +108,13 @@ class GitTest(unittest.TestCase):
         # Add existing source directory with default checkout of 'master' branch
         config_file = self.prepare_config_file(tempdir, branch="master")
         args = self.prepare_arguments(config_file, ["init", ])
-        lbuild.__main__.run(args)
+        lbuild.main.run(args)
 
         # Checkout with 'develop' branch
         config_file = self.prepare_config_file(tempdir, branch="develop")
         args = self.prepare_arguments(config_file, ["init", ])
 
-        output = lbuild.__main__.run(args)
+        output = lbuild.main.run(args)
         self.assertIsNone(output)
 
         tempdir.compare([
@@ -138,12 +138,12 @@ class GitTest(unittest.TestCase):
         args = self.prepare_arguments(config_file, ["init", ])
 
         # Run the command
-        output = lbuild.__main__.run(args)
+        output = lbuild.main.run(args)
         self.assertIsNone(output)
 
         args = self.prepare_arguments(config_file, ["update", ])
 
-        output = lbuild.__main__.run(args)
+        output = lbuild.main.run(args)
         self.assertIsNone(output)
 
         tempdir.compare([
@@ -160,7 +160,7 @@ class GitTest(unittest.TestCase):
         args = self.prepare_arguments(config_file, ["init", ])
 
         # Run the command
-        output = lbuild.__main__.run(args)
+        output = lbuild.main.run(args)
         self.assertIsNone(output)
 
         tempdir.compare([
@@ -181,7 +181,7 @@ class GitTest(unittest.TestCase):
         args = self.prepare_arguments(config_file, ["init", ])
 
         # Run the command
-        output = lbuild.__main__.run(args)
+        output = lbuild.main.run(args)
         self.assertIsNone(output)
 
         tempdir.compare([
@@ -202,7 +202,7 @@ class GitTest(unittest.TestCase):
         args = self.prepare_arguments(config_file, ["init", ])
 
         # Run the command
-        output = lbuild.__main__.run(args)
+        output = lbuild.main.run(args)
         self.assertIsNone(output)
 
         tempdir.compare([

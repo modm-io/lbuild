@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright (c) 2015, Fabian Greif
+# Copyright (c) 2015, 2018, Fabian Greif
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -16,8 +16,7 @@ from . import option
 from . import parser
 from . import repository
 from . import utils
-
-from . import __main__
+from . import main
 
 __all__ = [
     'builder',
@@ -28,5 +27,6 @@ __all__ = [
     'option',
     'parser',
     'repository',
-    'utils'
+    'utils',
+    'main'
 ]
