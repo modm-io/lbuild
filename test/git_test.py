@@ -72,7 +72,7 @@ class GitTest(unittest.TestCase):
 
         # Run the command
         output = lbuild.main.run(args)
-        self.assertIsNone(output)
+        self.assertEqual("", output)
 
         tempdir.compare([
             "repo.lb",
@@ -89,10 +89,10 @@ class GitTest(unittest.TestCase):
 
         # Run the command
         output = lbuild.main.run(args)
-        self.assertIsNone(output)
+        self.assertEqual("", output)
 
         output = lbuild.main.run(args)
-        self.assertIsNone(output)
+        self.assertEqual("", output)
 
         tempdir.compare([
             "repo.lb",
@@ -115,7 +115,7 @@ class GitTest(unittest.TestCase):
         args = self.prepare_arguments(config_file, ["init", ])
 
         output = lbuild.main.run(args)
-        self.assertIsNone(output)
+        self.assertEqual("", output)
 
         tempdir.compare([
             "repo.lb",
@@ -139,12 +139,12 @@ class GitTest(unittest.TestCase):
 
         # Run the command
         output = lbuild.main.run(args)
-        self.assertIsNone(output)
+        self.assertEqual("", output)
 
         args = self.prepare_arguments(config_file, ["update", ])
 
         output = lbuild.main.run(args)
-        self.assertIsNone(output)
+        self.assertEqual("", output)
 
         tempdir.compare([
             "repo.lb",
@@ -161,7 +161,7 @@ class GitTest(unittest.TestCase):
 
         # Run the command
         output = lbuild.main.run(args)
-        self.assertIsNone(output)
+        self.assertEqual("", output)
 
         tempdir.compare([
             "repo.lb",
@@ -182,7 +182,7 @@ class GitTest(unittest.TestCase):
 
         # Run the command
         output = lbuild.main.run(args)
-        self.assertIsNone(output)
+        self.assertEqual("", output)
 
         tempdir.compare([
             "repo.lb",
@@ -203,7 +203,7 @@ class GitTest(unittest.TestCase):
 
         # Run the command
         output = lbuild.main.run(args)
-        self.assertIsNone(output)
+        self.assertEqual("", output)
 
         tempdir.compare([
             "repo.lb",
