@@ -10,8 +10,8 @@
 from setuptools import setup, find_packages
 
 setup(
-    name = "lbuild",
-    version = "0.1",
+    name = "modm-lbuild",
+    version = "0.3",
     scripts = ['scripts/lbuild'],
 
     packages = find_packages(exclude=["test"]),
@@ -34,9 +34,9 @@ setup(
     			  "a set of template files for different target environments",
     license = "BSD",
     keywords = "library builder generator",
-    url = "https://github.com/dergraaf/library-builder",
+    url = "https://github.com/modm-io/library-builder",
     classifiers = [
-        "Development Status :: 2 - Pre-Alpha",
+        "Development Status :: 4 - Beta",
         "Environment :: Console",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: BSD License",
