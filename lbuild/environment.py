@@ -178,7 +178,7 @@ class Environment:
 
             def join_path(self, template, parent):
                 path = os.path.join(os.path.dirname(parent), template)
-                return os.path.normpath(path)
+                return os.path.normpath(path).replace('\\','/')
 
         environment = RelEnvironment(loader=jinja2.FileSystemLoader(self.__repopath),
                                      extensions=['jinja2.ext.do'],
@@ -238,7 +238,7 @@ class Environment:
                 # the previous environment
                 self.__reload_template_environment(filters)
 
-            template = self.template_environment.get_template(src, globals=self.__template_global_substitutions)
+            template = self.template_environment.get_template(src.replace('\\','/'), globals=self.__template_global_substitutions)
             output = template.render(substitutions)
         except jinja2.TemplateNotFound as error:
             raise BlobException('Failed to retrieve Template: %s' % error)
