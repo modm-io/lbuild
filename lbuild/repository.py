@@ -11,6 +11,7 @@
 
 import os
 import glob
+import shutil
 import logging
 import fnmatch
 
@@ -253,13 +254,16 @@ class Repository:
                 # The localpath(...) function can be used to create
                 # a local path form the folder of the repository file.
                 'localpath': RelocatePath(repopath),
+                'repopath': RelocatePath(repopath),
                 'FileReader': LocalFileReaderFactory(repopath),
                 'listify': lbuild.filter.listify,
+                'ignore_patterns': shutil.ignore_patterns,
 
                 'StringOption': lbuild.option.Option,
                 'BooleanOption': lbuild.option.BooleanOption,
                 'NumericOption': lbuild.option.NumericOption,
                 'EnumerationOption': lbuild.option.EnumerationOption,
+                'SetOption': lbuild.option.SetOption,
             }
 
             local = lbuild.utils.with_forward_exception(repo,
