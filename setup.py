@@ -8,10 +8,11 @@
 # governing this code.
 
 from setuptools import setup, find_packages
+from lbuild.__init__ import __version__
 
 setup(
     name = "modm-lbuild",
-    version = "0.3.5",
+    version = __version__,
     entry_points={
         'console_scripts': [
             'lbuild = lbuild.main:main',
