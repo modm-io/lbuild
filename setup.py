@@ -11,7 +11,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = "modm-lbuild",
-    version = "0.3",
+    version = "0.3.3",
     scripts = ['scripts/lbuild'],
 
     packages = find_packages(exclude=["test"]),

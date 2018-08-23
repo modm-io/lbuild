@@ -14,7 +14,8 @@ pylint-gui:
 	@cd lbuild; pylint-gui3
 
 dist:
-	@python3 setup.py sdist --formats=zip
+	@rm -r dist
+	@python3 setup.py sdist bdist_wheel
 
 install:
 	@python3 setup.py install --record uninstall.txt
@@ -25,9 +26,12 @@ install-user:
 install-prerequisites:
 	sudo -H pip3 install -r requirements.txt
 
+upload: dist
+	@twine upload --skip-existing dist/*
+
 # TODO: Also remove folder
 uninstall:
 	@cat uninstall.txt | xargs rm -rf
 #rm -rf installed_files.txt
 
-.PHONY : test dist install uninstall
+.PHONY : test dist install uninstall upload

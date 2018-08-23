@@ -14,7 +14,7 @@ import sys
 rootpath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
 sys.path.append(rootpath)
 
-from lbuild.__main__ import main
+from lbuild.main import main
 
 if __name__ == '__main__':
     main()
