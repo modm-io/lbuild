@@ -1,6 +1,6 @@
 
-.. image:: https://travis-ci.org/dergraaf/library-builder.svg?branch=develop
-    :target: https://travis-ci.org/dergraaf/library-builder
+.. image:: https://travis-ci.org/modm-io/library-builder.svg?branch=develop
+    :target: https://travis-ci.org/modm-io/library-builder
 
 Introduction
 ============
