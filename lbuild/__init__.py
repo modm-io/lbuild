@@ -18,6 +18,8 @@ from . import repository
 from . import utils
 from . import main
 
+from lbuild.main import __version__
+
 __all__ = [
     'builder',
     'buildlog',
@@ -30,4 +32,3 @@ __all__ = [
     'utils',
     'main'
 ]
-__version__ = '0.3.6'

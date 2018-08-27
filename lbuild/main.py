@@ -18,6 +18,8 @@ import lbuild.logger
 import lbuild.module
 import lbuild.vcs.common
 
+__version__ = '0.3.7'
+
 
 def get_modules(parser, repo_options, config_options, selected_module_names=None):
     modules = parser.prepare_repositories(repo_options)
@@ -358,6 +360,10 @@ def prepare_argument_parser():
         action='count',
         default=0,
         dest='verbose')
+    argument_parser.add_argument('--version',
+        action='version',
+        version='%(prog)s {}'.format(__version__),
+        help="Print the Python version number and exit.")
 
     subparsers = argument_parser.add_subparsers(title="Actions",
         dest="action")
