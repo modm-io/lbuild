@@ -59,6 +59,10 @@ class Option(BaseNode):
     def value(self, value):
         self._set_value(value)
 
+    @property
+    def values(self):
+        return ["String"]
+
     def is_default(self):
         return self._input == self._default
 
@@ -92,6 +96,10 @@ class BooleanOption(Option):
         Option.__init__(self, name, description, default, dependencies,
                         convert_input=self.as_boolean,
                         convert_output=self.as_boolean)
+
+    @property
+    def values(self):
+        return ["True", "False"]
 
     def format_values(self):
         if self._default:
@@ -134,9 +142,14 @@ class NumericOption(Option):
                                   numeric_value, self.fullname, self.maximum))
         self._set_value(value)
 
+    @property
+    def values(self):
+        return ["-Inf" if self.minimum is None else str(self.minimum),
+                "+Inf" if self.maximum is None else str(self.maximum)]
+
     def format_values(self):
-        minimum = c("-Inf" if self.minimum is None else str(self.minimum))
-        maximum = c("+Inf" if self.maximum is None else str(self.maximum))
+        minimum = c(self.values[0])
+        maximum = c(self.values[1])
         if self._default is None:
             return minimum + c(" ... ") + maximum
 
@@ -199,8 +212,12 @@ class EnumerationOption(Option):
             return str(obj.name)
         return str(obj).strip()
 
+    @property
+    def values(self):
+        return list(map(str, self._enumeration.keys()))
+
     def _format_values(self):
-        values = list(map(str, self._enumeration.keys()))
+        values = self.values
         values.sort(key=lambda v: (float(v) if v.isdigit() else 0, v))
         return values
 

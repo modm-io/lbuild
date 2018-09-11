@@ -22,7 +22,7 @@ import lbuild.module
 import lbuild.vcs.common
 from lbuild.format import format_option_short_description
 
-__version__ = '1.0.4'
+__version__ = '1.1.0'
 
 
 class InitAction:
@@ -80,6 +80,11 @@ class DiscoverAction(ManipulationActionBase):
             action="append",
             default=[],
             help="Select a specific repository, module or option.")
+        parser.add_argument("--values",
+            dest="values",
+            action="store_true",
+            default=False,
+            help="Display option values, instead of description")
         parser.set_defaults(execute_action=self.prepare_repositories)
 
     def perform(self, args, parser, repo_options):
@@ -90,9 +95,12 @@ class DiscoverAction(ManipulationActionBase):
         if len(args.names):
             ostream = []
             for name in args.names:
-                node = parser.find(name).description
-                ostream.extend([node])
-            return "\n\n\n\n".join(ostream)
+                node = parser.find(name)
+                if args.values and node.type == node.Type.OPTION:
+                    ostream.extend(node.values)
+                else:
+                    ostream.append(node.description)
+            return "\n".join(ostream)
 
         return parser.render()
 
