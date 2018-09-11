@@ -43,7 +43,7 @@ class PostBuildTest(unittest.TestCase):
         build_modules = self.parser.resolve_dependencies(selected_modules)
 
         log = lbuild.buildlog.BuildLog(str(outpath))
-        self.parser.build_modules(outpath, build_modules, log)
+        self.parser.build_modules(build_modules, log)
         return log
 
     def setUp(self):

@@ -182,7 +182,7 @@ class ParserTest(unittest.TestCase):
 
         outpath = tempdir.path
         log = lbuild.buildlog.BuildLog(outpath)
-        self.parser.build_modules(outpath, build_modules, log)
+        self.parser.build_modules(build_modules, log)
 
         self.assertTrue(os.path.isfile(os.path.join(outpath, "src/other.cpp")))
         self.assertTrue(os.path.isfile(os.path.join(outpath, "test/other.cpp")))
@@ -205,7 +205,7 @@ class ParserTest(unittest.TestCase):
 
         outpath = tempdir.path
         log = lbuild.buildlog.BuildLog(outpath)
-        self.parser.build_modules(outpath, build_modules, log)
+        self.parser.build_modules(build_modules, log)
 
         self.assertTrue(os.path.isfile(os.path.join(outpath, "src/module3.cpp")))
 
@@ -219,7 +219,7 @@ class ParserTest(unittest.TestCase):
         outpath = tempdir.path
         log = lbuild.buildlog.BuildLog(outpath)
         self.assertRaises(lbuild.exception.LbuildBuildException,
-                          lambda: self.parser.build_modules(outpath, build_modules, log))
+                          lambda: self.parser.build_modules(build_modules, log))
 
     @testfixtures.tempdir()
     def test_should_raise_when_overwriting_file_in_tree(self, tempdir):
@@ -229,7 +229,7 @@ class ParserTest(unittest.TestCase):
         outpath = tempdir.path
         log = lbuild.buildlog.BuildLog(outpath)
         self.assertRaises(lbuild.exception.LbuildBuildException,
-                          lambda: self.parser.build_modules(outpath, build_modules, log))
+                          lambda: self.parser.build_modules(build_modules, log))
 
     @testfixtures.tempdir()
     def test_should_raise_when_no_module_is_found(self, tempdir):

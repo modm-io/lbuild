@@ -249,20 +249,16 @@ class Parser(BaseNode):
 
     @staticmethod
     def validate_modules(build_modules):
-        Parser.build_modules(None, build_modules, None)
+        Parser.build_modules(build_modules, None)
 
     @staticmethod
-    def build_modules(outpath, build_modules, buildlog):
+    def build_modules(build_modules, buildlog):
         if not len(build_modules):
             raise LbuildException("No modules selected, aborting!")
 
         groups = collections.defaultdict(list)
         for node in (build_modules + list(set(m.repository for m in build_modules))):
-            env = lbuild.environment.Environment(node.option_value_resolver,
-                                                 node.module_resolver,
-                                                 node,
-                                                 outpath,
-                                                 buildlog)
+            env = lbuild.environment.Environment(node, buildlog)
             groups[node.depth].append(Runner(node, env))
 
         exceptions = []
@@ -282,7 +278,7 @@ class Parser(BaseNode):
             raise lbuild.exception.LbuildAggregateException(exceptions)
 
         # Cannot build with these settings, just pre_build
-        if outpath is None or buildlog is None:
+        if buildlog is None:
             return
 
         for index in sorted(groups, reverse=True):

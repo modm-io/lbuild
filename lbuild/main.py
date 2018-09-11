@@ -22,7 +22,7 @@ import lbuild.module
 import lbuild.vcs.common
 from lbuild.format import format_option_short_description
 
-__version__ = '1.0.3'
+__version__ = '1.0.4'
 
 
 class InitAction:
@@ -192,7 +192,7 @@ class BuildAction(ManipulationActionBase):
 
         lbuild.environment.simulate = args.simulate
         buildlog = lbuild.buildlog.BuildLog(args.path)
-        parser.build_modules(args.path, build_modules, buildlog)
+        parser.build_modules(build_modules, buildlog)
 
         if args.simulate:
             ostream = []

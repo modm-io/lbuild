@@ -69,13 +69,13 @@ def _copytree(logger, src, dst, ignore=None):
 
 class Environment:
 
-    def __init__(self, options, modules, module, outpath, buildlog):
-        self.options = options
-        self.modules = modules
+    def __init__(self, module, buildlog):
+        self.options = module.option_value_resolver
+        self.modules = module.module_resolver
         self.__module = module
         self.__modulepath = module._filepath
         self.__repopath = module.repository._filepath
-        self.__outpath = outpath
+        self.__outpath = buildlog.outpath
 
         self.__buildlog = buildlog
         self.__template_environment = None
