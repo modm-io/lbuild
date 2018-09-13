@@ -149,9 +149,6 @@ class EnvironmentPostBuildFacade(EnvironmentValidateFacade):
     def __init__(self, env):
         EnvironmentValidateFacade.__init__(self, env)
 
-    def outpath(self, *path, basepath=None):
-        return self._env.outpath(*path, basepath=basepath)
-
     @property
     def outbasepath(self):
         return self._env.outbasepath
@@ -190,8 +187,13 @@ class EnvironmentPostBuildFacade(EnvironmentValidateFacade):
     def ignore_patterns(*patterns):
         return lbuild.utils.ignore_patterns(*patterns)
 
+    # deprecated
     def get_generated_local_files(self, filterfunc=None):
         return self.generated_local_files(filterfunc)
+
+    # deprecated
+    def outpath(self, *path, basepath=None):
+        return self._env.outpath(*path, basepath=basepath)
 
 
 class EnvironmentBuildFacade(EnvironmentPostBuildFacade):

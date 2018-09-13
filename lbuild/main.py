@@ -22,7 +22,7 @@ import lbuild.module
 import lbuild.vcs.common
 from lbuild.format import format_option_short_description
 
-__version__ = '1.1.0'
+__version__ = '1.1.1'
 
 
 class InitAction:

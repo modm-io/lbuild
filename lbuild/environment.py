@@ -75,7 +75,7 @@ class Environment:
         self.__module = module
         self.__modulepath = module._filepath
         self.__repopath = module.repository._filepath
-        self.__outpath = buildlog.outpath
+        self.__outpath = buildlog.outpath if buildlog else None
 
         self.__buildlog = buildlog
         self.__template_environment = None
