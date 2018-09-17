@@ -65,6 +65,14 @@ class Parser(BaseNode):
     def repositories(self):
         return {r.fullname:r for r in self._findall(BaseNode.Type.REPOSITORY)}
 
+    @property
+    def repo_options(self):
+        return {o.fullname:o for o in self.all_options(depth=3)}
+
+    @property
+    def module_options(self):
+        return {o.fullname:o for o in self.all_options() if o.depth > 2}
+
     def load_repositories(self, repofilenames=None):
         repofiles = set(utils.listify(repofilenames))
         parsed = set()
@@ -122,24 +130,16 @@ class Parser(BaseNode):
                 resolver[name].value = value
             except LbuildException as e:
                 raise LbuildException("Failed to merge repository options!\n" + str(e))
-        # return all repo options in tree
-        return {o.fullname:o for o in self.all_options(depth=3)}
 
-    def prepare_repositories(self, repo_options):
-        """
-        Prepare and select modules which are available given the set of
-        repository repo_options.
-
-        Returns:
-            dict: Available modules, key is the qualified module name.
-        """
-        undefined = self._undefined_options(repo_options)
+    def prepare_repositories(self):
+        undefined = self._undefined_repo_options()
         if len(undefined):
             raise LbuildException("Unknown values for options '{}'. Please provide a value in the "
                                   "configuration file or on the command line.".format("', '".join(undefined)))
         modules = []
         for repo in self._findall(BaseNode.Type.REPOSITORY):
-            modules.extend(repo.prepare(repo_options))
+            modules.extend(repo.prepare())
+
         modules = lbuild.module.build_modules(modules)
         if len(modules) == 0:
             raise LbuildBuildException("No module found with the selected repository options!")
@@ -156,8 +156,6 @@ class Parser(BaseNode):
                 resolver[name].value = value
             except LbuildException as e:
                 raise LbuildException("Failed to merge module options!\n" + str(e))
-        # return all module options in tree
-        return {o.fullname:o for o in self.all_options() if o.depth > 2}
 
     def resolve_dependencies(self, requested_modules, depth=sys.maxsize):
         # map the dependency names to the node objects
@@ -214,29 +212,19 @@ class Parser(BaseNode):
     def find_option(self, name):
         return self.option_resolver[name]
 
-    def find(self, name):
-        if ":" not in name:
-            if name not in self.repositories:
-                raise LbuildException("No repository found for '{}'!".format(name))
-            return self.repositories[name]
-
-        try:
-            return self.find_module(name)
-        except LbuildException as e:
-            if not "but searching for" in str(e):
-                raise e
-        return self.find_option(name)
-
     def find_modules(self, queries):
         return self.find_any(queries, self.Type.MODULE)
+
+    def find_all(self, queries):
+        return [node for queries in utils.listify(queries) for node in self.find_any(queries)]
 
     def find_any(self, queries, types=None):
         nodes = set()
         for query in utils.listify(queries):
             nodes |= set(self._resolve_partial(query, set()))
         if types:
-            types = lbuild.utils.listify(types)
-            nodes = filter(lambda n: any(n.type == t for t in types), nodes)
+            types = utils.listify(types)
+            nodes = [n for n in nodes if any(n.type == t for t in types)]
         return list(nodes)
 
     @staticmethod
@@ -246,6 +234,9 @@ class Parser(BaseNode):
             if option.value is None:
                 undefined.append(fullname)
         return undefined
+
+    def _undefined_repo_options(self):
+        return self._undefined_options(self.repo_options)
 
     @staticmethod
     def validate_modules(build_modules):

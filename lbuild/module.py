@@ -35,7 +35,7 @@ class ModuleBase:
     pass
 
 
-def load_module_from_file(repository, repo_options, filename, parent=None):
+def load_module_from_file(repository, filename, parent=None):
     module = ModuleInit(repository, filename)
     if parent: module.parent = parent;
     module.functions = lbuild.node.load_functions_from_file(
@@ -48,17 +48,17 @@ def load_module_from_file(repository, repo_options, filename, parent=None):
             'ValidateException': lbuild.exception.LbuildValidateException,
         })
     module.init()
-    return module.prepare(repo_options)
+    return module.prepare()
 
 
-def load_module_from_object(repository, repo_options, module_obj, filename=None, parent=None):
+def load_module_from_object(repository, module_obj, filename=None, parent=None):
     module = ModuleInit(repository, filename)
     if parent: module.parent = parent;
     module.functions = lbuild.utils.get_global_functions(module_obj,
             required=['init', 'prepare', 'build'],
             optional=['pre_build', 'validate', 'post_build'])
     module.init()
-    return module.prepare(repo_options)
+    return module.prepare()
 
 
 def build_modules(initmodules):
@@ -116,7 +116,7 @@ class ModuleInit:
         if not self.parent.startswith(self.repository.name):
             self.parent = self.repository.name + ":" + self.parent
 
-    def prepare(self, repo_options):
+    def prepare(self):
         is_available = lbuild.utils.with_forward_exception(self,
                 lambda: self.functions["prepare"](ModulePrepareFacade(self), self.repository.option_value_resolver))
 
@@ -132,13 +132,11 @@ class ModuleInit:
         for submodule in self._submodules:
             if isinstance(submodule, ModuleBase):
                 modules = load_module_from_object(repository=self.repository,
-                                                  repo_options=repo_options,
                                                   module_obj=submodule,
                                                   filename=self.filename,
                                                   parent=self.fullname)
             else:
                 modules = load_module_from_file(repository=self.repository,
-                                                repo_options=repo_options,
                                                 filename=os.path.join(self.filepath, submodule),
                                                 parent=self.fullname)
 

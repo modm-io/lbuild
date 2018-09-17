@@ -35,8 +35,8 @@ class PostBuildTest(unittest.TestCase):
         configuration.add_commandline_options(cmd_options)
         self.parser._config_flat = configuration
 
-        repo_options = self.parser.merge_repository_options()
-        modules = self.parser.prepare_repositories(repo_options)
+        self.parser.merge_repository_options()
+        modules = self.parser.prepare_repositories()
 
         module_options = self.parser.merge_module_options()
         selected_modules = self.parser.find_modules(self.parser.config.modules)

@@ -79,14 +79,14 @@ class Repository(BaseNode):
 
         return repo
 
-    def prepare(self, options):
+    def prepare(self):
         lbuild.utils.with_forward_exception(self,
                 lambda: self._functions["prepare"](RepositoryPrepareFacade(self), self.option_value_resolver))
 
         modules = []
         # Parse the modules inside this repository
         for modulefile in self._module_files:
-            module = lbuild.module.load_module_from_file(self, options, modulefile)
+            module = lbuild.module.load_module_from_file(self, modulefile)
             modules.extend(module)
 
         return modules

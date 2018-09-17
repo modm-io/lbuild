@@ -29,7 +29,7 @@ class DepedencyTest(unittest.TestCase):
 
     def test_should_collapse_mutiply_defined_dependencies(self):
         self.parser.parse_repository(self._get_path("multiple_dependencies/repo.lb"))
-        self.parser.prepare_repositories({})
+        self.parser.prepare_repositories()
 
         module = self.parser.find_module(":module2")
 

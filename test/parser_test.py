@@ -33,14 +33,14 @@ class ParserTest(unittest.TestCase):
             selected_module_names = selected
 
         parser.config.options.update(configoptions)
-        repo_options = parser.merge_repository_options()
-        modules = parser.prepare_repositories(repo_options)
-        module_options = parser.merge_module_options()
+        parser.merge_repository_options()
+        modules = parser.prepare_repositories()
+        parser.merge_module_options()
 
         selected_modules = parser.find_modules(selected_module_names)
         build_modules = parser.resolve_dependencies(selected_modules)
 
-        return build_modules, repo_options, module_options
+        return build_modules
 
     def setUp(self):
         self.parser = lbuild.parser.Parser()
@@ -51,8 +51,8 @@ class ParserTest(unittest.TestCase):
 
     def test_should_find_files_in_repository_1(self):
         repo = self.parser.parse_repository(self._get_path("combined/repo1.lb"))
-        repo_options = self.parser.merge_repository_options()
-        self.parser.prepare_repositories(repo_options)
+        self.parser.merge_repository_options()
+        self.parser.prepare_repositories()
 
         self.assertEqual(6, len(repo.modules))
         # "repo1:other" is not available with the selected repository options
@@ -66,8 +66,8 @@ class ParserTest(unittest.TestCase):
         self.parser.parse_repository(self._get_path("combined/repo1.lb"))
         repo = self.parser.parse_repository(self._get_path("combined/repo2/repo2.lb"))
         self.assertEqual(2, len(self.parser.repositories))
-        repo_options = self.parser.merge_repository_options()
-        self.parser.prepare_repositories(repo_options)
+        self.parser.merge_repository_options()
+        self.parser.prepare_repositories()
 
         self.assertEqual(4, len(repo.modules))
         self.assertIn("repo2:module3", repo.modules)
@@ -77,7 +77,7 @@ class ParserTest(unittest.TestCase):
 
     def test_repository_should_contain_options(self):
         repo = self.parser.parse_repository(self._get_path("repository_options/repo.lb"))
-        options = {o.fullname:o for o in repo.options}
+        options = self.parser.repo_options
 
         self.assertIn("repository_options:target", options)
         self.assertIn("repository_options:foo", options)
@@ -86,8 +86,8 @@ class ParserTest(unittest.TestCase):
 
     def test_should_parse_modules(self):
         self.parser.parse_repository(self._get_path("combined/repo1.lb"))
-        repo_options = self.parser.merge_repository_options()
-        self.parser.prepare_repositories(repo_options)
+        self.parser.merge_repository_options()
+        self.parser.prepare_repositories()
 
         self.assertEqual(6, len(self.parser.modules))
         # "repo1:other" is not available with the selected repository options
@@ -100,8 +100,8 @@ class ParserTest(unittest.TestCase):
     def test_should_parse_modules_from_multiple_repositories(self):
         self.parser.parse_repository(self._get_path("combined/repo1.lb"))
         self.parser.parse_repository(self._get_path("combined/repo2/repo2.lb"))
-        repo_options = self.parser.merge_repository_options()
-        self.parser.prepare_repositories(repo_options)
+        self.parser.merge_repository_options()
+        self.parser.prepare_repositories()
 
         self.assertEqual(10, len(self.parser.modules))
         # "repo1:other" is not available with the selected repository options
@@ -119,8 +119,9 @@ class ParserTest(unittest.TestCase):
         self.parser.parse_repository(self._get_path("combined/repo1.lb"))
         self.parser.parse_repository(self._get_path("combined/repo2/repo2.lb"))
         self.parser._config_flat = lbuild.config.ConfigNode.from_file(self._get_path("combined/test1.xml"))
+        self.parser.merge_repository_options()
+        options = self.parser.repo_options
 
-        options = self.parser.merge_repository_options()
         self.assertEqual("hosted", options["repo1:target"].value)
         self.assertEqual(43, options["repo1:foo"].value)
         self.assertEqual("tree", options["repo2:target"].value)
@@ -131,8 +132,8 @@ class ParserTest(unittest.TestCase):
         self.parser.parse_repository(self._get_path("combined/repo2/repo2.lb"))
         self.parser._config_flat = lbuild.config.ConfigNode.from_file(self._get_path("combined/test1.xml"))
 
-        options = self.parser.merge_repository_options()
-        modules = self.parser.prepare_repositories(options)
+        self.parser.merge_repository_options()
+        modules = self.parser.prepare_repositories()
 
         self.assertIn("repo1:other", self.parser.modules)
         self.assertIn("repo1:module1", self.parser.modules)
@@ -142,15 +143,15 @@ class ParserTest(unittest.TestCase):
         self.parser.parse_repository(self._get_path("combined/repo2/repo2.lb"))
         self.parser._config_flat = lbuild.config.ConfigNode.from_file(self._get_path("combined/test1.xml"))
 
-        repo_options = self.parser.merge_repository_options()
-        modules = self.parser.prepare_repositories(repo_options)
+        self.parser.merge_repository_options()
+        modules = self.parser.prepare_repositories()
         selected_modules = self.parser.find_modules(self.parser.config.modules)
         build_modules = self.parser.resolve_dependencies(selected_modules)
 
-        return build_modules, self.parser.config.options, repo_options
+        return build_modules, self.parser.config.options
 
     def test_should_resolve_module_dependencies(self):
-        build_modules, _, _ = self._get_build_modules()
+        build_modules, _ = self._get_build_modules()
 
         self.assertEqual(7, len(build_modules))
 
@@ -164,8 +165,9 @@ class ParserTest(unittest.TestCase):
         self.assertIn("repo1:module2:submodule3:subsubmodule2", m)
 
     def test_should_merge_build_module_options(self):
-        build_modules, config_options, _ = self._get_build_modules()
-        options = self.parser.merge_module_options()
+        build_modules, config_options = self._get_build_modules()
+        self.parser.merge_module_options()
+        options = self.parser.module_options
 
         self.assertEqual(6, len(options))
         self.assertEqual(456, options["repo1:other:foo"].value)
@@ -177,7 +179,7 @@ class ParserTest(unittest.TestCase):
 
     @testfixtures.tempdir()
     def test_should_build_modules(self, tempdir):
-        build_modules, config_options, repo_options = self._get_build_modules()
+        build_modules, config_options = self._get_build_modules()
         module_options = self.parser.merge_module_options()
 
         outpath = tempdir.path
@@ -200,8 +202,7 @@ class ParserTest(unittest.TestCase):
             'repo1:other:foo': '456',
             '::abc': 'Hello World!',
         }
-        build_modules, repo_options, module_options = \
-            self.prepare_modules(self.parser, selected_modules, config_options)
+        build_modules = self.prepare_modules(self.parser, selected_modules, config_options)
 
         outpath = tempdir.path
         log = lbuild.buildlog.BuildLog(outpath)
@@ -214,7 +215,7 @@ class ParserTest(unittest.TestCase):
     @testfixtures.tempdir()
     def test_should_raise_when_overwriting_file(self, tempdir):
         self.parser.parse_repository(self._get_path("overwrite_file/repo.lb"))
-        build_modules, repo_options, module_options = self.prepare_modules(self.parser)
+        build_modules = self.prepare_modules(self.parser)
 
         outpath = tempdir.path
         log = lbuild.buildlog.BuildLog(outpath)
@@ -224,7 +225,7 @@ class ParserTest(unittest.TestCase):
     @testfixtures.tempdir()
     def test_should_raise_when_overwriting_file_in_tree(self, tempdir):
         self.parser.parse_repository(self._get_path("overwrite_file_in_tree/repo.lb"))
-        build_modules, repo_options, module_options = self.prepare_modules(self.parser)
+        build_modules = self.prepare_modules(self.parser)
 
         outpath = tempdir.path
         log = lbuild.buildlog.BuildLog(outpath)
@@ -241,7 +242,7 @@ class ParserTest(unittest.TestCase):
     @testfixtures.tempdir()
     def test_should_parse_optional_functions_in_module(self, tempdir):
         self.parser.parse_repository(self._get_path("optional_functions/repo.lb"))
-        _, _, _ = self.prepare_modules(self.parser)
+        self.prepare_modules(self.parser)
 
         module1 = self.parser.find_module(":module1")
         module2 = self.parser.find_module(":module2")
