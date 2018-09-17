@@ -30,6 +30,7 @@ class Option(BaseNode):
         self._output = None
         self._default = None
         self._set_default(default)
+        self.__hash = None
 
     def _set_default(self, default):
         if default is not None:
@@ -75,6 +76,18 @@ class Option(BaseNode):
         if self.is_default() or self._default == "":
             return c("String")
         return c("String: ") + c(str(self._default)).wrap("underlined")
+
+    def __hash__(self):
+        if self.__hash is None:
+            srepr = str(self.fullname)
+            srepr += str(self._input)
+            srepr += str(self.values)
+            srepr += str(self._description)
+            self.__hash = hash(srepr)
+        return self.__hash
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
 
     def __lt__(self, other):
         return self.fullname.__lt__(other.fullname)
@@ -251,7 +264,9 @@ class SetOption(EnumerationOption):
     def str_to_set(values):
         if isinstance(values, str):
             values = [v.strip() for v in values.split(",")]
-        return list(map(str, lbuild.utils.listify(values)))
+        else:
+            values = list(map(str, lbuild.utils.listify(values)))
+        return values
 
     def as_set(self, values):
         values = self.str_to_set(values)
