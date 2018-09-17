@@ -22,7 +22,7 @@ from .format import color_str as c
 class Option(BaseNode):
     def __init__(self, name, description, default=None, dependencies=None, convert_input=str, convert_output=str):
         BaseNode.__init__(self, name, BaseNode.Type.OPTION)
-        self._dependency_handlers = lbuild.utils.listify(dependencies)
+        self._dependency_handler = dependencies
         self._description = description
         self._in = convert_input
         self._out = convert_output
@@ -39,8 +39,8 @@ class Option(BaseNode):
 
     def _update_dependencies(self):
         self._dependencies_resolved = False
-        for handler in self._dependency_handlers:
-            self._dependency_module_names += lbuild.utils.listify(handler(self._input))
+        if self._dependency_handler:
+            self._dependency_module_names += lbuild.utils.listify(self._dependency_handler(self._input))
 
     def _set_value(self, value):
         self._input = self._in(value)
