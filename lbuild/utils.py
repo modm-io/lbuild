@@ -84,6 +84,8 @@ def _listify(obj):
 def listify(*objs):
     return [l for o in objs for l in _listify(o)]
 
+def listrify(*objs):
+    return list(map(str, listify(*objs)))
 
 def get_global_functions(env, required, optional=None):
     """

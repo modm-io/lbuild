@@ -22,7 +22,9 @@ import lbuild.module
 import lbuild.vcs.common
 from lbuild.format import format_option_short_description
 
-__version__ = '1.1.1'
+from lbuild.api import Builder
+
+__version__ = '1.2.0'
 
 
 class InitAction:
@@ -33,8 +35,8 @@ class InitAction:
             help="Load remote repositories into the cache folder.")
         parser.set_defaults(execute_action=self.perform)
 
-    def perform(self, args, config):
-        lbuild.vcs.common.initialize(config)
+    def perform(self, args, builder):
+        lbuild.vcs.common.initialize(builder.config)
         return ""
 
 
@@ -46,8 +48,8 @@ class UpdateAction:
             help="Update the content of remote repositories in the cache folder.")
         parser.set_defaults(execute_action=self.perform)
 
-    def perform(self, args, config):
-        lbuild.vcs.common.update(config)
+    def perform(self, args, builder):
+        lbuild.vcs.common.update(builder.config)
         return ""
 
 
@@ -57,14 +59,9 @@ class ManipulationActionBase:
     """
     config_required = True
 
-    def prepare_repositories(self, args, config):
-        parser = lbuild.parser.Parser(config)
-        parser.load_repositories(args.repositories)
-
-        parser.config.add_commandline_options(args.options)
-        repo_options = parser.merge_repository_options()
-
-        return self.perform(args, parser, repo_options)
+    def load_repositories(self, args, builder):
+        builder.load(args.repositories)
+        return self.perform(args, builder)
 
 
 class DiscoverAction(ManipulationActionBase):
@@ -85,24 +82,19 @@ class DiscoverAction(ManipulationActionBase):
             action="store_true",
             default=False,
             help="Display option values, instead of description")
-        parser.set_defaults(execute_action=self.prepare_repositories)
+        parser.set_defaults(execute_action=self.load_repositories)
 
-    def perform(self, args, parser, repo_options):
-        if not len(parser._undefined_options(repo_options)):
-            parser.prepare_repositories(repo_options)
-            parser.merge_module_options()
-
+    def perform(self, args, builder):
         if len(args.names):
             ostream = []
-            for name in args.names:
-                node = parser.find(name)
+            for node in builder.parser.find_all(args.names):
                 if args.values and node.type == node.Type.OPTION:
                     ostream.extend(node.values)
                 else:
                     ostream.append(node.description)
             return "\n".join(ostream)
 
-        return parser.render()
+        return builder.parser.render()
 
 
 class DiscoverOptionsAction(ManipulationActionBase):
@@ -118,15 +110,11 @@ class DiscoverOptionsAction(ManipulationActionBase):
             action="append",
             default=[],
             help="Select a specific repository or module.")
-        parser.set_defaults(execute_action=self.prepare_repositories)
+        parser.set_defaults(execute_action=self.load_repositories)
 
-    def perform(self, args, parser, repo_options):
-        if not len(parser._undefined_options(repo_options)):
-            parser.prepare_repositories(repo_options)
-            parser.merge_module_options()
-
+    def perform(self, args, builder):
         names = args.names if len(args.names) else ["*", ":**"]
-        nodes = parser.find_any(names, (parser.Type.MODULE, parser.Type.REPOSITORY))
+        nodes = builder.parser.find_any(names, (builder.parser.Type.MODULE, builder.parser.Type.REPOSITORY))
         options = [o for n in nodes for o in n.options]
 
         ostream = []
@@ -138,13 +126,6 @@ class DiscoverOptionsAction(ManipulationActionBase):
                 ostream.append("")
 
         return "\n".join(ostream)
-
-
-def get_modules(parser, repo_options):
-    modules = parser.prepare_repositories(repo_options)
-    module_options = parser.merge_module_options()
-    selected_modules = parser.find_modules(parser.config.modules)
-    return parser.resolve_dependencies(selected_modules)
 
 
 class ValidateAction(ManipulationActionBase):
@@ -159,12 +140,10 @@ class ValidateAction(ManipulationActionBase):
             action="append",
             default=[],
             help="Select a specific module.")
-        parser.set_defaults(execute_action=self.prepare_repositories)
+        parser.set_defaults(execute_action=self.load_repositories)
 
-    def perform(self, args, parser, repo_options):
-        parser.config.modules.extend(args.modules)
-        build_modules = get_modules(parser, repo_options)
-        parser.validate_modules(build_modules)
+    def perform(self, args, builder):
+        builder.validate(args.modules)
         return "Library configuration valid."
 
 
@@ -192,15 +171,10 @@ class BuildAction(ManipulationActionBase):
             help="Do not create a build log. This log contains all files being "
                  "generated, their source files and the module which generated "
                  "the file.")
-        parser.set_defaults(execute_action=self.prepare_repositories)
+        parser.set_defaults(execute_action=self.load_repositories)
 
-    def perform(self, args, parser, repo_options):
-        parser.config.modules.extend(args.modules)
-        build_modules = get_modules(parser, repo_options)
-
-        lbuild.environment.simulate = args.simulate
-        buildlog = lbuild.buildlog.BuildLog(args.path)
-        parser.build_modules(build_modules, buildlog)
+    def perform(self, args, builder):
+        buildlog = builder.build(args.path, args.modules, simulate=args.simulate)
 
         if args.simulate:
             ostream = []
@@ -227,19 +201,16 @@ class CleanAction(ManipulationActionBase):
             dest="buildlog",
             default="project.xml.log",
             help="Use the given buildlog to identify the files to remove.")
-        parser.set_defaults(execute_action=self.prepare_repositories)
+        parser.set_defaults(execute_action=self.perform)
 
-    def perform(self, args, parser, repo_options):
+    def perform(self, args, builder):
         ostream = []
         if os.path.exists(args.buildlog):
             with open(args.buildlog, "rb") as logfile:
                 buildlog = lbuild.buildlog.BuildLog.from_xml(logfile.read(), path=os.getcwd())
         else:
-            build_modules = get_modules(parser, repo_options)
-
-            lbuild.environment.simulate = True
-            buildlog = lbuild.buildlog.BuildLog(args.path)
-            parser.build_modules(args.path, build_modules, buildlog)
+            builder.load(args.repositories)
+            buildlog = builder.build(args.path, simulate=True)
 
         dirs = set()
         filenames = [op.local_filename_out() for op in buildlog.operations]
@@ -280,17 +251,12 @@ class DependenciesAction(ManipulationActionBase):
             help="Only show dependencies up to a specific depth. Only valid if "
                  "specific modules are selected, otherwise all modules are printed "
                  "anyways.")
-        parser.set_defaults(execute_action=self.prepare_repositories)
+        parser.set_defaults(execute_action=self.load_repositories)
 
-    def perform(self, args, parser, repo_options):
-        available_modules = parser.prepare_repositories(repo_options)
-
-        if len(args.modules) == 0:
-            selected_modules = [":**"]
-        else:
-            selected_modules = args.modules
-        selected_modules = parser.find_modules(selected_modules)
-        dot_file = lbuild.builder.dependency.graphviz(parser,
+    def perform(self, args, builder):
+        selected_modules = args.modules if len(args.modules) else [":**"]
+        selected_modules = builder._filter_modules(selected_modules)
+        dot_file = lbuild.builder.dependency.graphviz(builder.parser,
                                                       selected_modules,
                                                       args.depth,
                                                       clustered=False)
@@ -367,7 +333,7 @@ def prepare_argument_parser():
     return argument_parser
 
 
-def run(args, system_config=None):
+def run(args):
     lbuild.logger.configure_logger(args.verbose)
     lbuild.format.plain = args.plain
 
@@ -376,10 +342,8 @@ def run(args, system_config=None):
     except AttributeError:
         raise lbuild.exception.LbuildArgumentException("No command specified")
 
-    fail_silent = not command.__self__.config_required
-    config = lbuild.config.ConfigNode.from_file(args.config, fail_silent=fail_silent)
-    config.extend_last(system_config)
-    return command(args, config)
+    builder = Builder(config=args.config, options=args.options)
+    return command(args, builder)
 
 
 def main():
@@ -393,7 +357,7 @@ def main():
         args = argument_parser.parse_args(commandline_arguments)
         lbuild.logger.configure_logger(args.verbose)
 
-        output = run(args, lbuild.config.ConfigNode.from_filesystem())
+        output = run(args)
         print(output)
     except lbuild.exception.LbuildAggregateException as aggregate:
         for error in aggregate.exceptions:

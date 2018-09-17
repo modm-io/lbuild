@@ -118,7 +118,7 @@ class ConfigNode(anytree.AnyNode):
         filename = os.path.relpath(str(configfile), os.getcwd())
         LOGGER.debug("Parse configuration '{}'".format(filename))
         if fail_silent and not os.path.exists(filename):
-            return ConfigNode()
+            return None
 
         xmltree = ConfigNode._load_and_verify(configfile)
 
