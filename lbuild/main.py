@@ -210,6 +210,7 @@ class BuildAction(ManipulationActionBase):
         elif args.buildlog:
             configfilename = args.config
             logfilename = configfilename + ".log"
+            buildlog._log("lbuild", "buildlog.xml.in", logfilename)
             with open(logfilename, "wb") as logfile:
                 logfile.write(buildlog.to_xml(to_string=True, path=os.getcwd()))
 
@@ -224,12 +225,13 @@ class CleanAction(ManipulationActionBase):
             help="Remove previously generated files.")
         parser.add_argument("--buildlog",
             dest="buildlog",
+            default="project.xml.log",
             help="Use the given buildlog to identify the files to remove.")
         parser.set_defaults(execute_action=self.prepare_repositories)
 
     def perform(self, args, parser, repo_options):
         ostream = []
-        if args.buildlog is not None:
+        if os.path.exists(args.buildlog):
             with open(args.buildlog, "rb") as logfile:
                 buildlog = lbuild.buildlog.BuildLog.from_xml(logfile.read(), path=os.getcwd())
         else:

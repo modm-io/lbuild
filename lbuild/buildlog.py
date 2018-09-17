@@ -98,6 +98,11 @@ class BuildLog:
 
         return operation
 
+    def _log(self, modulename, filename_in, filename_out, time=None):
+        operation = Operation(modulename, self.outpath, self.outpath, filename_in, filename_out, time)
+        with self.__lock:
+            self._operations[modulename].append(operation)
+
     def operations_per_module(self, modulename: str):
         """
         Get all operations which have been performed for the given module and
