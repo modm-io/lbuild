@@ -105,16 +105,19 @@ class NameResolver:
     Name resolver for node.
     """
 
-    def __init__(self, node, nodetype):
+    def __init__(self, node, nodetype, selected=True):
         self._node = node
         self._type = nodetype
         self._str = nodetype.name.lower()
         self._value_resolver = False
+        self._selected = selected
 
     def __getitem__(self, key: str):
         node = self._node._resolve_partial_max(key, max_results=1)[0]
         if not node._available:
             raise LbuildException("{} '{}' is not available!".format(self._str, node.fullname))
+        if self._selected and not node._selected:
+            raise LbuildException("{} '{}' is not selected!".format(self._str, node.fullname))
         if node._type != self._type:
             raise LbuildException("'{}' is of type '{}', but searching for '{}'!".format(
                                   node.fullname, node._type.name.lower(), self._str))
@@ -136,10 +139,10 @@ class NameResolver:
             return False
 
     def __len__(self):
-        return len(self._node._findall(self._type))
+        return len(self._node._findall(self._type, selected=self._selected))
 
     def __repr__(self):
-        return repr(self._node._findall(self._type))
+        return repr(self._node._findall(self._type, selected=self._selected))
 
 
 class BaseNode(anytree.Node):
@@ -169,12 +172,14 @@ class BaseNode(anytree.Node):
         self._description = ""
         # All _update()-able traits: defaults
         self._available_default = True
+        self._selected_default = True
         self._format_description_default = format_description
         self._format_short_description_default = format_short_description
         self._context_default = None
 
         # All _update()-able traits: defaults
         self._available = (self._type != BaseNode.Type.MODULE)
+        self._selected = True
         self._format_description = self._format_description_default
         self._format_short_description = self._format_short_description_default
         self._context = self._context_default
@@ -219,7 +224,7 @@ class BaseNode(anytree.Node):
     def dependencies(self):
         if not self._dependencies_resolved:
             self._resolve_dependencies()
-        return self._dependencies + [d for o in self.all_options(depth=2) for d in o._dependencies]
+        return self._dependencies + [d for o in self.all_options(depth=2) for d in o._dependencies if d != self]
 
     @property
     def description(self):
@@ -272,16 +277,17 @@ class BaseNode(anytree.Node):
         option.add_dependencies(self.fullname)
         option._fullname = self.fullname + ":" + option.name
 
-    def all_options(self, depth=None):
-        return self._findall(self.Type.OPTION, depth)
+    def all_options(self, depth=None, selected=True):
+        return self._findall(self.Type.OPTION, depth, selected)
 
-    def all_modules(self, depth=None):
-        return self._findall(self.Type.MODULE, depth)
+    def all_modules(self, depth=None, selected=True):
+        return self._findall(self.Type.MODULE, depth, selected)
 
-    def _findall(self, node_type, depth=None):
+    def _findall(self, node_type, depth=None, selected=True):
         def _filter(n):
             return (n._type == node_type and
                     n._available and
+                    (n._selected or not selected) and
                     n is not self)
         return anytree.search.findall(self, maxlevel=depth, filter_=_filter)
 
@@ -336,7 +342,7 @@ class BaseNode(anytree.Node):
     def _resolve(self, query, default=[]):
         # :*   -> non-recursive
         # :**  -> recursive
-        query = ":".join(p if len(p) else "*" for p in query.split(":"))
+        query = ":".join(p if len(p) else "*" for p in query.strip().split(":"))
         try:
             qquery = ":" + query.replace(":**", "")
             if self.root._type == self.Type.PARSER:
@@ -408,6 +414,7 @@ class BaseNode(anytree.Node):
             self._update_attribute("_format_description")
             self._update_attribute("_format_short_description")
             self._update_attribute("_available")
+            self._update_attribute("_selected")
             self._update_attribute("_ignore_patterns")
             self._update_attribute("_filters")
             self._update_attribute("_context")

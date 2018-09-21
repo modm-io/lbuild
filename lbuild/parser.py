@@ -199,9 +199,8 @@ class Parser(BaseNode):
         # disable all non-selected modules
         for module in self.all_modules():
             if module._available:
-                module._available = module in selected_modules
-                # if not module._available:
-                #     LOGGER.debug("Disabled: " + module.fullname)
+                module._selected = module in selected_modules
+
         self._update();
 
         return selected_modules
