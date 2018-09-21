@@ -18,23 +18,27 @@ def get_valid_identifier(name):
     return re.sub(r'\W|^(?=\d)', '_', name)
 
 
-def graphviz(parser, selected_modules, depth, clustered=False):
+def graphviz(builder, selected_modules, depth, clustered=None):
     output = []
     output.append("digraph dependencies")
     output.append("{")
-    # output.append("\trankdir=LR;")
+    output.append("\trankdir=BT;")
 
-    modules = parser.resolve_dependencies(selected_modules, depth)
+    selected_modules = builder.parser.find_modules(selected_modules)
+    modules = builder.parser.resolve_dependencies(selected_modules, depth)
 
     # Check whether all available modules are selected for displaying
-    all_selected = (len(parser.modules) == len(modules))
+    all_selected = (len(builder.parser.all_modules(selected=False)) == len(modules))
 
     # Sort modules by repository
     repositories = collections.defaultdict(list)
     for module in modules:
         repositories[module.repository.name].append(module)
 
-    for repo_name, modules in repositories.items():
+    if clustered is None:
+        clustered = len(repositories) > 1
+
+    for repo_name, rmodules in repositories.items():
         if clustered:
             output.append("\tsubgraph cluster{}".format(get_valid_identifier(repo_name)))
         else:
@@ -44,10 +48,10 @@ def graphviz(parser, selected_modules, depth, clustered=False):
         output.append("\t\tlabel = \"{}\";".format(repo_name))
         output.append("\t\tnode [style=filled, shape=box];")
         output.append("")
-        for module in sorted(modules):
+        for module in sorted(rmodules):
             if clustered:
                 # Remove the repository name for the clusted output. The
-                # repository name is meantioned in the cluster already.
+                # repository name is mentioned in the cluster already.
                 name = ":\\n".join(module.fullname.split(":")[1:])
             else:
                 name = ":\\n".join(module.fullname.split(":"))

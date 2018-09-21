@@ -24,7 +24,7 @@ from lbuild.format import format_option_short_description
 
 from lbuild.api import Builder
 
-__version__ = '1.2.0'
+__version__ = '1.2.1'
 
 
 class InitAction:
@@ -254,12 +254,12 @@ class DependenciesAction(ManipulationActionBase):
         parser.set_defaults(execute_action=self.load_repositories)
 
     def perform(self, args, builder):
-        selected_modules = args.modules if len(args.modules) else [":**"]
-        selected_modules = builder._filter_modules(selected_modules)
-        dot_file = lbuild.builder.dependency.graphviz(builder.parser,
+        selected_modules = args.modules + builder.parser.config.modules
+        if not len(selected_modules):
+            selected_modules = [":**"]
+        dot_file = lbuild.builder.dependency.graphviz(builder,
                                                       selected_modules,
-                                                      args.depth,
-                                                      clustered=False)
+                                                      args.depth)
         return dot_file
 
 

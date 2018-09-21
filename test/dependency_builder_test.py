@@ -39,7 +39,7 @@ class DepedencyBuilderTest(unittest.TestCase):
         return args
 
     def test_should_create_dependency_graph(self):
-        args = self.prepare_arguments(["dependencies", ])
+        args = self.prepare_arguments(["dependencies", "-m :**"])
         output = lbuild.main.run(args)
         self.assertIsNotNone(output)
 
