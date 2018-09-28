@@ -29,15 +29,12 @@ def _copyfile(sourcepath, destpath):
     Copy a file if the source file time stamp is newer than the destination
     timestamp.
     """
-    if not os.path.exists(destpath):
-        if not simulate:
-            shutil.copy2(sourcepath, destpath)
-    else:
+    if os.path.exists(destpath):
         time_diff = os.stat(sourcepath).st_mtime - os.stat(destpath).st_mtime
         if time_diff > 1:
             print(destpath, "override")
-            if not simulate:
-                shutil.copy2(sourcepath, destpath)
+    if not simulate:
+        shutil.copy2(sourcepath, destpath)
 
 
 def _copytree(logger, src, dst, ignore=None):

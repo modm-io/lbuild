@@ -135,7 +135,7 @@ class ConfigNode(anytree.AnyNode):
 
         # Load cachefolder
         cache_node = xmltree.find("repositories/cache")
-        if cache_node:
+        if cache_node is not None:
             config._cachefolder = ConfigNode._rel_path(cache_node.text, configpath)
         else:
             config._cachefolder = join(configpath, DEFAULT_CACHE_FOLDER)

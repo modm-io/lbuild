@@ -3,13 +3,12 @@
 <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <xsd:element name="library">
     <xsd:complexType>
-      <xsd:sequence>
-        <xsd:element name="extends" type="xsd:string" minOccurs="0" maxOccurs="unbounded" />
-
+      <xsd:choice maxOccurs="unbounded">
         <xsd:element name="repositories" type="RepositoriesType" minOccurs="0" maxOccurs="1" />
+        <xsd:element name="extends" type="xsd:string" minOccurs="0" maxOccurs="unbounded" />
         <xsd:element name="options" type="OptionsType" minOccurs="0" maxOccurs="1" />
         <xsd:element name="modules" type="ModulesType" minOccurs="0" maxOccurs="1" />
-      </xsd:sequence>
+      </xsd:choice>
     </xsd:complexType>
   </xsd:element>
 
