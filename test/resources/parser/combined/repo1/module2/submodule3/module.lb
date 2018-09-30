@@ -12,7 +12,7 @@ class Submodule(Module):
         return True
 
     def build(self, env):
-        value = env["::::option1"]
+        value = env["option1"]
 
 def init(module):
     module.name = "submodule3"

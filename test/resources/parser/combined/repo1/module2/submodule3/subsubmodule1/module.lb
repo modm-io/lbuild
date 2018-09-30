@@ -12,4 +12,4 @@ def prepare(module, options):
     return True
 
 def build(env):
-    price = env["::::price"]
+    price = env["price"]
