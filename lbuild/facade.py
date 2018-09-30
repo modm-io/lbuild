@@ -168,6 +168,9 @@ class EnvironmentPostBuildFacade(EnvironmentValidateFacade):
     def copy(self, src, dest=None, ignore=None):
         self._env.copy(src, dest, ignore)
 
+    def extract(self, archive, src=None, dest=None, ignore=None):
+        self._env.extract(archive, src, dest, ignore)
+
     def template(self, src, dest=None, substitutions=None, filters=None):
         self._env.template(src, dest, substitutions, filters)
 
@@ -205,6 +208,7 @@ class EnvironmentBuildFacade(EnvironmentPostBuildFacade):
 
     def append_metadata_unique(self, key, value):
         self._env.append_metadata_unique(key, value)
+
 
 class BuildLogOperationFacade:
     def __init__(self, operation):

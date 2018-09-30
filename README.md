@@ -513,6 +513,7 @@ def validate(env):
 def build(env):
     # Set the output base path, this is relative to the lbuild invocation path
     env.outbasepath = "repo/module"
+
     # Copy single files
     env.copy("file.hpp")
     # Copy single files while renaming them
@@ -527,6 +528,16 @@ def build(env):
     env.copy("folder/", ignore=env.ignore_files("*.txt", "this_specific_file.hpp"))
     # or ignore specific ABSOLUTE paths
     env.copy("folder/", ignore=env.ignore_paths("*/folder/*.txt"))
+
+    # You can also copy files out of a .zip or .tar archive
+    env.extract("archive.zip") # everything inside the archive
+    env.extract("archive.zip", dest="renamed/") # extract into folder
+    # You can extract only parts of the archive, like a single file
+    env.extract("archive.zip", src="filename.hpp", dest="renamed.hpp")
+    # or an a single folder somewhere in the archive
+    env.extract("archive.zip", src="folder/subfolder", dest="renamed/folder")
+    # of course, you can ignore files and folders inside the archive too
+    env.extract("archive.zip", src="folder", dest="renamed", ignore=env.ignore_files("*.txt"))
 
     # Set the global Jinja2 substitutions dictionary
     env.substitutions = {

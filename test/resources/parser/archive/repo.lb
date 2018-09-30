@@ -1,0 +1,6 @@
+
+def init(repo):
+    repo.name = "extract_archive"
+
+def prepare(repo, options):
+    repo.find_modules_recursive()

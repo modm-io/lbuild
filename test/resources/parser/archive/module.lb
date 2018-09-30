@@ -1,0 +1,52 @@
+
+def init(module):
+	module.name = "module"
+
+def prepare(module, options):
+	return True
+
+def build(env):
+	env.outbasepath = "zip/all"
+	# extract all files as they are
+	env.extract("archive.zip")
+	# extract all files into a folder
+	env.extract("archive.zip", dest="renamed")
+	# extract all files into a folder and ignore some
+	env.extract("archive.zip", dest="ignored", ignore=env.ignore_paths("folder/*"))
+
+	env.outbasepath = "zip/folders"
+	# extract a folder in archive
+	env.extract("archive.zip", src="folder/")
+	# extract a folder in archive and rename it
+	env.extract("archive.zip", src="folder/", dest="renamed")
+	# extract a folder in archive and ignore some
+	env.extract("archive.zip", src="folder/", dest="ignored", ignore=env.ignore_files("*.txt"))
+
+	env.outbasepath = "zip/files"
+	# extract only a file
+	env.extract("archive.zip", src="file.txt")
+	# extract only a file and rename it
+	env.extract("archive.zip", src="file.txt", dest="file2.txt")
+
+	env.outbasepath = "tar/all"
+	# extract all files as they are
+	env.extract("archive.tar")
+	# extract all files into a folder
+	env.extract("archive.tar", dest="renamed")
+	# extract all files into a folder and ignore some
+	env.extract("archive.tar", dest="ignored", ignore=env.ignore_paths("folder/*"))
+
+	env.outbasepath = "tar/folders"
+	# extract a folder in archive
+	env.extract("archive.tar", src="folder/")
+	# extract a folder in archive and rename it
+	env.extract("archive.tar", src="folder/", dest="renamed")
+	# extract a folder in archive and ignore some
+	env.extract("archive.tar", src="folder/", dest="ignored", ignore=env.ignore_files("*.txt"))
+
+	env.outbasepath = "tar/files"
+	# extract only a file
+	env.extract("archive.tar", src="file.txt")
+	# extract only a file and rename it
+	env.extract("archive.tar", src="file.txt", dest="file2.txt")
+

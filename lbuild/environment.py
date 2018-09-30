@@ -14,6 +14,9 @@ import shutil
 import fnmatch
 import jinja2
 import logging
+import zipfile
+import tarfile
+import tempfile
 
 import lbuild.filter
 import lbuild.utils
@@ -24,25 +27,24 @@ from .exception import LbuildException, LbuildTemplateException, LbuildForwardEx
 simulate = False
 
 
-def _copyfile(sourcepath, destpath):
+def _copyfile(sourcepath, destpath, fn_copy=shutil.copy2):
     """
     Copy a file if the source file time stamp is newer than the destination
     timestamp.
     """
-    if os.path.exists(destpath):
-        time_diff = os.stat(sourcepath).st_mtime - os.stat(destpath).st_mtime
-        if time_diff > 1:
-            print(destpath, "override")
     if not simulate:
-        shutil.copy2(sourcepath, destpath)
+        fn_copy(sourcepath, destpath)
 
 
-def _copytree(logger, src, dst, ignore=None):
+def _copytree(logger, src, dst, ignore=None,
+              fn_listdir=os.listdir,
+              fn_isdir=os.path.isdir,
+              fn_copy=shutil.copy2):
     """
     Implementation of shutil.copytree that overwrites files instead
     of aborting.
     """
-    files = os.listdir(src)
+    files = fn_listdir(src)
     if ignore is not None:
         ignored = ignore(src, files)
     else:
@@ -52,13 +54,13 @@ def _copytree(logger, src, dst, ignore=None):
         if filename not in ignored:
             sourcepath = os.path.join(src, filename)
             destpath = os.path.join(dst, filename)
-            if os.path.isdir(sourcepath):
-                _copytree(logger, sourcepath, destpath, ignore)
+            if fn_isdir(sourcepath):
+                _copytree(logger, sourcepath, destpath, ignore, fn_listdir, fn_isdir, fn_copy)
             else:
                 starttime = time.time()
                 if not os.path.exists(dst):
                     os.makedirs(dst)
-                _copyfile(sourcepath, destpath)
+                _copyfile(sourcepath, destpath, fn_copy)
                 endtime = time.time()
                 total = endtime - starttime
                 logger(sourcepath, destpath, total)
@@ -98,6 +100,70 @@ class Environment:
     def facade_post_build(self):
         return EnvironmentPostBuildFacade(self)
 
+    def extract(self, archive_path, src=None, dest=None, ignore=None):
+        def wrap_ignore(path, files):
+            ignored = lbuild.utils.ignore_patterns(*self.__module._ignore_patterns)(path, files)
+            ignored.add(self.__module._filename)
+            if ignore:
+                ignored |= set(ignore(path, files))
+            return ignored
+
+        if src is None: src = "";
+        if dest is None: dest = src;
+        archive_path = os.path.normpath(archive_path if os.path.isabs(archive_path) else self.modulepath(archive_path))
+        destpath = os.path.normpath(dest if os.path.isabs(dest) else self.outpath(dest))
+        archiverelpath = os.path.relpath(archive_path, self.__repopath)
+        if archiverelpath.startswith(".."):
+            raise LbuildException("Cannot access files outside of the repository!\n"
+                                  "'{}'".format(archiverelpath))
+
+        starttime = time.time()
+        is_zip = archive_path.endswith(".zip")
+        with (zipfile.ZipFile(archive_path, "r") if is_zip else
+              tarfile.TarFile(archive_path, "r")) as archive:
+
+            if is_zip:
+                members = archive.namelist()
+            else: # normalize folder names for tarfiles
+                members = [m+"/" if archive.getmember(m).isdir() else m for m in archive.getnames()]
+
+            if src != "" and src not in members:
+                raise LbuildException("Archive has no file or folder called '{}'! ".format(src) +
+                                      "Available files and folders are:\n  " +
+                                      "\n  ".join(members))
+
+            def fn_isdir(path):
+                return path.endswith("/") or path == ""
+
+            def fn_listdir(path):
+                depth = path.count("/")
+                files = [m for m in members if m.startswith(path)]
+                files = [m for m in files if (m.count("/") <= depth) or (m.count("/") == depth + 1 and fn_isdir(m))]
+                if depth:
+                    files = ["/".join(m.split("/")[depth:]) for m in files]
+                files = [m for m in files if len(m)]
+                return files
+
+            def fn_copy(srcpath, destpath):
+                with tempfile.TemporaryDirectory() as tempdir:
+                    archive.extract(srcpath, tempdir)
+                    shutil.copy2(os.path.join(tempdir, srcpath), destpath)
+
+            def log_copy(src, dest, time):
+                self.__buildlog.log(self.__module, os.path.join(archive_path, src), dest, time)
+
+            if fn_isdir(src):
+                _copytree(log_copy, src, destpath, wrap_ignore,
+                          fn_listdir, fn_isdir, fn_copy)
+            else:
+                if not os.path.exists(os.path.dirname(destpath)):
+                    os.makedirs(os.path.dirname(destpath))
+                _copyfile(src, destpath, fn_copy)
+
+                endtime = time.time()
+                total = endtime - starttime
+                log_copy(src, destpath, total)
+
     def copy(self, src, dest=None, ignore=None):
         """
         Copy file or directory from the modulepath to the buildpath.
@@ -108,6 +174,7 @@ class Environment:
         If dest is empty the same name as src is used (relocated to
         the output path).
         """
+
         def wrap_ignore(path, files):
             ignored = lbuild.utils.ignore_patterns(*self.__module._ignore_patterns)(path, files)
             ignored.add(self.__module._filename)
@@ -126,10 +193,13 @@ class Environment:
         srcrelpath = os.path.relpath(srcpath, self.__repopath)
         if srcrelpath.startswith(".."):
             raise LbuildException("Cannot access files outside of the repository!\n"
-                                "'{}'".format(srcrelpath))
+                                  "'{}'".format(srcrelpath))
+
+        def log_copy(src, dest, time):
+            self.__buildlog.log(self.__module, src, dest, time)
 
         if os.path.isdir(srcpath):
-            _copytree(lambda src, dest, time: self.__buildlog.log(self.__module, src, dest, time),
+            _copytree(log_copy,
                       srcpath,
                       destpath,
                       wrap_ignore)
@@ -140,7 +210,7 @@ class Environment:
 
             endtime = time.time()
             total = endtime - starttime
-            self.__buildlog.log(self.__module, srcpath, destpath, total)
+            log_copy(srcpath, destpath, total)
 
     def __reload_template_environment(self, filters):
         if self.__template_environment_filters == filters:

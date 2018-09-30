@@ -190,6 +190,101 @@ class ParserTest(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(outpath, "test/other.cpp")))
 
     @testfixtures.tempdir()
+    def test_should_build_archive_modules(self, tempdir):
+        self.parser.parse_repository(self._get_path("archive/repo.lb"))
+        build_modules = self.prepare_modules(self.parser)
+
+        outpath = tempdir.path
+        log = lbuild.buildlog.BuildLog(outpath)
+        self.parser.build_modules(build_modules, log)
+
+        # for path, dirs, files in os.walk(outpath):
+        #     for f in files:
+        #         print(os.path.join(path, f))
+
+        paths = [
+            # complete extraction
+            "zip/all/file.txt",
+            "zip/all/file.hpp",
+            "zip/all/folder/file.txt",
+            "zip/all/folder/file.hpp",
+
+            "zip/all/renamed/file.txt",
+            "zip/all/renamed/file.hpp",
+            "zip/all/renamed/folder/file.txt",
+            "zip/all/renamed/folder/file.hpp",
+
+            "zip/all/ignored/file.txt",
+            "zip/all/ignored/file.hpp",
+            "!zip/all/ignored/folder/file.txt",
+            "!zip/all/ignored/folder/file.hpp",
+
+            # partial folder extraction
+            "zip/folders/folder/file.txt",
+            "zip/folders/folder/file.hpp",
+            "!zip/folders/file.txt",
+            "!zip/folders/file.hpp",
+
+            "zip/folders/renamed/file.txt",
+            "zip/folders/renamed/file.hpp",
+
+            "zip/folders/ignored/file.hpp",
+            "!zip/folders/ignored/file.txt",
+
+            # partial file extraction
+            "zip/files/file.txt",
+            "!zip/files/file.hpp",
+
+            "zip/files/file2.txt",
+
+            "!zip/files/file3.txt",
+
+            # complete extraction
+            "tar/all/file.txt",
+            "tar/all/file.hpp",
+            "tar/all/folder/file.txt",
+            "tar/all/folder/file.hpp",
+
+            "tar/all/renamed/file.txt",
+            "tar/all/renamed/file.hpp",
+            "tar/all/renamed/folder/file.txt",
+            "tar/all/renamed/folder/file.hpp",
+
+            "tar/all/ignored/file.txt",
+            "tar/all/ignored/file.hpp",
+            "!tar/all/ignored/folder/file.txt",
+            "!tar/all/ignored/folder/file.hpp",
+
+            # partial folder extraction
+            "tar/folders/folder/file.txt",
+            "tar/folders/folder/file.hpp",
+            "!tar/folders/file.txt",
+            "!tar/folders/file.hpp",
+
+            "tar/folders/renamed/file.txt",
+            "tar/folders/renamed/file.hpp",
+
+            "tar/folders/ignored/file.hpp",
+            "!tar/folders/ignored/file.txt",
+
+            # partial file extraction
+            "tar/files/file.txt",
+            "!tar/files/file.hpp",
+
+            "tar/files/file2.txt",
+
+            "!tar/files/file3.txt",
+        ]
+
+        for path in paths:
+            if path.startswith("!"):
+                path = os.path.join(outpath, path[1:])
+                self.assertFalse(os.path.exists(path))
+            else:
+                path = os.path.join(outpath, path)
+                self.assertTrue(os.path.isfile(path))
+
+    @testfixtures.tempdir()
     def test_should_build_jinja_2_modules(self, tempdir):
         self.parser.parse_repository(self._get_path("combined/repo1.lb"))
         self.parser.parse_repository(self._get_path("combined/repo2/repo2.lb"))
