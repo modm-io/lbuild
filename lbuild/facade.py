@@ -203,11 +203,11 @@ class EnvironmentBuildFacade(EnvironmentPostBuildFacade):
     def __init__(self, env):
         EnvironmentPostBuildFacade.__init__(self, env)
 
-    def append_metadata(self, key, value):
-        self._env.append_metadata(key, value)
+    def append_metadata(self, key, *values):
+        self._env.add_metadata(key, *values)
 
-    def append_metadata_unique(self, key, value):
-        self._env.append_metadata_unique(key, value)
+    def append_metadata_unique(self, key, *values):
+        self._env.add_metadata_unique(key, *values)
 
 
 class BuildLogOperationFacade:

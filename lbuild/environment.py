@@ -361,21 +361,22 @@ class Environment:
                 filenames.append(filename)
         return filenames
 
-    def append_metadata(self, key, value):
+    def add_metadata(self, key, *values):
         """
         Append additional information to the build log which can be used in the
         post-build step to generate additional files/data.
         """
-        self.__buildlog.metadata[key].append(value)
+        self.__buildlog.metadata[key].extend(values)
 
-    def append_metadata_unique(self, key, value):
+    def add_metadata_unique(self, key, *values):
         """
         Append additional information build log if it is not already present.
 
         See also `append_metadata`.
         """
-        if value not in self.__buildlog.metadata[key]:
-            self.__buildlog.metadata[key].append(value)
+        for value in values:
+            if value not in self.__buildlog.metadata[key]:
+                self.__buildlog.metadata[key].append(value)
 
     def has_option(self, key):
         """Query whether an option exists."""
