@@ -177,6 +177,9 @@ class EnvironmentPostBuildFacade(EnvironmentValidateFacade):
     def generated_local_files(self, filterfunc=None):
         return self._env.generated_local_files(filterfunc)
 
+    def reloutpath(self, path, relative=None):
+        return self._env.reloutpath(path, relative)
+
     @staticmethod
     def ignore_files(*files):
         return lbuild.utils.ignore_files(*files)
