@@ -91,11 +91,14 @@ class PostBuildTest(unittest.TestCase):
             buildlog = self._configure_and_build_library(self._get_path("config.xml"),
                                                          outpath=tempdir)
 
-        self.assertEqual(3, len(buildlog.metadata["include_path"]))
-        self.assertEqual(2, len(buildlog.metadata["required_libraries"]))
+        self.assertEqual(2, len(buildlog.metadata["include_path"]))
+        self.assertEqual(1, len(buildlog.repo_metadata["include_path"]))
+        self.assertEqual(2, len(buildlog.repo_metadata["include_path"]["repo"]))
+        self.assertEqual(1, len(buildlog.module_metadata["include_path"]))
+        self.assertEqual(2, len(buildlog.module_metadata["include_path"]["repo:module"]))
 
-        self.assertIn("test", buildlog.metadata["required_libraries"])
-        self.assertIn("test2", buildlog.metadata["required_libraries"])
+        self.assertIn("src", buildlog.metadata["include_path"])
+        self.assertIn("src2", buildlog.metadata["include_path"])
 
 if __name__ == '__main__':
     unittest.main()

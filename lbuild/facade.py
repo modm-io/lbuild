@@ -73,9 +73,6 @@ class RepositoryPrepareFacade(BaseNodePrepareFacade):
     def __init__(self, repository):
         BaseNodePrepareFacade.__init__(self, repository)
 
-    def find_modules_recursive(self, basepath="", modulefile="module.lb", ignore=None):
-        self.add_modules_recursive(basepath, modulefile, ignore)
-
     def add_modules_recursive(self, basepath="", modulefile="module.lb", ignore=None):
         self._node.add_modules_recursive(basepath, modulefile, ignore)
 
@@ -84,6 +81,10 @@ class RepositoryPrepareFacade(BaseNodePrepareFacade):
 
     def glob(self, pattern):
         return self._node.glob(pattern)
+
+    # deprecated
+    def find_modules_recursive(self, basepath="", modulefile="module.lb", ignore=None):
+        self.add_modules_recursive(basepath, modulefile, ignore)
 
 
 class ModulePrepareFacade(BaseNodePrepareFacade):
@@ -206,11 +207,16 @@ class EnvironmentBuildFacade(EnvironmentPostBuildFacade):
     def __init__(self, env):
         EnvironmentPostBuildFacade.__init__(self, env)
 
+    def add_metadata(self, key, *values):
+        self._env.add_metadata(key, *values)
+
+    # deprecated
     def append_metadata(self, key, *values):
         self._env.add_metadata(key, *values)
 
+    # deprecated
     def append_metadata_unique(self, key, *values):
-        self._env.add_metadata_unique(key, *values)
+        self._env.add_metadata(key, *values)
 
 
 class BuildLogOperationFacade:
@@ -228,6 +234,9 @@ class BuildLogOperationFacade:
 class BuildLogFacade:
     def __init__(self, buildlog):
         self._buildlog = buildlog
+        self.__metadata = buildlog.metadata
+        self.__repo_metadata = buildlog.repo_metadata
+        self.__module_metadata = buildlog.module_metadata
 
     @property
     def outpath(self):
@@ -235,7 +244,15 @@ class BuildLogFacade:
 
     @property
     def metadata(self):
-        return self._buildlog.metadata.copy()
+        return self.__metadata
+
+    @property
+    def module_metadata(self):
+        return self.__module_metadata
+
+    @property
+    def repo_metadata(self):
+        return self.__repo_metadata
 
     @property
     def modules(self):

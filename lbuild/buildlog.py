@@ -16,6 +16,7 @@ from os.path import join, relpath, dirname, normpath, basename, isabs, abspath
 
 import lxml.etree
 from .exception import LbuildBuildException
+import lbuild.utils
 
 LOGGER = logging.getLogger('lbuild.buildlog')
 
@@ -70,11 +71,48 @@ class BuildLog:
 
     def __init__(self, outpath):
         self._operations = collections.defaultdict(list)
-        self.metadata = collections.defaultdict(list)
+        self._metadata = collections.defaultdict(lambda: collections.defaultdict(set))
         self.outpath = abspath(outpath)
 
         self._build_files = {}
         self.__lock = threading.RLock()
+
+    def add_metadata(self, module, key, values):
+        with self.__lock:
+            for value in lbuild.utils.listify(values):
+                self._metadata[key][module.fullname].add(value)
+
+    @property
+    def metadata(self):
+        metadata = collections.defaultdict(set)
+        for key, data in self._metadata.items():
+            for value in data.values():
+                metadata[key] |= value
+        for key in metadata:
+            metadata[key] = sorted(list(metadata[key]))
+        return metadata
+
+    @property
+    def repo_metadata(self):
+        metadata = collections.defaultdict(lambda: collections.defaultdict(set))
+        for key, data in self._metadata.items():
+            for module, value in data.items():
+                metadata[key][module.split(":")[0]] |= value
+        for key in metadata:
+            for repo in metadata[key]:
+                metadata[key][repo] = sorted(list(metadata[key][repo]))
+        return metadata
+
+    @property
+    def module_metadata(self):
+        metadata = collections.defaultdict(lambda: collections.defaultdict(set))
+        for key, data in self._metadata.items():
+            for module, value in data.items():
+                metadata[key][module] |= value
+        for key in metadata:
+            for module in metadata[key]:
+                metadata[key][module] = sorted(list(metadata[key][module]))
+        return metadata
 
     def log(self, module, filename_in: str, filename_out: str, time=None):
         if not isabs(filename_in):

@@ -13,13 +13,9 @@ def validate(env):
 		raise ValidateException("Error during validate step!")
 
 def build(env):
-	env.append_metadata("include_path", "src")
-	env.append_metadata("include_path", "src")
-	env.append_metadata("include_path", "src2")
-
-	env.append_metadata_unique("required_libraries", "test")
-	env.append_metadata_unique("required_libraries", "test")
-	env.append_metadata_unique("required_libraries", "test2")
+	env.add_metadata("include_path", "src")
+	env.add_metadata("include_path", "src")
+	env.add_metadata("include_path", "src2")
 
 def post_build(env, log):
 	print("Post-Build")

@@ -374,17 +374,7 @@ class Environment:
         Append additional information to the build log which can be used in the
         post-build step to generate additional files/data.
         """
-        self.__buildlog.metadata[key].extend(values)
-
-    def add_metadata_unique(self, key, *values):
-        """
-        Append additional information build log if it is not already present.
-
-        See also `append_metadata`.
-        """
-        for value in values:
-            if value not in self.__buildlog.metadata[key]:
-                self.__buildlog.metadata[key].append(value)
+        self.__buildlog.add_metadata(self.__module, key, values)
 
     def has_option(self, key):
         """Query whether an option exists."""

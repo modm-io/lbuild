@@ -374,7 +374,7 @@ def prepare(repo, options):
 
 def build(env):
     # Add the generated src/ to the metadata
-    env.append_metadata_unique("include_path", "src")
+    env.add_metadata("include_path", "src")
     # See module.build(env) for complete feature description.
 ```
 
@@ -561,17 +561,14 @@ def build(env):
     # and use this information for a new template.
     env.template("module_header.hpp.in", substitutions={"headers": headers})
 
-    # You can append metadata to the build log which then made
+    # You can add metadata to the build log which then made
     # available in the post_build step. This is like a dictionary.
-    env.append_metadata("include_path", "generated_folder/")
-    # Or only adds it if it hasn't been added before
-    env.append_metadata_unique("include_path", "generated_folder/")
+    env.add_metadata("include_path", "generated_folder/")
 
 
 # The post build step can do everything the build step can,
 # but you can't add to the metadata anymore:
-# - env.append_metadata() unavailable
-# - env.append_metadata_unique() unavailable
+# - env.add_metadata() unavailable
 # You have access to the entire buildlog up to this point
 def post_build(env, buildlog):
     # The absolute path to the lbuild output directory
