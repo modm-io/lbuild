@@ -162,7 +162,7 @@ class Module(BaseNode):
         self._description = module.description
         self._fullname = module.fullname
         self._available = module.available
-        self._filters.update({self._repository.name + ":" + name: func for name, func in module._filters})
+        self._filters.update({self._repository.name + "." + name: func for name, func in module._filters.items()})
 
         # OptionNameResolver defined in the module configuration file. These
         # options are configurable through the project configuration file.
