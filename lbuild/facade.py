@@ -240,7 +240,7 @@ class BuildLogFacade:
 
     @property
     def outpath(self):
-        return self._operation._outpath
+        return self._buildlog._outpath
 
     @property
     def metadata(self):
