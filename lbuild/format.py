@@ -10,14 +10,15 @@
 
 import os
 import re
+import sys
 import shutil
 import colorful
 
 import lbuild.node
 import lbuild.filter
 
-plain = False
-WIDTH = shutil.get_terminal_size((200, 0)).columns
+plain = not sys.stdout.isatty()
+WIDTH = shutil.get_terminal_size((100, 0)).columns
 
 color_scheme = {
     "parser": None,

@@ -24,7 +24,7 @@ from lbuild.format import format_option_short_description
 
 from lbuild.api import Builder
 
-__version__ = '1.4.2'
+__version__ = '1.4.3'
 
 
 class InitAction:
@@ -306,7 +306,7 @@ def prepare_argument_parser():
     argument_parser.add_argument("--plain",
         dest="plain",
         action="store_true",
-        default=False,
+        default=not sys.stdout.isatty(),
         help="Disable styled output, only output plain ASCII.")
     argument_parser.add_argument('--version',
         action='version',
