@@ -220,7 +220,10 @@ class Parser(BaseNode):
     def find_any(self, queries, types=None):
         nodes = set()
         for query in utils.listify(queries):
-            nodes |= set(self._resolve_partial(query, set()))
+            result = self._resolve_partial(query, None)
+            if result is None:
+                raise LbuildException("Cannot resolve '{}'".format(query))
+            nodes |= set(result)
         if types:
             types = utils.listify(types)
             nodes = [n for n in nodes if any(n.type == t for t in types)]

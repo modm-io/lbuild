@@ -138,6 +138,16 @@ class ParserTest(unittest.TestCase):
         self.assertIn("repo1:other", self.parser.modules)
         self.assertIn("repo1:module1", self.parser.modules)
 
+    def test_raise_unknown_module(self):
+        self.parser.parse_repository(self._get_path("combined/repo1.lb"))
+        self.parser._config_flat = lbuild.config.ConfigNode.from_file(self._get_path("combined/test1.xml"))
+
+        self.parser.merge_repository_options()
+        modules = self.parser.prepare_repositories()
+        self.parser.config.modules.append(":unknown")
+        self.assertRaises(lbuild.exception.LbuildException,
+                          lambda: self.parser.find_modules(self.parser.config.modules))
+
     def _get_build_modules(self):
         self.parser.parse_repository(self._get_path("combined/repo1.lb"))
         self.parser.parse_repository(self._get_path("combined/repo2/repo2.lb"))

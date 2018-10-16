@@ -308,7 +308,7 @@ class BaseNode(anytree.Node):
             except LbuildException as b:
                 if not ignore_failure:
                     raise LbuildException("Cannot resolve dependencies!\n" + str(b))
-                print("ignoring", dependency_name)
+                LOGGER.debug("ignoring", dependency_name)
         self._dependencies = list(dependencies)
         self._dependencies_resolved = not ignore_failure
         for child in self.children:
