@@ -147,7 +147,7 @@ class ConfigNode(anytree.AnyNode):
         # Load repositories
         for path_node in xmltree.iterfind("repositories/repository/path"):
             repopath = path_node.text.format(cache=config._cachefolder)
-            filename = realpath(join(configpath, repopath))
+            filename = ConfigNode._rel_path(repopath, configpath)
             config._repositories.append(filename)
 
         # Load all requested modules
@@ -183,10 +183,9 @@ class ConfigNode(anytree.AnyNode):
 
     @staticmethod
     def _rel_path(path, configpath):
-        if os.path.isabs(path):
-            return path
-        else:
-            return join(configpath, path)
+        if not os.path.isabs(path):
+            path = join(configpath, path)
+        return realpath(path)
 
     @staticmethod
     def to_dict(xmltree):

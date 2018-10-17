@@ -59,7 +59,7 @@ def _copytree(logger, src, dst, ignore=None,
             else:
                 starttime = time.time()
                 if not os.path.exists(dst):
-                    os.makedirs(dst)
+                    os.makedirs(dst, exist_ok=True)
                 _copyfile(sourcepath, destpath, fn_copy)
                 endtime = time.time()
                 total = endtime - starttime
@@ -157,7 +157,7 @@ class Environment:
                           fn_listdir, fn_isdir, fn_copy)
             else:
                 if not os.path.exists(os.path.dirname(destpath)):
-                    os.makedirs(os.path.dirname(destpath))
+                    os.makedirs(os.path.dirname(destpath), exist_ok=True)
                 _copyfile(src, destpath, fn_copy)
 
                 endtime = time.time()
@@ -205,7 +205,7 @@ class Environment:
                       wrap_ignore)
         else:
             if not os.path.exists(os.path.dirname(destpath)):
-                os.makedirs(os.path.dirname(destpath))
+                os.makedirs(os.path.dirname(destpath), exist_ok=True)
             _copyfile(srcpath, destpath)
 
             endtime = time.time()
@@ -315,7 +315,7 @@ class Environment:
         # Create folder structure if it doesn't exists
         if not simulate:
             if not os.path.exists(os.path.dirname(outfile_name)):
-                os.makedirs(os.path.dirname(outfile_name))
+                os.makedirs(os.path.dirname(outfile_name), exist_ok=True)
 
             with open(outfile_name, 'w') as outfile:
                 outfile.write(output)

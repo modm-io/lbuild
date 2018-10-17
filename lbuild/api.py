@@ -19,8 +19,7 @@ from lbuild.utils import listify, listrify
 class Builder:
     def __init__(self, cwd=None, config=None, options=None):
         if cwd is None:
-            cwd = os.getcwd()
-        os.chdir(cwd)
+            cwd = os.getcwd() if config is None else os.path.dirname(config)
         self.cwd = cwd
 
         config = ConfigNode.from_file(config, fail_silent=True)
