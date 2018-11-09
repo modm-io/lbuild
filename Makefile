@@ -10,8 +10,8 @@ coverage:
 coverage-view:
 	@xdg-open build/coverage/index.html&
 
-pylint-gui:
-	@cd lbuild; pylint-gui3
+pylint:
+	@pylint lbuild
 
 dist:
 	@rm -rf dist
