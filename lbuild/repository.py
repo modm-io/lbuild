@@ -11,17 +11,14 @@
 
 import os
 import glob
-import shutil
 import logging
 import fnmatch
 
-import lbuild.filter
 import lbuild.utils
 
 from .facade import RepositoryInitFacade, RepositoryPrepareFacade
-from .node import BaseNode, NameResolver
+from .node import BaseNode
 from .exception import LbuildException
-from . import utils
 
 LOGGER = logging.getLogger('lbuild.repository')
 
@@ -58,14 +55,14 @@ class Repository(BaseNode):
 
         repo = Repository(repofilename)
         repo._functions = lbuild.node.load_functions_from_file(
-                repo, repofilename, required=['init', 'prepare'], optional=['build'])
+            repo, repofilename, required=['init', 'prepare'], optional=['build'])
 
         # Execution init() function. In this function options are added.
         repo._functions['init'](RepositoryInitFacade(repo))
 
         if repo.name is None:
             raise LbuildException("The init(repo) function must set a repository name! "
-                                "Please write the 'name' attribute.")
+                                  "Please write the 'name' attribute.")
 
         # Prefix the global filters with the `repo.` name
         for name, func in repo._new_filters.items():
@@ -80,8 +77,10 @@ class Repository(BaseNode):
         return repo
 
     def prepare(self):
-        lbuild.utils.with_forward_exception(self,
-                lambda: self._functions["prepare"](RepositoryPrepareFacade(self), self.option_value_resolver))
+        lbuild.utils.with_forward_exception(
+            self,
+            lambda: self._functions["prepare"](RepositoryPrepareFacade(self),
+                                               self.option_value_resolver))
 
         modules = []
         # Parse the modules inside this repository
@@ -106,7 +105,7 @@ class Repository(BaseNode):
                 for (default: "module.lb").
             ignore: Filename pattern to ignore during search
         """
-        ignore = utils.listify(ignore) + self._ignore_patterns
+        ignore = lbuild.utils.listify(ignore) + self._ignore_patterns
         ignore.append(os.path.relpath(self._filename, self._filepath))
         basepath = self._relocate_relative_path(basepath)
         for path, _, files in os.walk(basepath):
@@ -151,5 +150,5 @@ class Repository(BaseNode):
             # the repository name is only known after calling the
             # init function.
             return "{} at {}".format(self.name, self._filepath)
-        else:
-            return self._filepath
+
+        return self._filepath

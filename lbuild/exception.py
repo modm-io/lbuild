@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright (c) 2015-2017, Fabian Greif
+# Copyright (c) 2015-2018, Fabian Greif
 # Copyright (c) 2018, Niklas Hauser
 # All Rights Reserved.
 #
@@ -27,18 +27,20 @@ class LbuildOptionFormatException(LbuildException):
     """
     Exception for all invalid option names.
     """
+
     def __init__(self, name):
         LbuildException.__init__(self,
-                               "Invalid option format for '{}'. Option must "
-                               "options are one (repository option) or "
-                               "two and more (module option) colons.".format(name))
+                                 "Invalid option format for '{}'. Option must "
+                                 "options are one (repository option) or "
+                                 "two and more (module option) colons.".format(name))
 
 
 class LbuildAttributeException(LbuildException):
+
     def __init__(self, name):
         LbuildException.__init__(self,
-                               ("The attribute '{}' may only be changed in "
-                                "the init(...) method".format(name)))
+                                 "The attribute '{}' may only be changed in "
+                                 "the init(...) method".format(name))
 
 
 class LbuildTemplateException(LbuildException):
@@ -66,7 +68,10 @@ class LbuildAggregateException(LbuildException):
     """
     Collection of multiple exceptions.
     """
+
     def __init__(self, exceptions):
+        LbuildException.__init__(self, "Multiple Exceptions")
+
         self.exceptions = exceptions
 
 
@@ -77,6 +82,9 @@ class LbuildForwardException(LbuildException):
     Use to forward the exception to the command line interface and provide
     additional informations.
     """
+
     def __init__(self, module, exception):
+        LbuildException.__init__(self, "Forward Exceptions")
+
         self.module = module
         self.exception = exception

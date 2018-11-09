@@ -11,20 +11,10 @@
 
 import os
 import logging
-import itertools
 
 import lbuild.utils
-import lbuild.filter
-import lbuild.option
-import lbuild.repository
-
-from . import exception
-
-from .repository import Repository
 
 from .exception import LbuildException
-from .exception import LbuildForwardException
-
 from .node import BaseNode
 from .facade import ModuleInitFacade, ModulePrepareFacade
 
@@ -37,9 +27,12 @@ class ModuleBase:
 
 def load_module_from_file(repository, filename, parent=None):
     module = ModuleInit(repository, filename)
-    if parent: module.parent = parent;
+    if parent:
+        module.parent = parent
+
     module.functions = lbuild.node.load_functions_from_file(
-        repository, filename,
+        repository,
+        filename,
         required=['init', 'prepare', 'build'],
         optional=['pre_build', 'validate', 'post_build'],
         local={
@@ -47,16 +40,21 @@ def load_module_from_file(repository, filename, parent=None):
             'PreBuildException': lbuild.exception.LbuildValidateException,
             'ValidateException': lbuild.exception.LbuildValidateException,
         })
+
     module.init()
     return module.prepare()
 
 
 def load_module_from_object(repository, module_obj, filename=None, parent=None):
     module = ModuleInit(repository, filename)
-    if parent: module.parent = parent;
-    module.functions = lbuild.utils.get_global_functions(module_obj,
-            required=['init', 'prepare', 'build'],
-            optional=['pre_build', 'validate', 'post_build'])
+    if parent:
+        module.parent = parent
+
+    module.functions = lbuild.utils.get_global_functions(
+        module_obj,
+        required=['init', 'prepare', 'build'],
+        optional=['pre_build', 'validate', 'post_build'])
+
     module.init()
     return module.prepare()
 
@@ -83,6 +81,7 @@ def build_modules(initmodules):
 
 
 class ModuleInit:
+
     def __init__(self, repository, filename=None):
         self.filename = os.path.realpath(filename)
         self.filepath = os.path.dirname(self.filename) if filename else None
@@ -105,11 +104,13 @@ class ModuleInit:
 
     def init(self):
         # Execute init() function from module to get module name
-        lbuild.utils.with_forward_exception(self, lambda: self.functions['init'](ModuleInitFacade(self)))
+        lbuild.utils.with_forward_exception(
+            self,
+            lambda: self.functions['init'](ModuleInitFacade(self)))
 
         if self.name is None:
-            raise LbuildException("The init(module) function must set a module name! " \
-                                "Please set the 'name' attribute.")
+            raise LbuildException("The init(module) function must set a module name! "
+                                  "Please set the 'name' attribute.")
 
         if self.parent.startswith(":"):
             self.parent = self.repository.name + self.parent
@@ -117,16 +118,19 @@ class ModuleInit:
             self.parent = self.repository.name + ":" + self.parent
 
     def prepare(self):
-        is_available = lbuild.utils.with_forward_exception(self,
-                lambda: self.functions["prepare"](ModulePrepareFacade(self), self.repository.option_value_resolver))
+        is_available = lbuild.utils.with_forward_exception(
+            self,
+            lambda: self.functions["prepare"](ModulePrepareFacade(self),
+                                              self.repository.option_value_resolver))
 
         available_modules = []
         if is_available is None:
             raise LbuildException("The prepare() function for module '{}' must "
-                                "return True or False."
-                                .format(self.name))
+                                  "return True or False."
+                                  .format(self.name))
         elif is_available:
             available_modules.append(self)
+
         self.available = is_available
 
         for submodule in self._submodules:
@@ -146,6 +150,7 @@ class ModuleInit:
 
 
 class Module(BaseNode):
+
     def __init__(self, module: ModuleInit):
         """
         Create new module definition.
@@ -157,17 +162,19 @@ class Module(BaseNode):
                 during the building step of the module.
         """
         BaseNode.__init__(self, module.name, self.Type.MODULE, module.repository)
+
         self._filename = module.filename
         self._functions = module.functions
         self._description = module.description
         self._fullname = module.fullname
         self._available = module.available
-        self._filters.update({self._repository.name + "." + name: func for name, func in module._filters.items()})
+        self._filters.update({"{}.{}".format(self._repository.name, name): func
+                              for name, func in module._filters.items()})
 
         # OptionNameResolver defined in the module configuration file. These
         # options are configurable through the project configuration file.
-        for o in module._options:
-            self.add_option(o)
+        for option in module._options:
+            self.add_option(option)
 
         self.add_dependencies(*module._dependencies)
         if ":" in module.parent:
@@ -176,17 +183,17 @@ class Module(BaseNode):
     def validate(self, env):
         validate = self._functions.get("validate", self._functions.get("pre_build", None))
         if validate is not None:
-            LOGGER.info("Validate " + self.fullname)
+            LOGGER.info("Validate %s", self.fullname)
             lbuild.utils.with_forward_exception(self, lambda: validate(env))
 
     def build(self, env):
-        LOGGER.info("Build " + self.fullname)
+        LOGGER.info("Build %s", self.fullname)
         lbuild.utils.with_forward_exception(self, lambda: self._functions["build"](env))
 
     def post_build(self, env, buildlog):
         post_build = self._functions.get("post_build", None)
         if post_build is not None:
-            LOGGER.info("Post-Build " + self.fullname)
+            LOGGER.info("Post-Build %s", self.fullname)
             lbuild.utils.with_forward_exception(self, lambda: post_build(env, buildlog))
 
     def __lt__(self, other):

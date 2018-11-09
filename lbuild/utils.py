@@ -10,21 +10,17 @@
 # governing this code.
 
 import os
-import re
 import sys
 import uuid
 import shutil
 import fnmatch
-import colorful
 import importlib.util
 import importlib.machinery
 
 from .exception import LbuildException
 from .exception import LbuildForwardException
 
-import lbuild
-
-default_ignore_patterns = [
+DEFAULT_IGNORE_PATTERNS = [
     "*/.git*",
     "*/.DS_Store*",
     "*/__pycache__",
@@ -32,6 +28,7 @@ default_ignore_patterns = [
     "*/repo.lb",
     "*/*.pyc"
 ]
+
 
 def ignore_files(*files):
     """
@@ -45,6 +42,7 @@ def ignore_files(*files):
     Based on the shutil.ignore_patterns() function.
     """
     return shutil.ignore_patterns(*files)
+
 
 def ignore_patterns(*patterns):
     """
@@ -82,10 +80,18 @@ def _listify(obj):
 
 
 def listify(*objs):
+    """
+    Convert arguments to list if they are not already a list.
+    """
     return [l for o in objs for l in _listify(o)]
 
+
 def listrify(*objs):
+    """
+    Convert arguments to list of strings.
+    """
     return list(map(str, listify(*objs)))
+
 
 def get_global_functions(env, required, optional=None):
     """
@@ -95,18 +101,21 @@ def get_global_functions(env, required, optional=None):
         required: List of required functions.
         optional: List of optional functions.
     """
+
     def get(name, required=True):
         if isinstance(env, dict):
             val = env.get(name, None)
         else:
             val = getattr(env, name, None)
         if required and val is None:
-            raise LbuildException("No function '{}' found!".format(functionname))
+            raise LbuildException("No function '{}' found!".format(name))
         return val
 
-    if optional is None: optional = [];
+    if optional is None:
+        optional = []
+
     functions = {}
-    for name in (required + optional):
+    for name in required + optional:
         function = get(name, name in required)
         if function is not None:
             functions[name] = function

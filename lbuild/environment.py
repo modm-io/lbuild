@@ -11,20 +11,19 @@
 import os
 import time
 import shutil
-import fnmatch
-import jinja2
 import logging
 import zipfile
 import tarfile
 import tempfile
 
-import lbuild.filter
+import jinja2
+
 import lbuild.utils
 
 from .facade import EnvironmentValidateFacade, EnvironmentBuildFacade, EnvironmentPostBuildFacade
 from .exception import LbuildException, LbuildTemplateException, LbuildForwardException
 
-simulate = False
+SIMULATE = False
 
 
 def _copyfile(sourcepath, destpath, fn_copy=shutil.copy2):
@@ -32,7 +31,7 @@ def _copyfile(sourcepath, destpath, fn_copy=shutil.copy2):
     Copy a file if the source file time stamp is newer than the destination
     timestamp.
     """
-    if not simulate:
+    if not SIMULATE:
         fn_copy(sourcepath, destpath)
 
 
@@ -101,6 +100,7 @@ class Environment:
         return EnvironmentPostBuildFacade(self)
 
     def extract(self, archive_path, src=None, dest=None, ignore=None):
+
         def wrap_ignore(path, files):
             ignored = lbuild.utils.ignore_patterns(*self.__module._ignore_patterns)(path, files)
             ignored.add(self.__module._filename)
@@ -108,9 +108,13 @@ class Environment:
                 ignored |= set(ignore(path, files))
             return ignored
 
-        if src is None: src = "";
-        if dest is None: dest = src;
-        archive_path = os.path.normpath(archive_path if os.path.isabs(archive_path) else self.modulepath(archive_path))
+        if src is None:
+            src = ""
+        if dest is None:
+            dest = src
+        archive_path = os.path.normpath(
+            archive_path if os.path.isabs(archive_path) else self.modulepath(archive_path))
+
         destpath = os.path.normpath(dest if os.path.isabs(dest) else self.outpath(dest))
         archiverelpath = os.path.relpath(archive_path, self.__repopath)
         if archiverelpath.startswith(".."):
@@ -124,13 +128,14 @@ class Environment:
 
             if is_zip:
                 members = archive.namelist()
-            else: # normalize folder names for tarfiles
-                members = [m+"/" if archive.getmember(m).isdir() else m for m in archive.getnames()]
+            else:  # normalize folder names for tarfiles
+                members = [m + "/" if archive.getmember(m).isdir() else
+                           m for m in archive.getnames()]
 
             if src != "" and src not in members:
-                raise LbuildException("Archive has no file or folder called '{}'! ".format(src) +
-                                      "Available files and folders are:\n  " +
-                                      "\n  ".join(members))
+                raise LbuildException("Archive has no file or folder called '{}'! "
+                                      "Available files and folders are:\n  {}"
+                                      .format(src, "\n  ".join(members)))
 
             def fn_isdir(path):
                 return path.endswith("/") or path == ""
@@ -138,7 +143,8 @@ class Environment:
             def fn_listdir(path):
                 depth = path.count("/")
                 files = [m for m in members if m.startswith(path)]
-                files = [m for m in files if (m.count("/") <= depth) or (m.count("/") == depth + 1 and fn_isdir(m))]
+                files = [m for m in files
+                         if (m.count("/") <= depth) or (m.count("/") == depth + 1 and fn_isdir(m))]
                 if depth:
                     files = ["/".join(m.split("/")[depth:]) for m in files]
                 files = [m for m in files if len(m)]
@@ -149,8 +155,9 @@ class Environment:
                     archive.extract(srcpath, tempdir)
                     shutil.copy2(os.path.join(tempdir, srcpath), destpath)
 
-            def log_copy(src, dest, time):
-                self.__buildlog.log(self.__module, os.path.join(archive_path, src), dest, time)
+            def log_copy(src, dest, operation_time):
+                self.__buildlog.log(self.__module,
+                                    os.path.join(archive_path, src), dest, operation_time)
 
             if fn_isdir(src):
                 _copytree(log_copy, src, destpath, wrap_ignore,
@@ -195,8 +202,8 @@ class Environment:
             raise LbuildException("Cannot access files outside of the repository!\n"
                                   "'{}'".format(srcrelpath))
 
-        def log_copy(src, dest, time):
-            self.__buildlog.log(self.__module, src, dest, time)
+        def log_copy(src, dest, operation_time):
+            self.__buildlog.log(self.__module, src, dest, operation_time)
 
         if os.path.isdir(srcpath):
             _copytree(log_copy,
@@ -232,7 +239,7 @@ class Environment:
 
             def join_path(self, template, parent):
                 path = os.path.join(os.path.dirname(parent), template)
-                return os.path.normpath(path).replace('\\','/')
+                return os.path.normpath(path).replace('\\', '/')
 
         environment = RelEnvironment(loader=jinja2.FileSystemLoader(self.__repopath),
                                      extensions=['jinja2.ext.do'],
@@ -274,7 +281,7 @@ class Environment:
         src = self.repopath(src)
         if src.startswith(".."):
             raise LbuildException("Cannot access template outside of repository!\n"
-                                "'{}'".format(src))
+                                  "'{}'".format(src))
 
         if substitutions is None:
             substitutions = {}
@@ -286,34 +293,37 @@ class Environment:
                 # the previous environment
                 self.__reload_template_environment(filters)
 
-            template = self.template_environment.get_template(src.replace('\\','/'), globals=self.__template_global_substitutions)
+            template = self.template_environment.get_template(
+                src.replace('\\', '/'),
+                globals=self.__template_global_substitutions)
+
             output = template.render(substitutions)
         except jinja2.TemplateNotFound as error:
             raise LbuildException('Failed to retrieve Template: %s' % error)
         except (jinja2.exceptions.TemplateAssertionError,
                 jinja2.exceptions.TemplateSyntaxError) as error:
             raise LbuildException("Error in template '{}:{}':\n"
-                                " {}: {}".format(error.filename,
-                                                 error.lineno,
-                                                 error.__class__.__name__,
-                                                 error))
+                                  " {}: {}".format(error.filename,
+                                                   error.lineno,
+                                                   error.__class__.__name__,
+                                                   error))
         except jinja2.exceptions.UndefinedError as error:
             raise LbuildTemplateException("Error in template '{}':\n"
-                                        " {}: {}".format(self.modulepath(src),
-                                                         error.__class__.__name__,
-                                                         error))
+                                          " {}: {}".format(self.modulepath(src),
+                                                           error.__class__.__name__,
+                                                           error))
         except LbuildException as error:
             raise LbuildException("Error in template '{}': \n"
-                                "{}".format(self.modulepath(src), error))
+                                  "{}".format(self.modulepath(src), error))
         except Exception as error:
             raise LbuildForwardException("Error in template '{}': \n"
-                                       "{}".format(self.modulepath(src), error),
-                                       error)
+                                         "{}".format(self.modulepath(src), error),
+                                         error)
 
         outfile_name = self.outpath(dest)
 
         # Create folder structure if it doesn't exists
-        if not simulate:
+        if not SIMULATE:
             if not os.path.exists(os.path.dirname(outfile_name)):
                 os.makedirs(os.path.dirname(outfile_name), exist_ok=True)
 
@@ -338,8 +348,8 @@ class Environment:
             basepath = self.outbasepath
         if basepath is None:
             return os.path.join(self.__outpath, *path)
-        else:
-            return os.path.join(self.__outpath, basepath, *path)
+
+        return os.path.join(self.__outpath, basepath, *path)
 
     def reloutpath(self, path, relative=None):
         if relative is None:
@@ -362,9 +372,10 @@ class Environment:
         filenames = []
         operations = self.__buildlog.operations_per_module(self.__module.fullname)
         for operation in operations:
-            filename = os.path.normpath(os.path.join(os.path.relpath(os.path.dirname(operation.filename_out),
-                                                                     self.outpath('.')),
-                                                     os.path.basename(operation.filename_out)))
+            filename = os.path.normpath(
+                os.path.join(os.path.relpath(os.path.dirname(operation.filename_out),
+                                             self.outpath('.')),
+                             os.path.basename(operation.filename_out)))
             if filterfunc is None or filterfunc(filename):
                 filenames.append(filename)
         return filenames

@@ -10,17 +10,19 @@
 
 import enum
 import inspect
-import textwrap
 import collections
 
-import lbuild.filter
+import lbuild.utils
+
 from .exception import LbuildException
 from .node import BaseNode
-from .format import color_str as c
+from .format import ColorWrapper as _cw
 
 
 class Option(BaseNode):
-    def __init__(self, name, description, default=None, dependencies=None, convert_input=str, convert_output=str):
+
+    def __init__(self, name, description, default=None, dependencies=None,
+                 convert_input=str, convert_output=str):
         BaseNode.__init__(self, name, BaseNode.Type.OPTION)
         self._dependency_handler = dependencies
         self._description = description
@@ -41,7 +43,8 @@ class Option(BaseNode):
     def _update_dependencies(self):
         self._dependencies_resolved = False
         if self._dependency_handler:
-            self._dependency_module_names += lbuild.utils.listify(self._dependency_handler(self._input))
+            self._dependency_module_names += \
+                lbuild.utils.listify(self._dependency_handler(self._input))
 
     def _set_value(self, value):
         self._input = self._in(value)
@@ -69,13 +72,14 @@ class Option(BaseNode):
 
     def format_value(self):
         value = str(self._input).strip(" \n")
-        if value is "": value = '""';
+        if value == "":
+            value = '""'
         return value
 
     def format_values(self):
         if self.is_default() or self._default == "":
-            return c("String")
-        return c("String: ") + c(str(self._default)).wrap("underlined")
+            return _cw("String")
+        return _cw("String: ") + _cw(str(self._default)).wrap("underlined")
 
     def __hash__(self):
         if self.__hash is None:
@@ -100,11 +104,13 @@ class Option(BaseNode):
 
 
 class StringOption(Option):
+
     def __init__(self, name, description, default=None, dependencies=None):
         Option.__init__(self, name, description, default, dependencies)
 
 
 class BooleanOption(Option):
+
     def __init__(self, name, description, default=False, dependencies=None):
         Option.__init__(self, name, description, default, dependencies,
                         convert_input=self.as_boolean,
@@ -116,25 +122,28 @@ class BooleanOption(Option):
 
     def format_values(self):
         if self._default:
-            return c("True").wrap("underlined") + c(", False")
-        return c("True, ") + c("False").wrap("underlined")
+            return _cw("True").wrap("underlined") + _cw(", False")
+        return _cw("True, ") + _cw("False").wrap("underlined")
 
     @staticmethod
     def as_boolean(value):
         if value is None:
             return value
-        elif isinstance(value, bool):
+        if isinstance(value, bool):
             return value
-        elif str(value).lower() in ['true', 'yes', '1']:
+        if str(value).lower() in ['true', 'yes', '1']:
             return True
-        elif str(value).lower() in ['false', 'no', '0']:
+        if str(value).lower() in ['false', 'no', '0']:
             return False
 
-        raise LbuildException("Value '{}' ({}) must be boolean!".format(value, type(value).__name__))
+        raise LbuildException("Value '{}' ({}) must be boolean!"
+                              .format(value, type(value).__name__))
 
 
 class NumericOption(Option):
-    def __init__(self, name, description, minimum=None, maximum=None, default=None, dependencies=None):
+
+    def __init__(self, name, description, minimum=None, maximum=None,
+                 default=None, dependencies=None):
         Option.__init__(self, name, description, default, dependencies,
                         convert_input=str,
                         convert_output=self.as_numeric_value)
@@ -142,17 +151,20 @@ class NumericOption(Option):
         self.maximum = maximum
         if self.minimum is not None and self.maximum is not None:
             if self.minimum >= self.maximum:
-                raise LbuildException("Minimum '{}' must be smaller than maximum '{}'!".format(self.minimum, self.maximum))
+                raise LbuildException("Minimum '{}' must be smaller than maximum '{}'!"
+                                      .format(self.minimum, self.maximum))
 
+    # Disable warnings caused by property setters which are not properly recognised by pylint
+    # pylint: disable=no-member
     @Option.value.setter
     def value(self, value):
         numeric_value = self.as_numeric_value(value)
         if self.minimum is not None and numeric_value < self.minimum:
-            raise LbuildException("Value '{}' of '{}' must be greater than '{}'".format(
-                                  numeric_value, self.fullname, self.minimum))
+            raise LbuildException("Value '{}' of '{}' must be greater than '{}'"
+                                  .format(numeric_value, self.fullname, self.minimum))
         if self.maximum is not None and numeric_value > self.maximum:
-            raise LbuildException("Value '{}' of '{}' must be smaller than '{}'".format(
-                                  numeric_value, self.fullname, self.maximum))
+            raise LbuildException("Value '{}' of '{}' must be smaller than '{}'"
+                                  .format(numeric_value, self.fullname, self.maximum))
         self._set_value(value)
 
     @property
@@ -161,20 +173,18 @@ class NumericOption(Option):
                 "+Inf" if self.maximum is None else str(self.maximum)]
 
     def format_values(self):
-        minimum = c(self.values[0])
-        maximum = c(self.values[1])
+        minimum = _cw(self.values[0])
+        maximum = _cw(self.values[1])
         if self._default is None:
-            return minimum + c(" ... ") + maximum
+            return minimum + _cw(" ... ") + maximum
 
-        default = c(str(self._default)).wrap("underlined")
-        if minimum != default and maximum != default:
-            return minimum + c(" .. ") + default + c(" .. ") + maximum
-
+        default = _cw(str(self._default)).wrap("underlined")
+        if default not in (minimum, maximum):
+            return minimum + _cw(" .. ") + default + _cw(" .. ") + maximum
         if maximum == default:
-            return minimum + c(" ... ") + default
-
+            return minimum + _cw(" ... ") + default
         if minimum == default:
-            return default + c(" ... ") + maximum
+            return default + _cw(" ... ") + maximum
 
         return default
 
@@ -182,18 +192,20 @@ class NumericOption(Option):
     def as_numeric_value(value):
         if value is None:
             return value
-        elif isinstance(value, (int, float)):
+        if isinstance(value, (int, float)):
             return value
-        elif isinstance(value, str):
+        if isinstance(value, str):
             try:
                 return int(value, 0)
             except ValueError:
                 pass
 
-        raise LbuildException("Value '{}' ({}) must be numeric!".format(value, type(value).__name__))
+        raise LbuildException("Value '{}' ({}) must be numeric!"
+                              .format(value, type(value).__name__))
 
 
 class EnumerationOption(Option):
+
     def __init__(self, name, description, enumeration, default=None, dependencies=None):
         Option.__init__(self, name, description, None, dependencies,
                         convert_input=self._obj_to_str,
@@ -211,7 +223,8 @@ class EnumerationOption(Option):
                 if not isinstance(key, str):
                     raise LbuildException("All enumeration keys must be of type string!")
         else:
-            raise LbuildException("Type {} currently not supported".format(type(enumeration).__name__))
+            raise LbuildException("Type {} currently not supported"
+                                  .format(type(enumeration).__name__))
 
         self._set_default(default)
 
@@ -235,18 +248,21 @@ class EnumerationOption(Option):
         return values
 
     def format_values(self):
-        values = [c(v).wrap("underlined") if v == self._default else c(v) for v in self._format_values()]
-        return c(", ").join(values)
+        values = [_cw(v).wrap("underlined") if v == self._default else _cw(v)
+                  for v in self._format_values()]
+        return _cw(", ").join(values)
 
     def as_enumeration(self, value):
         try:
             return self._enumeration[self._obj_to_str(value)]
         except KeyError:
             raise LbuildException("Value '{}' not found in enumeration '{}'. " \
-                                  "Possible values are:\n'{}'.".format(self.fullname, value, "', '".join(self._enumeration)))
+                                  "Possible values are:\n'{}'."
+                                  .format(self.fullname, value, "', '".join(self._enumeration)))
 
 
 class SetOption(EnumerationOption):
+
     def __init__(self, name, description, enumeration, default=None, dependencies=None):
         EnumerationOption.__init__(self, name, description, enumeration, None, dependencies)
         self._in = self.str_to_set
@@ -257,8 +273,9 @@ class SetOption(EnumerationOption):
         return "{{{}}}".format(", ".join(map(str, self._output)))
 
     def format_values(self):
-        values = [c(v).wrap("underlined") if v in self._default else c(v) for v in self._format_values()]
-        return c(", ").join(values)
+        values = [_cw(v).wrap("underlined") if v in self._default else _cw(v)
+                  for v in self._format_values()]
+        return _cw(", ").join(values)
 
     @staticmethod
     def str_to_set(values):

@@ -10,30 +10,34 @@
 # governing this code.
 
 import os
-import anytree
+from os.path import realpath, join
 import pkgutil
 import logging
 import collections
-import lxml.etree
-from os.path import realpath, join
 from pathlib import Path
 
-from .exception import LbuildException
+import lxml.etree
+import anytree
 
-import lbuild.module
+from .exception import LbuildException
 
 LOGGER = logging.getLogger('lbuild.config')
 DEFAULT_CACHE_FOLDER = ".lbuild_cache"
 
+
 class ConfigNode(anytree.AnyNode):
+
     def __init__(self, parent=None):
         anytree.AnyNode.__init__(self, parent, filename=Path())
+
         self._cachefolder = Path()
         self._extends = collections.defaultdict(list)
         self._vcs = []
         self._repositories = []
         self._modules = []
         self._options = {}
+
+        self.filename = None
 
     @property
     def repositories(self):
@@ -61,13 +65,14 @@ class ConfigNode(anytree.AnyNode):
             self._options[parts[0]] = parts[1]
 
     def _flatten(self, config):
-        for node in (list(self.siblings) + [self]):
+        for node in list(self.siblings) + [self]:
             config._cachefolder = node._cachefolder
             config._extends.update(node._extends)
             config._vcs.extend(node._vcs)
             config._repositories.extend(node._repositories)
             config._modules.extend(node._modules)
             config._options.update(node._options)
+
         if self.parent:
             self.parent._flatten(config)
 
@@ -78,9 +83,10 @@ class ConfigNode(anytree.AnyNode):
         config._modules = list(set(config._modules))
         return config
 
-    def extend(self, node, config):
+    @staticmethod
+    def extend(node, config):
         if config and node:
-            below = node.children[0] if len(node.children) else None
+            below = node.children[0] if node.children else None
             config.parent = node
             if below:
                 below.parent = config
@@ -91,7 +97,7 @@ class ConfigNode(anytree.AnyNode):
     @property
     def last(self):
         descendants = self.root.descendants
-        return descendants[-1] if len(descendants) else self
+        return descendants[-1] if descendants else self
 
     def find(self, filename):
         return anytree.find_by_attr(self.root, name="filename", value=filename)
@@ -116,7 +122,7 @@ class ConfigNode(anytree.AnyNode):
     @staticmethod
     def from_file(configfile, parent=None, fail_silent=False):
         filename = os.path.relpath(str(configfile), os.getcwd())
-        LOGGER.debug("Parse configuration '{}'".format(filename))
+        LOGGER.debug("Parse configuration '%s'", filename)
         if fail_silent and not os.path.exists(filename):
             return None
 
@@ -126,12 +132,12 @@ class ConfigNode(anytree.AnyNode):
         config.filename = filename
         configpath = str(Path(config.filename).parent)
         # load extend strings
-        for e in xmltree.iterfind("extends"):
-            cpath = Path(ConfigNode._rel_path(e.text, configpath))
+        for node in xmltree.iterfind("extends"):
+            cpath = Path(ConfigNode._rel_path(node.text, configpath))
             if cpath.exists():
                 ConfigNode.from_file(str(cpath), config)
             else:
-                config._extends[config.filename].append(e.text)
+                config._extends[config.filename].append(node.text)
 
         # Load cachefolder
         cache_node = xmltree.find("repositories/cache")
@@ -166,7 +172,8 @@ class ConfigNode(anytree.AnyNode):
         try:
             xmlroot = lxml.etree.parse(str(configfile))
 
-            xmlschema = lxml.etree.fromstring(pkgutil.get_data('lbuild', 'resources/configuration.xsd'))
+            xmlschema = lxml.etree.fromstring(
+                pkgutil.get_data('lbuild', 'resources/configuration.xsd'))
             schema = lxml.etree.XMLSchema(xmlschema)
             schema.assertValid(xmlroot)
 
@@ -177,8 +184,10 @@ class ConfigNode(anytree.AnyNode):
                 lxml.etree.XMLSyntaxError,
                 lxml.etree.XMLSchemaParseError,
                 lxml.etree.XIncludeError) as error:
-            raise LbuildException("While parsing '{}': {}".format(
-                                  error.error_log.last_error.filename, error))
+            # lxml.etree has the used exception, but pylint is not able to detect them:
+            # pylint: disable=no-member
+            raise LbuildException("While parsing '{}': {}"
+                                  .format(error.error_log.last_error.filename, error))
         return xmltree
 
     @staticmethod
@@ -193,24 +202,30 @@ class ConfigNode(anytree.AnyNode):
         Convert XML to a Python dictionary according to
         http://www.xml.com/pub/a/2006/05/31/converting-between-xml-and-json.html
         """
-        d = {xmltree.tag: {} if xmltree.attrib else None}
+        root_dict = {xmltree.tag: {} if xmltree.attrib else None}
+
         children = []
-        for c in xmltree:
-            children.append(c)
+        for node in xmltree:
+            children.append(node)
+
         if children:
             dd = collections.defaultdict(list)
-            for dc in [ConfigNode.to_dict(c) for c in  children]:
-                for k, v in dc.items():
-                    dd[k].append(v)
-            d = {xmltree.tag: {k:v[0] if len(v) == 1 else v for k, v in dd.items()}}
+            for dc in [ConfigNode.to_dict(node) for node in children]:
+                for key, value in dc.items():
+                    dd[key].append(value)
+            root_dict = {xmltree.tag: {key: value[0] if len(value) == 1 else value
+                                       for key, value in dd.items()}}
+
         if xmltree.attrib:
-            d[xmltree.tag].update(('@' + k, v) for k, v in xmltree.attrib.items())
+            root_dict[xmltree.tag].update(
+                ('@' + key, value) for key, value in xmltree.attrib.items())
+
         if xmltree.text:
             text = xmltree.text.strip()
             if children or xmltree.attrib:
                 if text:
-                    d[xmltree.tag]['#text'] = text
+                    root_dict[xmltree.tag]['#text'] = text
             else:
-                d[xmltree.tag] = text
-        return d
+                root_dict[xmltree.tag] = text
 
+        return root_dict

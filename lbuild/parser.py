@@ -18,19 +18,19 @@ import lbuild.environment
 
 from .exception import LbuildException
 from .exception import LbuildBuildException
-from .exception import LbuildOptionFormatException
 
-from .node import BaseNode, NameResolver
+from .node import BaseNode
 from .config import ConfigNode
 from .facade import BuildLogFacade
 
 from . import repository
 from . import utils
-from . import config
 
 LOGGER = logging.getLogger('lbuild.parser')
 
+
 class Runner:
+
     def __init__(self, node, env):
         self.node = node
         self.env = env
@@ -48,6 +48,7 @@ class Runner:
 
 
 class Parser(BaseNode):
+
     def __init__(self, config=None):
         BaseNode.__init__(self, "lbuild", BaseNode.Type.PARSER)
         self._config = config if config else ConfigNode()
@@ -82,8 +83,8 @@ class Parser(BaseNode):
             # flatten configuration and collect repositories
             self._config_flat = self._config.flatten()
             repofiles = (repofiles | set(self._config_flat.repositories)) - parsed
-            if not (len(repofiles) + len(parsed)):
-                LOGGER.error("\n" + str(self._config.render()))
+            if not len(repofiles) + len(parsed):
+                LOGGER.error("\n%s", self._config.render())
                 raise LbuildException("No repositories loaded!")
             parsed |= repofiles
 
@@ -92,7 +93,7 @@ class Parser(BaseNode):
                 config_map.update(self.parse_repository(repofile)._config_map)
 
             # nothing more to extend
-            if not len(self._config_flat._extends):
+            if not self._config_flat._extends:
                 break
 
             for filename, aliases in self._config_flat._extends.items():
@@ -100,12 +101,14 @@ class Parser(BaseNode):
                 for alias in aliases:
                     if alias not in config_map:
                         raise LbuildException("Configuration alias '{}' not found in any map! "
-                                              "Available aliases: '{}'".format(alias, "', '".join(config_map)))
+                                              "Available aliases: '{}'"
+                                              .format(alias,
+                                                      "', '".join(config_map)))
                     self._config.extend(node, ConfigNode.from_file(config_map[alias]))
                 del node._extends[filename]
 
-        self._update_format();
-        LOGGER.info("\n" + str(self._config.render()))
+        self._update_format()
+        LOGGER.info("\n%s", self._config.render())
         return self._config_flat
 
     def parse_repository(self, repofilename: str) -> repository.Repository:
@@ -116,8 +119,9 @@ class Parser(BaseNode):
         structure.
         """
         repo = repository.Repository.parse_repository(repofilename)
-        if repo.name in [c.name for c in self.children]:
-            raise LbuildException("Repository name '{}' is ambiguous. Name must be unique.".format(repo.name))
+        if repo.name in [_cw.name for _cw in self.children]:
+            raise LbuildException("Repository name '{}' is ambiguous. Name must be unique."
+                                  .format(repo.name))
         repo.parent = self
 
         return repo
@@ -125,23 +129,25 @@ class Parser(BaseNode):
     def merge_repository_options(self):
         # only deal with repo options that contain one `:`
         resolver = self.option_resolver
-        for name, value in {n:v for n,v in self.config.options.items() if n.count(":") == 1}.items():
+        for name, value in {n: v for n, v in self.config.options.items()
+                            if n.count(":") == 1}.items():
             try:
                 resolver[name].value = value
-            except LbuildException as e:
-                raise LbuildException("Failed to merge repository options!\n" + str(e))
+            except LbuildException as error:
+                raise LbuildException("Failed to merge repository options!\n{}".format(error))
 
     def prepare_repositories(self):
         undefined = self._undefined_repo_options()
-        if len(undefined):
+        if undefined:
             raise LbuildException("Unknown values for options '{}'. Please provide a value in the "
-                                  "configuration file or on the command line.".format("', '".join(undefined)))
+                                  "configuration file or on the command line."
+                                  .format("', '".join(undefined)))
         modules = []
         for repo in self._findall(BaseNode.Type.REPOSITORY):
             modules.extend(repo.prepare())
 
         modules = lbuild.module.build_modules(modules)
-        if len(modules) == 0:
+        if not modules:
             raise LbuildBuildException("No module found with the selected repository options!")
 
         self._resolve_dependencies(ignore_failure=True)
@@ -151,11 +157,12 @@ class Parser(BaseNode):
     def merge_module_options(self):
         # only deal with repo options that contain one `:`
         resolver = self.option_resolver
-        for name, value in {n:v for n,v in self.config.options.items() if n.count(":") > 1}.items():
+        for name, value in {n: v for n, v in self.config.options.items()
+                            if n.count(":") > 1}.items():
             try:
                 resolver[name].value = value
-            except LbuildException as e:
-                raise LbuildException("Failed to merge module options!\n" + str(e))
+            except LbuildException as error:
+                raise LbuildException("Failed to merge module options!\n{}".format(error))
 
     def resolve_dependencies(self, requested_modules, depth=sys.maxsize):
         # map the dependency names to the node objects
@@ -177,8 +184,8 @@ class Parser(BaseNode):
         """
         selected_modules = requested_modules.copy()
 
-        LOGGER.info("Selected modules: {}".format(
-                    ", ".join(sorted([module.fullname for module in selected_modules]))))
+        LOGGER.info("Selected modules: %s",
+                    ", ".join(sorted([module.fullname for module in selected_modules])))
 
         current = selected_modules
         while depth > 0:
@@ -186,7 +193,7 @@ class Parser(BaseNode):
             for module in current:
                 for dependency in module.dependencies:
                     if dependency not in selected_modules and dependency not in additional:
-                        LOGGER.debug("Add dependency: " + dependency.fullname)
+                        LOGGER.debug("Add dependency: %s", dependency.fullname)
                         additional.append(dependency)
             if not additional:
                 # Abort if no new dependencies are being found
@@ -201,7 +208,7 @@ class Parser(BaseNode):
             if module._available:
                 module._selected = module in selected_modules
 
-        self._update();
+        self._update()
 
         return selected_modules
 
@@ -215,7 +222,7 @@ class Parser(BaseNode):
         return self.find_any(queries, self.Type.MODULE)
 
     def find_all(self, queries):
-        return [node for queries in utils.listify(queries) for node in self.find_any(queries)]
+        return [node for q in utils.listify(queries) for node in self.find_any(q)]
 
     def find_any(self, queries, types=None):
         nodes = set()
@@ -246,11 +253,11 @@ class Parser(BaseNode):
 
     @staticmethod
     def build_modules(build_modules, buildlog):
-        if not len(build_modules):
+        if not build_modules:
             raise LbuildException("No modules selected, aborting!")
 
         groups = collections.defaultdict(list)
-        for node in (build_modules + list(set(m.repository for m in build_modules))):
+        for node in build_modules + list(set(m.repository for m in build_modules)):
             env = lbuild.environment.Environment(node, buildlog)
             groups[node.depth].append(Runner(node, env))
 
@@ -267,7 +274,7 @@ class Parser(BaseNode):
                 except lbuild.exception.LbuildValidateException as error:
                     exceptions.append(error)
 
-        if len(exceptions) > 0:
+        if exceptions:
             raise lbuild.exception.LbuildAggregateException(exceptions)
 
         # Cannot build with these settings, just pre_build
@@ -287,4 +294,3 @@ class Parser(BaseNode):
 
             for runner in group:
                 runner.post_build(buildlog)
-
