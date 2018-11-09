@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #
 # Copyright (c) 2018, Niklas Hauser
+# Copyright (c) 2018, Fabian Greif
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -9,7 +10,9 @@
 
 import lbuild.utils
 
+
 class BaseNodePrepareFacade:
+
     def __init__(self, node):
         self._node = node
 
@@ -31,9 +34,12 @@ class BaseNodePrepareFacade:
 
 
 class BaseNodeInitFacade(BaseNodePrepareFacade):
+
     def __init__(self, node):
         BaseNodePrepareFacade.__init__(self, node)
 
+    # Disable warnings caused by property setters which are not properly recognised by pylint
+    # pylint: disable=no-member
     @BaseNodePrepareFacade.name.setter
     def name(self, value):
         self._node.name = value
@@ -53,6 +59,7 @@ class BaseNodeInitFacade(BaseNodePrepareFacade):
 
 
 class RepositoryInitFacade(BaseNodeInitFacade):
+
     def __init__(self, repository):
         BaseNodeInitFacade.__init__(self, repository)
 
@@ -70,6 +77,7 @@ class RepositoryInitFacade(BaseNodeInitFacade):
 
 
 class RepositoryPrepareFacade(BaseNodePrepareFacade):
+
     def __init__(self, repository):
         BaseNodePrepareFacade.__init__(self, repository)
 
@@ -88,6 +96,7 @@ class RepositoryPrepareFacade(BaseNodePrepareFacade):
 
 
 class ModulePrepareFacade(BaseNodePrepareFacade):
+
     def __init__(self, module):
         BaseNodePrepareFacade.__init__(self, module)
 
@@ -106,8 +115,9 @@ class ModulePrepareFacade(BaseNodePrepareFacade):
 
 
 class ModuleInitFacade(BaseNodeInitFacade):
+
     def __init__(self, module):
-        BaseNodePrepareFacade.__init__(self, module)
+        BaseNodeInitFacade.__init__(self, module)
 
     @property
     def parent(self):
@@ -122,6 +132,7 @@ class ModuleInitFacade(BaseNodeInitFacade):
 
 
 class EnvironmentValidateFacade:
+
     def __init__(self, env):
         self._env = env
 
@@ -147,6 +158,7 @@ class EnvironmentValidateFacade:
 
 
 class EnvironmentPostBuildFacade(EnvironmentValidateFacade):
+
     def __init__(self, env):
         EnvironmentValidateFacade.__init__(self, env)
 
@@ -204,6 +216,7 @@ class EnvironmentPostBuildFacade(EnvironmentValidateFacade):
 
 
 class EnvironmentBuildFacade(EnvironmentPostBuildFacade):
+
     def __init__(self, env):
         EnvironmentPostBuildFacade.__init__(self, env)
 
@@ -220,6 +233,7 @@ class EnvironmentBuildFacade(EnvironmentPostBuildFacade):
 
 
 class BuildLogOperationFacade:
+
     def __init__(self, operation):
         self._operation = operation
 
@@ -232,8 +246,10 @@ class BuildLogOperationFacade:
 
 
 class BuildLogFacade:
+
     def __init__(self, buildlog):
         self._buildlog = buildlog
+
         self.__metadata = buildlog.metadata
         self.__repo_metadata = buildlog.repo_metadata
         self.__module_metadata = buildlog.module_metadata

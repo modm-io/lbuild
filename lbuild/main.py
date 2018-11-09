@@ -13,12 +13,9 @@ import os
 import sys
 import argparse
 import textwrap
-import colorful
 import traceback
 
-import lbuild.parser
 import lbuild.logger
-import lbuild.module
 import lbuild.vcs.common
 from lbuild.format import format_option_short_description
 
@@ -31,11 +28,13 @@ class InitAction:
     config_required = True
 
     def register(self, argument_parser):
-        parser = argument_parser.add_parser("init",
+        parser = argument_parser.add_parser(
+            "init",
             help="Load remote repositories into the cache folder.")
         parser.set_defaults(execute_action=self.perform)
 
-    def perform(self, args, builder):
+    @staticmethod
+    def perform(_, builder):
         lbuild.vcs.common.initialize(builder.config)
         return ""
 
@@ -44,11 +43,13 @@ class UpdateAction:
     config_required = True
 
     def register(self, argument_parser):
-        parser = argument_parser.add_parser("update",
+        parser = argument_parser.add_parser(
+            "update",
             help="Update the content of remote repositories in the cache folder.")
         parser.set_defaults(execute_action=self.perform)
 
-    def perform(self, args, builder):
+    @staticmethod
+    def perform(_, builder):
         lbuild.vcs.common.update(builder.config)
         return ""
 
@@ -56,11 +57,17 @@ class UpdateAction:
 class ManipulationActionBase:
     """
     Base class for actions that interact directly with the parser repositories.
+
+    All subclasses must implement a `perform` function.
     """
+    # pylint: disable=too-few-public-methods
     config_required = True
 
     def load_repositories(self, args, builder):
         builder.load(args.repositories)
+
+        # Implemented by the subclasses, therefore not known to pylint
+        # pylint: disable=no-member
         return self.perform(args, builder)
 
 
@@ -68,24 +75,29 @@ class DiscoverAction(ManipulationActionBase):
     config_required = False
 
     def register(self, argument_parser):
-        parser = argument_parser.add_parser("discover",
+        parser = argument_parser.add_parser(
+            "discover",
             help="Render the available repository tree with modules and options. "
                  "You may need to provide options to see the entire tree!")
-        parser.add_argument("-n", "--name",
+        parser.add_argument(
+            "-n",
+            "--name",
             dest="names",
             type=str,
             action="append",
             default=[],
             help="Select a specific repository, module or option.")
-        parser.add_argument("--values",
+        parser.add_argument(
+            "--values",
             dest="values",
             action="store_true",
             default=False,
             help="Display option values, instead of description")
         parser.set_defaults(execute_action=self.load_repositories)
 
-    def perform(self, args, builder):
-        if len(args.names):
+    @staticmethod
+    def perform(args, builder):
+        if args.names:
             ostream = []
             for node in builder.parser.find_all(args.names):
                 if args.values and node.type == node.Type.OPTION:
@@ -101,10 +113,13 @@ class DiscoverOptionsAction(ManipulationActionBase):
     config_required = False
 
     def register(self, argument_parser):
-        parser = argument_parser.add_parser("discover-options",
+        parser = argument_parser.add_parser(
+            "discover-options",
             help="Display all known option names, current values, allowed inputs and "
                  "short descriptions.")
-        parser.add_argument("-n", "--name",
+        parser.add_argument(
+            "-n",
+            "--name",
             dest="names",
             type=str,
             action="append",
@@ -112,9 +127,11 @@ class DiscoverOptionsAction(ManipulationActionBase):
             help="Select a specific repository or module.")
         parser.set_defaults(execute_action=self.load_repositories)
 
-    def perform(self, args, builder):
-        names = args.names if len(args.names) else ["*", ":**"]
-        nodes = builder.parser.find_any(names, (builder.parser.Type.MODULE, builder.parser.Type.REPOSITORY))
+    @staticmethod
+    def perform(args, builder):
+        names = args.names if args.names else ["*", ":**"]
+        nodes = builder.parser.find_any(names, (builder.parser.Type.MODULE,
+                                                builder.parser.Type.REPOSITORY))
         options = [o for n in nodes for o in n.options]
 
         ostream = []
@@ -132,9 +149,12 @@ class ValidateAction(ManipulationActionBase):
     config_required = False
 
     def register(self, argument_parser):
-        parser = argument_parser.add_parser("validate",
+        parser = argument_parser.add_parser(
+            "validate",
             help="Validate the library configuration and data inputs with the given options.")
-        parser.add_argument("-m", "--module",
+        parser.add_argument(
+            "-m",
+            "--module",
             dest="modules",
             type=str,
             action="append",
@@ -142,7 +162,8 @@ class ValidateAction(ManipulationActionBase):
             help="Select a specific module.")
         parser.set_defaults(execute_action=self.load_repositories)
 
-    def perform(self, args, builder):
+    @staticmethod
+    def perform(args, builder):
         builder.validate(args.modules)
         return "Library configuration valid."
 
@@ -151,20 +172,25 @@ class BuildAction(ManipulationActionBase):
     config_required = False
 
     def register(self, argument_parser):
-        parser = argument_parser.add_parser("build",
+        parser = argument_parser.add_parser(
+            "build",
             help="Generate the library source code blob with the given options.")
-        parser.add_argument("-m", "--module",
+        parser.add_argument(
+            "-m",
+            "--module",
             dest="modules",
             type=str,
             action="append",
             default=[],
             help="Select a specific module.")
-        parser.add_argument("--simulate",
+        parser.add_argument(
+            "--simulate",
             dest="simulate",
             action="store_true",
             default=False,
             help="Build, but do not write any files. Prints out all generated file names.")
-        parser.add_argument("--no-log",
+        parser.add_argument(
+            "--no-log",
             dest="buildlog",
             action="store_false",
             default=True,
@@ -173,18 +199,20 @@ class BuildAction(ManipulationActionBase):
                  "the file.")
         parser.set_defaults(execute_action=self.load_repositories)
 
-    def perform(self, args, builder):
+    @staticmethod
+    def perform(args, builder):
         buildlog = builder.build(args.path, args.modules, simulate=args.simulate)
 
         if args.simulate:
             ostream = []
-            for op in buildlog.operations:
-                ostream.append(op.local_filename_out())
+            for operation in buildlog.operations:
+                ostream.append(operation.local_filename_out())
             return "\n".join(sorted(ostream))
-        elif args.buildlog:
+
+        if args.buildlog:
             configfilename = args.config
             logfilename = configfilename + ".log"
-            buildlog._log("lbuild", "buildlog.xml.in", logfilename)
+            buildlog.log_unsafe("lbuild", "buildlog.xml.in", logfilename)
             with open(logfilename, "wb") as logfile:
                 logfile.write(buildlog.to_xml(to_string=True, path=os.getcwd()))
 
@@ -195,15 +223,18 @@ class CleanAction(ManipulationActionBase):
     config_required = False
 
     def register(self, argument_parser):
-        parser = argument_parser.add_parser("clean",
+        parser = argument_parser.add_parser(
+            "clean",
             help="Remove previously generated files.")
-        parser.add_argument("--buildlog",
+        parser.add_argument(
+            "--buildlog",
             dest="buildlog",
             default="project.xml.log",
             help="Use the given buildlog to identify the files to remove.")
         parser.set_defaults(execute_action=self.perform)
 
-    def perform(self, args, builder):
+    @staticmethod
+    def perform(args, builder):
         ostream = []
         if os.path.exists(args.buildlog):
             with open(args.buildlog, "rb") as logfile:
@@ -219,14 +250,14 @@ class CleanAction(ManipulationActionBase):
             dirs.add(os.path.dirname(filename))
             try:
                 os.remove(filename)
-            except Exception as e:
+            except OSError:
                 pass
 
-        dirs = sorted(list(dirs), key=lambda d: -d.count("/"))
-        for di in dirs:
+        dirs = sorted(list(dirs), key=lambda d: d.count("/"), reverse=True)
+        for directory in dirs:
             try:
-                os.removedirs(di)
-            except Exception as e:
+                os.removedirs(directory)
+            except OSError:
                 pass
 
         return "\n".join(ostream)
@@ -236,15 +267,20 @@ class DependenciesAction(ManipulationActionBase):
     config_required = False
 
     def register(self, argument_parser):
-        parser = argument_parser.add_parser("dependencies",
+        parser = argument_parser.add_parser(
+            "dependencies",
             help="Generate a grahpviz representation of the module dependencies.")
-        parser.add_argument("-m", "--module",
+        parser.add_argument(
+            "-m",
+            "--module",
             dest="modules",
             type=str,
             action="append",
             default=[],
             help="Select specific modules.")
-        parser.add_argument("-n", "--depth",
+        parser.add_argument(
+            "-n",
+            "--depth",
             dest="depth",
             type=int,
             default=sys.maxsize,
@@ -253,9 +289,10 @@ class DependenciesAction(ManipulationActionBase):
                  "anyways.")
         parser.set_defaults(execute_action=self.load_repositories)
 
-    def perform(self, args, builder):
+    @staticmethod
+    def perform(args, builder):
         selected_modules = args.modules + builder.parser.config.modules
-        if not len(selected_modules):
+        if not selected_modules:
             selected_modules = [":**"]
         dot_file = lbuild.builder.dependency.graphviz(builder,
                                                       selected_modules,
@@ -272,7 +309,9 @@ def prepare_argument_parser():
     """
     argument_parser = argparse.ArgumentParser(
         description='Build source code libraries from modules.')
-    argument_parser.add_argument('-r', '--repository',
+    argument_parser.add_argument(
+        '-r',
+        '--repository',
         metavar="REPO",
         dest='repositories',
         action='append',
@@ -280,17 +319,23 @@ def prepare_argument_parser():
         help="Repository file(s) which should be available for the current library. "
              "The loading of repository files from a VCS is only supported through "
              "the library configuration file.")
-    argument_parser.add_argument('-c', '--config',
+    argument_parser.add_argument(
+        '-c',
+        '--config',
         dest='config',
         default='project.xml',
         help="Project configuration file. "
              "Specifies the required repositories, modules and options "
              "(default: '%(default)s').")
-    argument_parser.add_argument('-p', '--path',
+    argument_parser.add_argument(
+        '-p',
+        '--path',
         dest='path',
         default='.',
         help="Path in which the library will be generated (default: '%(default)s').")
-    argument_parser.add_argument('-D', '--option',
+    argument_parser.add_argument(
+        '-D',
+        '--option',
         metavar='OPTION',
         dest='options',
         action='append',
@@ -299,21 +344,26 @@ def prepare_argument_parser():
         help="Additional options. Options given here will be merged with options "
              "from the configuration file and will overwrite the configuration "
              "file definitions.")
-    argument_parser.add_argument('-v', '--verbose',
+    argument_parser.add_argument(
+        '-v',
+        '--verbose',
         action='count',
         default=0,
         dest='verbose')
-    argument_parser.add_argument("--plain",
+    argument_parser.add_argument(
+        "--plain",
         dest="plain",
         action="store_true",
         default=not sys.stdout.isatty(),
         help="Disable styled output, only output plain ASCII.")
-    argument_parser.add_argument('--version',
+    argument_parser.add_argument(
+        '--version',
         action='version',
         version='%(prog)s {}'.format(__version__),
         help="Print the lbuild version number and exit.")
 
-    subparsers = argument_parser.add_subparsers(title="Actions",
+    subparsers = argument_parser.add_subparsers(
+        title="Actions",
         dest="action")
 
     actions = [

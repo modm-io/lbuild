@@ -13,14 +13,12 @@ import os
 import sys
 import enum
 import unittest
-import re
 
 # Hack to support the usage of `coverage`
 sys.path.append(os.path.abspath("."))
 
 import lbuild.option
 from lbuild.repository import Repository
-from lbuild.module import Module
 
 
 class OptionTest(unittest.TestCase):
@@ -30,8 +28,11 @@ class OptionTest(unittest.TestCase):
         module = lbuild.module.ModuleInit(self.repo, "filename")
         module.name = "module"
         module.available = True
+
         self.module = lbuild.module.build_modules([module])[0]
-        lbuild.format.plain = True
+
+        # Disable advanced formatting for a console and use the plain output
+        lbuild.format.PLAIN = True
 
     def test_should_provide_string_representation_for_base_option(self):
         option = lbuild.option.Option("test", "description", "value")
@@ -108,8 +109,10 @@ class OptionTest(unittest.TestCase):
 
         def set_below():
             option.value = -1
+
         def set_above():
             option.value = 1000
+
         def set_text():
             option.value = "hello"
 
@@ -128,6 +131,7 @@ class OptionTest(unittest.TestCase):
                                                               minimum=-10, maximum=-100))
 
     def test_should_be_constructable_from_enum(self):
+
         class TestEnum(enum.Enum):
             value1 = 1
             value2 = 2
@@ -139,6 +143,7 @@ class OptionTest(unittest.TestCase):
         self.assertEqual(1, option.value)
 
     def test_should_be_constructable_from_enum_set(self):
+
         class TestEnum(enum.Enum):
             value1 = 1
             value2 = 2
@@ -216,7 +221,7 @@ class OptionTest(unittest.TestCase):
                                          "description",
                                          default=range(5, 9),
                                          enumeration=range(1, 21))
-        self.assertEqual([5,6,7,8], option.value)
+        self.assertEqual([5, 6, 7, 8], option.value)
 
     def test_should_be_constructable_from_set(self):
         option = lbuild.option.EnumerationOption("test",
@@ -228,9 +233,9 @@ class OptionTest(unittest.TestCase):
     def test_should_be_constructable_from_set_set(self):
         option = lbuild.option.SetOption("test",
                                          "description",
-                                         default=set(range(5,9)),
+                                         default=set(range(5, 9)),
                                          enumeration=set(range(1, 21)))
-        self.assertEqual(set([5,6,7,8]), set(option.value))
+        self.assertEqual(set([5, 6, 7, 8]), set(option.value))
 
     def test_should_format_boolean_option(self):
         option = lbuild.option.BooleanOption("test",
@@ -241,18 +246,19 @@ class OptionTest(unittest.TestCase):
         self.assertIn("True in [True, False]", output, "Output")
 
     def test_should_format_numeric_option(self):
+
         def construct(minimum=None, maximum=None, default=None):
             option = lbuild.option.NumericOption("test", "description", minimum, maximum, default)
             return str(lbuild.format.format_option_value_description(option))
 
         self.assertIn("REQUIRED in [-Inf ... +Inf]", construct())
-        self.assertIn("REQUIRED in [-1 ... +Inf]",   construct(minimum=-1))
-        self.assertIn("REQUIRED in [-Inf ... -1]",   construct(maximum=-1))
-        self.assertIn("0 in [-Inf .. 0 .. +Inf]",    construct(default=0))
-        self.assertIn("0 in [0 ... +Inf]",           construct(minimum=0, default=0))
-        self.assertIn("0 in [-Inf ... 0]",           construct(maximum=0, default=0))
-        self.assertIn("1 in [0 .. 1 .. 100]",        construct(minimum=0, maximum=100, default=1))
-        self.assertIn("1 in [-100 .. -1 .. -10]",    construct(minimum=-100, maximum=-10, default=-1))
+        self.assertIn("REQUIRED in [-1 ... +Inf]", construct(minimum=-1))
+        self.assertIn("REQUIRED in [-Inf ... -1]", construct(maximum=-1))
+        self.assertIn("0 in [-Inf .. 0 .. +Inf]", construct(default=0))
+        self.assertIn("0 in [0 ... +Inf]", construct(minimum=0, default=0))
+        self.assertIn("0 in [-Inf ... 0]", construct(maximum=0, default=0))
+        self.assertIn("1 in [0 .. 1 .. 100]", construct(minimum=0, maximum=100, default=1))
+        self.assertIn("1 in [-100 .. -1 .. -10]", construct(minimum=-100, maximum=-10, default=-1))
 
     def test_should_format_enumeration_option(self):
         enum_list = [
@@ -291,6 +297,7 @@ class OptionTest(unittest.TestCase):
 
         output = str(lbuild.format.format_option_value_description(option))
         self.assertIn("REQUIRED in [value1, value2]", output)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -10,6 +10,7 @@
 
 import logging.config
 
+
 def configure_logger(verbosity):
     """
     Load the default configuration for the logger.

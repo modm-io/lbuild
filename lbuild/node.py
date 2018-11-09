@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 #
 # Copyright (c) 2015-2018, Fabian Greif
@@ -10,26 +9,27 @@
 # governing this code.
 
 import os
-import sys
 import enum
-import shutil
-import anytree
 import logging
-import textwrap
-import colorful
 import itertools
 
-import lbuild.filter
-from lbuild.format import format_node, format_description, format_short_description
+import anytree
 
-from .exception import LbuildException, LbuildAttributeException
+import lbuild.filter
+import lbuild.format
+
+from .exception import LbuildException
 
 LOGGER = logging.getLogger('lbuild.node')
 
 
-def load_functions_from_file(repository, filename: str, required, optional=None, local={}):
+def load_functions_from_file(repository, filename: str, required, optional=None, local=None):
     try:
         localpath = os.path.dirname(os.path.realpath(filename))
+
+        if not local:
+            local = {}
+
         local.update({
             # The localpath(...) function can be used to create
             # a local path form the folder of the repository file.
@@ -47,8 +47,9 @@ def load_functions_from_file(repository, filename: str, required, optional=None,
         })
 
         # LOGGER.debug("Parse filename '%s'", filename)
-        local = lbuild.utils.with_forward_exception(repository,
-                lambda: lbuild.utils.load_module_from_file(filename, local))
+        local = lbuild.utils.with_forward_exception(
+            repository,
+            lambda: lbuild.utils.load_module_from_file(filename, local))
         functions = lbuild.utils.get_global_functions(local, required, optional)
         return functions
 
@@ -57,46 +58,60 @@ def load_functions_from_file(repository, filename: str, required, optional=None,
 
     except KeyError as error:
         raise LbuildException("Invalid repository configuration file '{}':\n"
-                            " {}: {}".format(filename,
-                                             error.__class__.__name__,
-                                             error))
+                              " {}: {}".format(filename,
+                                               error.__class__.__name__,
+                                               error))
+
 
 class RelocatePath:
+
     def __init__(self, basepath):
         self.basepath = basepath
+
     def __call__(self, *args):
         return os.path.join(self.basepath, *args)
 
+
 class LocalFileReader:
+
     def __init__(self, basepath, filename):
         self.basepath = basepath
         self.filename = filename
+
     def __str__(self):
         return self.read()
+
     def read(self):
         with open(os.path.join(self.basepath, self.filename), encoding="utf-8") as file:
             return file.read()
 
+
 class LocalFileReaderFactory:
+
     def __init__(self, basepath):
         self.basepath = basepath
+
     def __call__(self, filename):
         return LocalFileReader(self.basepath, filename)
 
+
 class Renderer(anytree.RenderTree):
+
     def __init__(self, node):
         anytree.RenderTree.__init__(self, node,
                                     style=anytree.ContRoundStyle(),
                                     childiter=self.childsort)
 
     def __str__(self):
-        lines = [pre + format_node(node, pre) for pre, _, node in self]
+        lines = [pre + lbuild.format.format_node(node, pre) for pre, _, node in self]
         return "\n".join(lines)
 
     @staticmethod
     def childsort(items):
+
         def sorting(item):
             return (item._type != BaseNode.Type.OPTION, item.name)
+
         return sorted(items, key=sorting)
 
 
@@ -116,26 +131,30 @@ class NameResolver:
         node = self._node._resolve_partial_max(key, max_results=1)[0]
         if not node._available:
             raise LbuildException("{} '{}' is not available!".format(self._str, node.fullname))
+
         if self._selected and not node._selected:
             raise LbuildException("{} '{}' is not selected!".format(self._str, node.fullname))
+
         if node._type != self._type:
-            raise LbuildException("'{}' is of type '{}', but searching for '{}'!".format(
-                                  node.fullname, node._type.name.lower(), self._str))
+            raise LbuildException("'{}' is of type '{}', but searching for '{}'!"
+                                  .format(node.fullname, node._type.name.lower(), self._str))
+
         if node._type == BaseNode.Type.OPTION and self._value_resolver:
             return node.value
+
         return node
 
     def get(self, key, default=None):
         try:
             return self.__getitem__(key)
-        except:
+        except LbuildException:
             return default
 
     def __contains__(self, key):
         try:
             _ = self.__getitem__(key)
             return True
-        except:
+        except LbuildException:
             return False
 
     def __len__(self):
@@ -173,8 +192,8 @@ class BaseNode(anytree.Node):
         # All _update()-able traits: defaults
         self._available_default = True
         self._selected_default = True
-        self._format_description_default = format_description
-        self._format_short_description_default = format_short_description
+        self._format_description_default = lbuild.format.format_description
+        self._format_short_description_default = lbuild.format.format_short_description
         self._context_default = None
 
         # All _update()-able traits: defaults
@@ -183,16 +202,16 @@ class BaseNode(anytree.Node):
         self._format_description = self._format_description_default
         self._format_short_description = self._format_short_description_default
         self._context = self._context_default
-        self._ignore_patterns = lbuild.utils.default_ignore_patterns
-        self._filters = lbuild.filter.default_filters
+        self._ignore_patterns = lbuild.utils.DEFAULT_IGNORE_PATTERNS
+        self._filters = lbuild.filter.DEFAULT_FILTERS
 
     @property
     def format_description(self):
-        return format_description
+        return lbuild.format.format_description
 
     @property
     def format_short_description(self):
-        return format_short_description
+        return lbuild.format.format_short_description
 
     @property
     def _filepath(self):
@@ -224,7 +243,9 @@ class BaseNode(anytree.Node):
     def dependencies(self):
         if not self._dependencies_resolved:
             self._resolve_dependencies()
-        return self._dependencies + [d for o in self.all_options(depth=2) for d in o._dependencies if d != self]
+        return self._dependencies + [d for o in self.all_options(depth=2)
+                                     for d in o._dependencies
+                                     if d != self]
 
     @property
     def description(self):
@@ -270,7 +291,7 @@ class BaseNode(anytree.Node):
         The module options only influence the build process but not the
         selection and dependencies of modules.
         """
-        if option.name in [c.name for c in self.children]:
+        if option.name in [_cw.name for _cw in self.children]:
             raise LbuildException("Option name '{}' is already defined".format(option.name))
         option._repository = self._repository
         option.parent = self
@@ -284,11 +305,13 @@ class BaseNode(anytree.Node):
         return self._findall(self.Type.MODULE, depth, selected)
 
     def _findall(self, node_type, depth=None, selected=True):
-        def _filter(n):
-            return (n._type == node_type and
-                    n._available and
-                    (n._selected or not selected) and
-                    n is not self)
+
+        def _filter(node):
+            return (node._type == node_type and
+                    node._available and
+                    (node._selected or not selected) and
+                    node is not self)
+
         return anytree.search.findall(self, maxlevel=depth, filter_=_filter)
 
     def _resolve_dependencies(self, ignore_failure=False):
@@ -305,10 +328,10 @@ class BaseNode(anytree.Node):
         for dependency_name in dependency_names:
             try:
                 dependencies.add(self.module_resolver[dependency_name])
-            except LbuildException as b:
+            except LbuildException as error:
                 if not ignore_failure:
-                    raise LbuildException("Cannot resolve dependencies!\n" + str(b))
-                LOGGER.debug("ignoring", dependency_name)
+                    raise LbuildException("Cannot resolve dependencies!\n{}".format(error))
+                LOGGER.debug("ignoring %s", dependency_name)
         self._dependencies = list(dependencies)
         self._dependencies_resolved = not ignore_failure
         for child in self.children:
@@ -319,44 +342,50 @@ class BaseNode(anytree.Node):
         if nodes is None:
             raise LbuildException("Unknown '{}' in module '{}'!".format(query, self.fullname))
         if len(nodes) > max_results:
-            raise LbuildException("Ambiguous '{}'! Found: '{}'".format(query, "', '".join([n.fullname for n in nodes])))
+            raise LbuildException("Ambiguous '{}'! Found: '{}'"
+                                  .format(query,
+                                          "', '".join([n.fullname for n in nodes])))
         return nodes
 
-    def _resolve_partial(self, query, default=[]):
+    def _resolve_partial(self, query, default):
         # Try if query result is unique
         resolved1 = self._resolve(query, [])
         if len(resolved1) == 1:
             return resolved1
+
         # no result or ambiguous? try to fill the partial name
         query = ":".join(self._fill_partial_name(["" if p == "*" else p for p in query.split(":")]))
         resolved2 = self._resolve(query, [])
-        if not (len(resolved2) or len(resolved1)):
-            return default # neither found anything
-        if not len(resolved2):
+
+        if not (resolved2 or resolved1):
+            # neither found anything
+            return default
+        if not resolved2:
             return resolved1
-        if not len(resolved1):
+        if not resolved1:
             return resolved2
+
         # return the less ambiguous one
         return resolved2 if len(resolved2) < len(resolved1) else resolved1
 
-    def _resolve(self, query, default=[]):
+    def _resolve(self, query, default):
         # :*   -> non-recursive
         # :**  -> recursive
-        query = ":".join(p if len(p) else "*" for p in query.strip().split(":"))
+        query = ":".join(p if p else "*" for p in query.strip().split(":"))
         try:
             qquery = ":" + query.replace(":**", "")
             if self.root._type == self.Type.PARSER:
                 qquery = ":lbuild" + qquery
-            # print("\n\n\n", qquery)
             found_modules = BaseNode.resolver.glob(self.root, qquery)
         except (anytree.resolver.ChildResolverError, anytree.resolver.ResolverError):
             return default
+
         modules = found_modules
         if query.endswith(":**"):
             for module in found_modules:
                 modules.extend(module.descendants)
-        # print("\n\n\n", modules)
-        return modules if len(modules) else default
+
+        return modules if modules else default
 
     def _fill_partial_name(self, partial_name):
         """
@@ -387,7 +416,7 @@ class BaseNode(anytree.Node):
     def _update_attribute(self, attr):
         self_attr = getattr(self, attr, "unknown")
         parent_attr = getattr(self.parent, attr, "unknown")
-        if self_attr is "unknown" or parent_attr is "unknown":
+        if self_attr == "unknown" or parent_attr == "unknown":
             raise LbuildException("Cannot update non-existant attribute '{}'!".format(attr))
 
         if isinstance(self_attr, list):
@@ -398,16 +427,16 @@ class BaseNode(anytree.Node):
             return
 
         default = getattr(self, attr + "_default")
-        if ((parent_attr is not default) and (self_attr is default)):
+        if (parent_attr != default) and (self_attr == default):
             setattr(self, attr, parent_attr)
-            # print("Updating {}.{} = {} -> {}.".format(self.fullname, attr, self_attr, parent_attr))
 
     def _update_format(self):
         if self.parent:
             self._update_attribute("_format_description")
             self._update_attribute("_format_short_description")
-        for c in self.children:
-            c._update_format()
+
+        for child in self.children:
+            child._update_format()
 
     def _update(self):
         if self.parent:
@@ -418,8 +447,9 @@ class BaseNode(anytree.Node):
             self._update_attribute("_ignore_patterns")
             self._update_attribute("_filters")
             self._update_attribute("_context")
-        for c in self.children:
-            c._update()
+
+        for child in self.children:
+            child._update()
 
     def _relocate_relative_path(self, path):
         """

@@ -8,6 +8,8 @@
 # 2-clause BSD license. See the file `LICENSE.txt` for the full license
 # governing this code.
 
+from lbuild.main import __version__
+
 from . import builder
 from . import buildlog
 from . import environment
@@ -18,8 +20,6 @@ from . import parser
 from . import repository
 from . import utils
 from . import main
-
-from lbuild.main import __version__
 
 __all__ = [
     'builder',

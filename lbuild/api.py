@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright (c) 2018, Niklas Hauser
+# Copyright (c) 2018, Fabian Greif
 # All Rights Reserved.
 #
 # The file is part of the lbuild project and is released under the
@@ -16,7 +17,9 @@ from lbuild.parser import Parser
 from lbuild.config import ConfigNode
 from lbuild.utils import listify, listrify
 
+
 class Builder:
+
     def __init__(self, cwd=None, config=None, options=None):
         if cwd is None:
             cwd = os.getcwd() if config is None else os.path.dirname(config)
@@ -38,7 +41,7 @@ class Builder:
         self.parser.merge_repository_options()
 
     def _load_modules(self):
-        if not len(self.parser._undefined_repo_options()):
+        if not self.parser._undefined_repo_options():
             self.parser.prepare_repositories()
             self.parser.merge_module_options()
 
@@ -46,7 +49,6 @@ class Builder:
         self.parser.config.modules.extend(listify(modules))
         selected_modules = self.parser.find_modules(self.parser.config.modules)
         return self.parser.resolve_dependencies(selected_modules)
-
 
     def load(self, repos=None):
         self._load_repositories(repos)
@@ -59,6 +61,6 @@ class Builder:
     def build(self, outpath, modules=None, simulate=False):
         build_modules = self._filter_modules(modules)
         buildlog = BuildLog(outpath)
-        lbuild.environment.simulate = simulate
+        lbuild.environment.SIMULATE = simulate
         self.parser.build_modules(build_modules, buildlog)
         return buildlog

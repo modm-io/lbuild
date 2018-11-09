@@ -41,8 +41,10 @@ def _parse_vcs(config: lbuild.config.ConfigNode,
             elif action == Action.update:
                 repo.update()
 
+
 def initialize(configfile):
     _parse_vcs(configfile, Action.init)
+
 
 def update(configfile):
     _parse_vcs(configfile, Action.update)

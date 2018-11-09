@@ -23,8 +23,8 @@ def indent(text, spaces=0, first_line=False):
     prefix = ' ' * spaces
     if first_line:
         return textwrap.indent(text, prefix)
-    else:
-        return ("\n" + prefix).join(text.splitlines())
+
+    return ("\n" + prefix).join(text.splitlines())
 
 
 def pad(text, min_width, tabwidth=4):
@@ -55,7 +55,8 @@ def values(dictionaries, key):
 def listify(*node):
     return lbuild.utils.listify(*node)
 
-default_filters = {
+
+DEFAULT_FILTERS = {
     'lbuild.wordwrap': wordwrap,
     'lbuild.indent': indent,
     'lbuild.pad': pad,

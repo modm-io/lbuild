@@ -12,7 +12,6 @@
 import re
 import collections
 
-import lbuild.parser
 
 def get_valid_identifier(name):
     return re.sub(r'\W|^(?=\d)', '_', name)
