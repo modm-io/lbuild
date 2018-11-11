@@ -74,7 +74,7 @@ class LocalFileReader:
     def __str__(self):
         return self.read()
     def read(self):
-        with open(os.path.join(self.basepath, self.filename)) as file:
+        with open(os.path.join(self.basepath, self.filename), encoding="utf-8") as file:
             return file.read()
 
 class LocalFileReaderFactory:

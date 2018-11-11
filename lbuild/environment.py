@@ -317,7 +317,7 @@ class Environment:
             if not os.path.exists(os.path.dirname(outfile_name)):
                 os.makedirs(os.path.dirname(outfile_name), exist_ok=True)
 
-            with open(outfile_name, 'w') as outfile:
+            with open(outfile_name, 'w', encoding="utf-8") as outfile:
                 outfile.write(output)
 
         endtime = time.time()
