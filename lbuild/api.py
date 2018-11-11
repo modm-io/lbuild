@@ -9,6 +9,10 @@
 # 2-clause BSD license. See the file `LICENSE.txt` for the full license
 # governing this code.
 
+"""
+API for scripts extending/querring lbuild directly.
+"""
+
 import os
 
 import lbuild.environment
@@ -21,6 +25,17 @@ from lbuild.utils import listify, listrify
 class Builder:
 
     def __init__(self, cwd=None, config=None, options=None):
+        """
+        Build instance to invoke lbuild methods.
+
+        Args:
+            cwd -- Current working directly. If specified lbuild will
+                search for a configuration file in this folder.
+            config -- Path to a configuration file. If specified options,
+                repositories etc. will be loaded from there.
+            options -- List of options. Must be list of strings in a
+                "key=value" format.
+        """
         if cwd is None:
             cwd = os.getcwd() if config is None else os.path.dirname(config)
         self.cwd = cwd
@@ -51,14 +66,46 @@ class Builder:
         return self.parser.resolve_dependencies(selected_modules)
 
     def load(self, repos=None):
+        """
+        Load a list of repositories.
+
+        Args:
+            repos -- List of paths to repostiory files. Modules found
+                in these repositores will be available later.
+        """
         self._load_repositories(repos)
         self._load_modules()
 
     def validate(self, modules=None):
+        """
+        Generate and validate the required set of modules.
+
+        Checks that the modules could be build, but does not generate
+        the output.
+
+        Args:
+            modules -- List of modules which should be validated.
+
+        Returns:
+            List of modules required for the given modules (after
+            resolving dependencies).
+        """
         build_modules = self._filter_modules(modules)
         self.parser.validate_modules(build_modules)
+        return build_modules
 
     def build(self, outpath, modules=None, simulate=False):
+        """
+        Build the given set of modules.
+
+        Args:
+            outpath -- Path where the output fill generated.
+            modules -- List of modules which should be built. This list
+                is combined with modules given in the configuration
+                files.
+            simulate -- If set to True simulate the build process. In
+                that case no output will be generated.
+        """
         build_modules = self._filter_modules(modules)
         buildlog = BuildLog(outpath)
         lbuild.environment.SIMULATE = simulate
