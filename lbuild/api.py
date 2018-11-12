@@ -10,7 +10,7 @@
 # governing this code.
 
 """
-API for scripts extending/querring lbuild directly.
+API for scripts extending/querying lbuild directly.
 """
 
 import os
@@ -40,7 +40,11 @@ class Builder:
             cwd = os.getcwd() if config is None else os.path.dirname(config)
         self.cwd = cwd
 
-        config = ConfigNode.from_file(config, fail_silent=True)
+        try:
+            config = ConfigNode.from_file(config)
+        except lbuild.exception.LbuildException:
+            config = None
+
         file_config = ConfigNode.from_filesystem(cwd)
         if config:
             config.extend_last(file_config)
@@ -80,7 +84,7 @@ class Builder:
         """
         Generate and validate the required set of modules.
 
-        Checks that the modules could be build, but does not generate
+        Checks that the modules could be built, but does not generate
         the output.
 
         Args:
@@ -99,7 +103,7 @@ class Builder:
         Build the given set of modules.
 
         Args:
-            outpath -- Path where the output fill generated.
+            outpath -- Path where the output will be generated.
             modules -- List of modules which should be built. This list
                 is combined with modules given in the configuration
                 files.

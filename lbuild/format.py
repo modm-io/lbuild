@@ -19,7 +19,7 @@ import lbuild.filter
 PLAIN = not sys.stdout.isatty()
 WIDTH = shutil.get_terminal_size((100, 0)).columns
 
-COLOR_SCHEMA = {
+COLOR_SCHEME = {
     "parser": None,
     "repository": None,
     "option": None,
@@ -39,7 +39,7 @@ def ansi_escape(obj=None):
     if isinstance(obj, lbuild.node.BaseNode):
         name = obj.type.name.lower()
 
-    col = COLOR_SCHEMA.get(name, "nope")
+    col = COLOR_SCHEME.get(name, "nope")
     if col == "nope":
         try:
             col = getattr(colorful, name)
