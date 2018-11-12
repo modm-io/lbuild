@@ -291,7 +291,7 @@ class BaseNode(anytree.Node):
         The module options only influence the build process but not the
         selection and dependencies of modules.
         """
-        if option.name in [_cw.name for _cw in self.children]:
+        if option.name in [child.name for child in self.children]:
             raise LbuildException("Option name '{}' is already defined".format(option.name))
         option._repository = self._repository
         option.parent = self

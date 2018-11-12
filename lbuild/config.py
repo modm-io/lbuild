@@ -28,7 +28,7 @@ DEFAULT_CACHE_FOLDER = ".lbuild_cache"
 class ConfigNode(anytree.AnyNode):
 
     def __init__(self, parent=None):
-        anytree.AnyNode.__init__(self, parent, filename=Path())
+        anytree.AnyNode.__init__(self, parent)
 
         self._cachefolder = Path()
         self._extends = collections.defaultdict(list)
@@ -37,7 +37,7 @@ class ConfigNode(anytree.AnyNode):
         self._modules = []
         self._options = {}
 
-        self.filename = None
+        self.filename = Path()
 
     @property
     def repositories(self):
@@ -109,6 +109,19 @@ class ConfigNode(anytree.AnyNode):
 
     @staticmethod
     def from_filesystem(startpath=None, name="lbuild.xml"):
+        """
+        Iterate upwards from the starting folder to find a
+        configuration file.
+
+        Args:
+            startpath -- Start point for the iteration. If omitted
+                the current working directory is used.
+            name -- Filename of the configuation file.
+
+        Returns:
+            `ConfigNode` if a configuration file was found, `None`
+            otherwise.
+        """
         startpath = Path(startpath) if startpath else Path.cwd()
         while startpath.exists():
             config = (startpath / name)
@@ -120,11 +133,21 @@ class ConfigNode(anytree.AnyNode):
         return None
 
     @staticmethod
-    def from_file(configfile, parent=None, fail_silent=False):
+    def from_file(configfile, parent=None):
+        """
+        Load configuration from an XML configuration file.
+
+        Args:
+            configfile -- Path to the configuration file.
+            parent -- Exisiting configuration which will be updated.
+
+        Returns:
+            Configuration as a `ConfigNode` instance.
+        """
         filename = os.path.relpath(str(configfile), os.getcwd())
         LOGGER.debug("Parse configuration '%s'", filename)
-        if fail_silent and not os.path.exists(filename):
-            return None
+        if not os.path.exists(filename):
+            raise LbuildException("No configuration file found!")
 
         xmltree = ConfigNode._load_and_verify(configfile)
 
