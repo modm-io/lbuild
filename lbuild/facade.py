@@ -178,14 +178,14 @@ class EnvironmentPostBuildFacade(EnvironmentValidateFacade):
     def substitutions(self, substitutions):
         self._env.substitutions = substitutions
 
-    def copy(self, src, dest=None, ignore=None):
-        self._env.copy(src, dest, ignore)
+    def copy(self, src, dest=None, ignore=None, metadata=None):
+        self._env.copy(src, dest, ignore, metadata)
 
-    def extract(self, archive, src=None, dest=None, ignore=None):
-        self._env.extract(archive, src, dest, ignore)
+    def extract(self, archive, src=None, dest=None, ignore=None, metadata=None):
+        self._env.extract(archive, src, dest, ignore, metadata)
 
-    def template(self, src, dest=None, substitutions=None, filters=None):
-        self._env.template(src, dest, substitutions, filters)
+    def template(self, src, dest=None, substitutions=None, filters=None, metadata=None):
+        self._env.template(src, dest, substitutions, filters, metadata)
 
     def generated_local_files(self, filterfunc=None):
         return self._env.generated_local_files(filterfunc)
@@ -253,6 +253,7 @@ class BuildLogFacade:
         self.__metadata = buildlog.metadata
         self.__repo_metadata = buildlog.repo_metadata
         self.__module_metadata = buildlog.module_metadata
+        self.__operation_metadata = buildlog.operation_metadata
 
     @property
     def outpath(self):
@@ -261,6 +262,10 @@ class BuildLogFacade:
     @property
     def metadata(self):
         return self.__metadata
+
+    @property
+    def operation_metadata(self):
+        return self.__operation_metadata
 
     @property
     def module_metadata(self):

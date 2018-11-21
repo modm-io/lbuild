@@ -31,9 +31,14 @@ class Operation:
     """
 
     def __init__(self, module_name, outpath, module_path,
-                 filename_in: str, filename_out: str, time=None):
+                 filename_in: str, filename_out: str, time=None, metadata=None):
         self.module_name = module_name
         self.time = time
+        self.metadata = collections.defaultdict(set)
+        if metadata:
+            for key, values in metadata.items():
+                for value in lbuild.utils.listify(values):
+                    self.metadata[key].add(value)
 
         self.outpath = abspath(outpath)
         self.inpath = abspath(module_path)
@@ -90,6 +95,7 @@ class BuildLog:
         for key, data in self._metadata.items():
             for value in data.values():
                 metadata[key] |= value
+
         for key in metadata:
             metadata[key] = sorted(list(metadata[key]))
         return metadata
@@ -100,6 +106,7 @@ class BuildLog:
         for key, data in self._metadata.items():
             for module, value in data.items():
                 metadata[key][module.split(":")[0]] |= value
+
         for key in metadata:
             for repo in metadata[key]:
                 metadata[key][repo] = sorted(list(metadata[key][repo]))
@@ -116,7 +123,19 @@ class BuildLog:
                 metadata[key][module] = sorted(list(metadata[key][module]))
         return metadata
 
-    def log(self, module, filename_in: str, filename_out: str, time=None):
+    @property
+    def operation_metadata(self):
+        metadata = collections.defaultdict(lambda: collections.defaultdict(set))
+        for operation in self.operations:
+            for key, values in operation.metadata.items():
+                metadata[key][operation.local_filename_out()] |= values
+
+        for key in metadata:
+            for filename in metadata[key]:
+                metadata[key][filename] = sorted(list(metadata[key][filename]))
+        return metadata
+
+    def log(self, module, filename_in: str, filename_out: str, time=None, metadata=None):
         """
         Log the generation of a file through a module.
 
@@ -140,7 +159,7 @@ class BuildLog:
             filename_out = join(self.outpath, filename_out)
         with self.__lock:
             operation = Operation(module.fullname, self.outpath, module._filepath,
-                                  filename_in, filename_out, time)
+                                  filename_in, filename_out, time, metadata)
             LOGGER.debug(str(operation))
 
             previous = self._build_files.get(filename_out, None)
@@ -156,7 +175,7 @@ class BuildLog:
 
         return operation
 
-    def log_unsafe(self, modulename, filename_in, filename_out, time=None):
+    def log_unsafe(self, modulename, filename_in, filename_out, time=None, metadata=None):
         """
         Log an lbuild internal operation.
 
@@ -166,7 +185,7 @@ class BuildLog:
             modulename: Full module name.
         """
         operation = Operation(modulename, self.outpath, self.outpath,
-                              filename_in, filename_out, time)
+                              filename_in, filename_out, time, metadata)
         with self.__lock:
             self._operations[modulename].append(operation)
 

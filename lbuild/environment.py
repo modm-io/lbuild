@@ -99,7 +99,7 @@ class Environment:
     def facade_post_build(self):
         return EnvironmentPostBuildFacade(self)
 
-    def extract(self, archive_path, src=None, dest=None, ignore=None):
+    def extract(self, archive_path, src=None, dest=None, ignore=None, metadata=None):
 
         def wrap_ignore(path, files):
             ignored = lbuild.utils.ignore_patterns(*self.__module._ignore_patterns)(path, files)
@@ -157,7 +157,7 @@ class Environment:
 
             def log_copy(src, dest, operation_time):
                 self.__buildlog.log(self.__module,
-                                    os.path.join(archive_path, src), dest, operation_time)
+                                    os.path.join(archive_path, src), dest, operation_time, metadata)
 
             if fn_isdir(src):
                 _copytree(log_copy, src, destpath, wrap_ignore,
@@ -171,7 +171,7 @@ class Environment:
                 total = endtime - starttime
                 log_copy(src, destpath, total)
 
-    def copy(self, src, dest=None, ignore=None):
+    def copy(self, src, dest=None, ignore=None, metadata=None):
         """
         Copy file or directory from the modulepath to the buildpath.
 
@@ -203,7 +203,7 @@ class Environment:
                                   "'{}'".format(srcrelpath))
 
         def log_copy(src, dest, operation_time):
-            self.__buildlog.log(self.__module, src, dest, operation_time)
+            self.__buildlog.log(self.__module, src, dest, operation_time, metadata)
 
         if os.path.isdir(srcpath):
             _copytree(log_copy,
@@ -260,7 +260,7 @@ class Environment:
             self.__reload_template_environment({})
         return self.__template_environment
 
-    def template(self, src, dest=None, substitutions=None, filters=None):
+    def template(self, src, dest=None, substitutions=None, filters=None, metadata=None):
         """
         Uses the Jinja2 template engine to generate files.
 
@@ -332,7 +332,7 @@ class Environment:
 
         endtime = time.time()
         total = endtime - starttime
-        self.__buildlog.log(self.__module, self.modulepath(src), outfile_name, total)
+        self.__buildlog.log(self.__module, self.modulepath(src), outfile_name, total, metadata)
 
     def modulepath(self, *path):
         """Relocate given path to the path of the module file."""
