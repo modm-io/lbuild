@@ -35,7 +35,7 @@ setup(
                         "jinja2",
                         "gitpython>=2.1.11",
                         "anytree>=2.4.3",
-                        "colorful<0.4.4"],
+                        "colorful==0.4.4"],
 
     extras_require = {
         "test": ["testfixtures", "coverage"],

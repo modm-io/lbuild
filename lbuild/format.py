@@ -66,8 +66,6 @@ class ColorWrapper:
         style = ansi_escape(name)
         if style is not None:
             if name in ["underlined", "bold"]:
-                if name == "underlined":
-                    name = "underline"
                 close = ansi_escape("no_" + name)
             else:
                 close = ansi_escape("close_fg_color")
