@@ -65,9 +65,7 @@ class ColorWrapper:
     def wrap(self, name):
         style = ansi_escape(name)
         if style is not None:
-            if name in ["underlined", "bold"]:
-                if name == "underlined":
-                    name = "underline"
+            if name in ["underline", "bold"]:
                 close = ansi_escape("no_" + name)
             else:
                 close = ansi_escape("close_fg_color")
@@ -145,7 +143,7 @@ _cw = ColorWrapper
 def format_option_name(node, fullname=True):
     line = _cw(node.fullname if fullname else node.name).wrap(node).wrap("bold")
     if not node.is_default():
-        line.wrap("underlined")
+        line.wrap("underline")
     return line
 
 
