@@ -1,11 +1,11 @@
 lxml
 jinja2
-anytree
-colorful
+anytree>=2.4.3
+colorful<0.4.4
 
 # Required for the tests
 testfixtures
 coverage
 
 # For the handling of external repositories
-gitpython
+gitpython>=2.1.11
