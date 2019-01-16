@@ -21,7 +21,7 @@ from lbuild.format import format_option_short_description
 
 from lbuild.api import Builder
 
-__version__ = '1.5.5'
+__version__ = '1.5.6'
 
 
 class InitAction:

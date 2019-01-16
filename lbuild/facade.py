@@ -271,6 +271,10 @@ class BuildLogFacade:
         return self.__repo_metadata
 
     @property
+    def repositories(self):
+        return self._buildlog.repositories
+
+    @property
     def modules(self):
         return self._buildlog.modules
 

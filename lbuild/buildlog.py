@@ -185,6 +185,10 @@ class BuildLog:
         return sorted(operations, key=lambda o: (o.module_name, o.filename_in, o.filename_out))
 
     @property
+    def repositories(self):
+        return list(set(m.split(":")[0] for m in self.modules))
+
+    @property
     def modules(self):
         with self.__lock:
             module_names = self._operations.keys()
