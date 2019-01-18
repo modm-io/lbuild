@@ -16,6 +16,9 @@ Projects using *lbuild*:
 
 - [modm generates a HAL for hundreds of embedded devices][modm] using *lbuild*
   and a data-driven code generation pipeline.
+- [OUTPOST - Open modUlar sofTware PlatfOrm for SpacecrafT][outpost] uses *lbuild*
+  to assemble an execution platform targeted at embedded systems running mission
+  critical software.
 
 The dedicated maintainer of *lbuild* is [@salkinium][salkinium].
 
@@ -763,6 +766,7 @@ it is therefore recommended to:
 
 
 [modm]: https://modm.io/how-modm-works
+[outpost]: https://github.com/DLR-RY/outpost-core
 [jinja2]: http://jinja.pocoo.org
 [python]: https://www.python.org
 [pypi]: https://pypi.org/project/lbuild
