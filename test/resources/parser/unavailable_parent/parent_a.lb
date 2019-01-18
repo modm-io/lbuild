@@ -1,0 +1,9 @@
+
+def init(module):
+	module.name = "parent_a"
+
+def prepare(module, options):
+	return False
+
+def build(env):
+	pass

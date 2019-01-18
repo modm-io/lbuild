@@ -32,11 +32,11 @@ class BuildLogTest(unittest.TestCase):
         module1a = lbuild.module.ModuleInit(self.repo, "/m1/a/module.lb")
         module1a.name = "module1a"
         module1a.parent = "repo:module1"
-        module1.available = True
+        module1a.available = True
 
         module2 = lbuild.module.ModuleInit(self.repo, "/m2/module.lb")
         module2.name = "module2"
-        module1.available = True
+        module2.available = True
 
         self.module1, self.module1a, self.module2 = \
             lbuild.module.build_modules([module1, module1a, module2])

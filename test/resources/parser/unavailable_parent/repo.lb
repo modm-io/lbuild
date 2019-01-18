@@ -1,0 +1,6 @@
+
+def init(repo):
+    repo.name = "unavailable_parent"
+
+def prepare(repo, options):
+    repo.find_modules_recursive(".", modulefile="*.lb", ignore="repo.lb")

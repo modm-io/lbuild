@@ -75,6 +75,26 @@ class ParserTest(unittest.TestCase):
         self.assertIn("repo2:module4:submodule1", repo.modules)
         self.assertIn("repo2:module4:submodule2", repo.modules)
 
+    def test_should_ignore_children_of_disabled_parents(self):
+        repo = self.parser.parse_repository(self._get_path("unavailable_parent/repo.lb"))
+        self.assertEqual(1, len(self.parser.repositories))
+        self.parser.merge_repository_options()
+        self.parser.prepare_repositories()
+
+        self.assertEqual(2, len(repo.modules))
+        # parent_a is unavailable, so should all children
+        self.assertNotIn("unavailable_parent:parent_a", repo.modules)
+        self.assertNotIn("unavailable_parent:child_a", repo.modules)
+        self.assertNotIn("unavailable_parent:subchild_a", repo.modules)
+
+        # parent_b is available, so is child_b2
+        self.assertIn("unavailable_parent:parent_b", repo.modules)
+        self.assertIn("unavailable_parent:parent_b:child_b2", repo.modules)
+        # However, child_b is unavailable and so should its children
+        self.assertNotIn("unavailable_parent:child_b", repo.modules)
+        self.assertNotIn("unavailable_parent:subchild_b", repo.modules)
+        self.assertNotIn("unavailable_parent:subsubchild_b", repo.modules)
+
     def test_repository_should_contain_options(self):
         repo = self.parser.parse_repository(self._get_path("repository_options/repo.lb"))
         options = self.parser.repo_options

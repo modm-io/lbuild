@@ -62,16 +62,30 @@ def load_module_from_object(repository, module_obj, filename=None, parent=None):
 def build_modules(initmodules):
     rmodules = {}
     modules = []
+    not_available = set()
     # First convert the modules into node objects
     for initmodule in initmodules:
-        module = Module(initmodule)
-        rmodules[module.fullname] = module
-        modules.append(module)
+        if initmodule.available:
+            module = Module(initmodule)
+            rmodules[module.fullname] = module
+            modules.append(module)
+        else:
+            not_available.add(initmodule.fullname)
 
     # then connect the entire tree
     for module in modules:
-        parent = ":".join(module.fullname.split(":")[:-1])
-        module.parent = rmodules[parent] if ":" in parent else module._repository
+        parent_name = ":".join(module.fullname.split(":")[:-1])
+        parent = rmodules.get(parent_name) if ":" in parent_name else module._repository
+        if parent:
+            module.parent = parent
+        elif parent_name in not_available:
+            # The parent module exists, but it is disabled and thus all its
+            # children modules are disabled as well.
+            module._available = False;
+            not_available.add(module.fullname)
+        else:
+            raise LbuildException("The parent '{}' for module '{}' cannot be found!"
+                                  .format(parent_name, module.fullname))
 
     # Now update the tree
     for module in modules:
@@ -118,20 +132,16 @@ class ModuleInit:
             self.parent = self.repository.name + ":" + self.parent
 
     def prepare(self):
-        is_available = lbuild.utils.with_forward_exception(
+        self.available = lbuild.utils.with_forward_exception(
             self,
             lambda: self.functions["prepare"](ModulePrepareFacade(self),
                                               self.repository.option_value_resolver))
 
-        available_modules = []
-        if is_available is None:
+        all_modules = [self]
+        if self.available is None:
             raise LbuildException("The prepare() function for module '{}' must "
                                   "return True or False."
                                   .format(self.name))
-        elif is_available:
-            available_modules.append(self)
-
-        self.available = is_available
 
         for submodule in self._submodules:
             if isinstance(submodule, ModuleBase):
@@ -144,9 +154,8 @@ class ModuleInit:
                                                 filename=os.path.join(self.filepath, submodule),
                                                 parent=self.fullname)
 
-            available_modules.extend(modules)
-
-        return available_modules
+            all_modules.extend(modules)
+        return all_modules
 
 
 class Module(BaseNode):

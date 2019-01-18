@@ -1,0 +1,10 @@
+
+def init(module):
+	module.parent = ":parent_a:child_a"
+	module.name = "subchild_a"
+
+def prepare(module, options):
+	return True
+
+def build(env):
+	pass
