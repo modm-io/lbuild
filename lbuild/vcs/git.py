@@ -47,18 +47,15 @@ class Repository:
             self.switch_to_commit(repo, self.commit)
         else:
             self.switch_to_branch(repo, self.branch)
-
-        for submodule in repo.submodules:
-            submodule.update(init=True, recursive=True)
+        repo.git.submodule('update', '--init', '--recursive')
 
     def update(self):
         repo = self.get_repository()
         LOGGER.debug("Pull from origin")
         origin = repo.remotes.origin
         origin.pull()
-
-        for submodule in repo.submodules:
-            submodule.update(recursive=True)
+        repo.git.submodule('sync')
+        repo.git.submodule('update', '--recursive')
 
     @staticmethod
     def switch_to_commit(repo, commit):
