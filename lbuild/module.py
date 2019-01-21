@@ -35,11 +35,7 @@ def load_module_from_file(repository, filename, parent=None):
         filename,
         required=['init', 'prepare', 'build'],
         optional=['pre_build', 'validate', 'post_build'],
-        local={
-            'Module': ModuleBase,
-            'PreBuildException': lbuild.exception.LbuildValidateException,
-            'ValidateException': lbuild.exception.LbuildValidateException,
-        })
+        local={'PreBuildException': lbuild.exception.LbuildValidateException})
 
     module.init()
     return module.prepare()

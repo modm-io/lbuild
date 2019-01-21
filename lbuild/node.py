@@ -18,7 +18,7 @@ import anytree
 import lbuild.filter
 import lbuild.format
 
-from .exception import LbuildException
+from .exception import LbuildException, LbuildValidateException
 
 LOGGER = logging.getLogger('lbuild.node')
 
@@ -37,6 +37,8 @@ def load_functions_from_file(repository, filename: str, required, optional=None,
             'repopath': RelocatePath(repository._filepath),
             'FileReader': LocalFileReaderFactory(localpath),
             'listify': lbuild.filter.listify,
+            'ValidateException': LbuildValidateException,
+            'Module': lbuild.module.ModuleBase,
             # 'ignore_patterns': shutil.ignore_patterns,
 
             'StringOption': lbuild.option.StringOption,

@@ -44,6 +44,8 @@ class Repository(BaseNode):
         # List of module filenames which are later transfered into
         # module objects
         self._module_files = []
+        # List of programatically added modules
+        self._submodules = []
 
     @property
     def modules(self):
@@ -55,7 +57,10 @@ class Repository(BaseNode):
 
         repo = Repository(repofilename)
         repo._functions = lbuild.node.load_functions_from_file(
-            repo, repofilename, required=['init', 'prepare'], optional=['build'])
+            repo,
+            repofilename,
+            required=['init', 'prepare'],
+            optional=['build'])
 
         # Execution init() function. In this function options are added.
         repo._functions['init'](RepositoryInitFacade(repo))
@@ -83,9 +88,18 @@ class Repository(BaseNode):
                                                self.option_value_resolver))
 
         modules = []
-        # Parse the modules inside this repository
+        # Parse the module files inside this repository
         for modulefile in self._module_files:
-            module = lbuild.module.load_module_from_file(self, modulefile)
+            module = lbuild.module.load_module_from_file(repository=self,
+                                                         filename=modulefile,
+                                                         parent=self.fullname)
+            modules.extend(module)
+        # Parse the module objects inside the repo file
+        for module in self._submodules:
+            module = lbuild.module.load_module_from_object(repository=self,
+                                                           module_obj=module,
+                                                           filename=self._filename,
+                                                           parent=self.fullname)
             modules.extend(module)
 
         return modules
@@ -125,13 +139,14 @@ class Repository(BaseNode):
         """
         modules = [lbuild.utils.listify(m) for m in modules]
         modules = [inner for outer in modules for inner in outer]
-        for file in modules:
-            file = self._relocate_relative_path(file)
-
-            if not os.path.isfile(file):
-                raise LbuildException("Module file not found '%s'" % file)
-
-            self._module_files.append(file)
+        for module in modules:
+            if isinstance(module, lbuild.module.ModuleBase):
+                self._submodules.append(module)
+            else:
+                module = self._relocate_relative_path(module)
+                if not os.path.isfile(module):
+                    raise LbuildException("Module file not found '%s'" % module)
+                self._module_files.append(module)
 
     def glob(self, pattern):
         pattern = os.path.abspath(self._relocate_relative_path(pattern))

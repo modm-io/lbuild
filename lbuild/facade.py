@@ -87,6 +87,9 @@ class RepositoryPrepareFacade(BaseNodePrepareFacade):
     def add_modules(self, *modules):
         self._node.add_modules(*modules)
 
+    def add_submodule(self, module):
+        self._node.add_modules(module)
+
     def glob(self, pattern):
         return self._node.glob(pattern)
 
@@ -106,6 +109,9 @@ class ModulePrepareFacade(BaseNodePrepareFacade):
 
     def add_option(self, option):
         self._node._options.append(option)
+
+    def add_modules(self, *modules):
+        self._node._submodules.extend(modules)
 
     def add_submodule(self, module):
         self._node._submodules.append(module)
