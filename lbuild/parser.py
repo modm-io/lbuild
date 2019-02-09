@@ -9,6 +9,7 @@
 # governing this code.
 
 import sys
+import os.path
 import random
 import logging
 import collections
@@ -75,7 +76,7 @@ class Parser(BaseNode):
         return {o.fullname:o for o in self.all_options() if o.depth > 2}
 
     def load_repositories(self, repofilenames=None):
-        repofiles = set(utils.listify(repofilenames))
+        repofiles = set(os.path.realpath(p) for p in utils.listify(repofilenames))
         parsed = set()
         config_map = {}
 
