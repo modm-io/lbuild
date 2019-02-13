@@ -157,7 +157,13 @@ class ConfigNode(anytree.AnyNode):
         # load extend strings
         for node in xmltree.iterfind("extends"):
             cpath = Path(ConfigNode._rel_path(node.text, configpath))
-            if cpath.exists():
+            # Some Windows versions don't like `:` in their path
+            path_exists = False
+            try:
+                path_exists = cpath.exists()
+            except OSError:
+                pass
+            if path_exists:
                 ConfigNode.from_file(str(cpath), config)
             else:
                 config._extends[config.filename].append(node.text)
