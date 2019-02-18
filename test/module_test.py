@@ -31,13 +31,13 @@ class ModuleTest(unittest.TestCase):
         module.available = True
         self.module, = lbuild.module.build_modules([module])
 
-        self.repo.add_option(Option("target", "", default="hosted"))
-        self.repo.add_option(NumericOption("foo", "", default=43))
+        self.repo.add_child(Option("target", "", default="hosted"))
+        self.repo.add_child(NumericOption("foo", "", default=43))
 
-        self.module.add_option(NumericOption("foo", "", default=456))
-        self.module.add_option(NumericOption("bar", "", default=768))
-        self.module.add_option(BooleanOption("xyz", "", default="Yes"))
-        self.module.add_option(Option("abc", "", default="Hello World!"))
+        self.module.add_child(NumericOption("foo", "", default=456))
+        self.module.add_child(NumericOption("bar", "", default=768))
+        self.module.add_child(BooleanOption("xyz", "", default="Yes"))
+        self.module.add_child(Option("abc", "", default="Hello World!"))
 
     def test_resolver_should_reject_invalid_names(self):
         resolver = self.module.module_resolver

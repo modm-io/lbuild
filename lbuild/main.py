@@ -93,10 +93,18 @@ class DiscoverAction(ManipulationActionBase):
             action="store_true",
             default=False,
             help="Display option values, instead of description")
+        parser.add_argument(
+            "--developer",
+            action="store_true",
+            default=False,
+            dest="show_developer_view",
+            help="Show module queries in tree view and descriptions.")
         parser.set_defaults(execute_action=self.load_repositories)
 
     @staticmethod
     def perform(args, builder):
+        if args.show_developer_view:
+            lbuild.format.SHOW_NODES.update(lbuild.node.BaseNode.Type)
         if args.names:
             ostream = []
             for node in builder.parser.find_all(args.names):

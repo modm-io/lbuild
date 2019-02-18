@@ -16,6 +16,7 @@ from . import environment
 from . import exception
 from . import module
 from . import option
+from . import query
 from . import parser
 from . import repository
 from . import utils
@@ -29,6 +30,7 @@ __all__ = [
     'facade',
     'module',
     'node',
+    'query',
     'option',
     'parser',
     'repository',

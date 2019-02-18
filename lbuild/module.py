@@ -107,6 +107,7 @@ class ModuleInit:
         self._options = []
         self._dependencies = []
         self._filters = {}
+        self._queries = []
 
     @property
     def fullname(self):
@@ -176,10 +177,8 @@ class Module(BaseNode):
         self._filters.update({"{}.{}".format(self._repository.name, name): func
                               for name, func in module._filters.items()})
 
-        # OptionNameResolver defined in the module configuration file. These
-        # options are configurable through the project configuration file.
-        for option in module._options:
-            self.add_option(option)
+        for child in (module._options + module._queries):
+            self.add_child(child)
 
         self.add_dependencies(*module._dependencies)
         if ":" in module.parent:

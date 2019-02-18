@@ -289,7 +289,7 @@ In the simplest case your project just `<extends>` this base config.
 ```
 
 
-### Files Configuration
+### Files
 
 *lbuild* properly imports the declared repository and modules files, so you can
 use everything that Python has to offer.
@@ -304,6 +304,7 @@ global functions and classes for use in all files:
 - `FileReader(path)`: reads the contents of a file and turns it into a string.
 - `listify(obj)`: turns obj into a list, maps `None` to empty list.
 - `{*}Option(...)`: classes for describing options, [see Options](#Options).
+- `{*}Query(...)`: classes for describing queries, [see Queries](#Queries).
 
 
 ### Repositories
@@ -475,6 +476,16 @@ def prepare(module, options):
     # See Options for more option types
     module.add_option(StringOption(name="option", default="world"))
 
+    def common_operation(args):
+        """
+        You can share any function with other modules.
+        This is useful to not have to duplicate code across module.lb files.
+        """
+        return args
+
+    # See Shared Objects for more object types
+    module.add_query(Query(name="shared_function", function=common_operation))
+
     # Make this module available
     return True
 
@@ -495,19 +506,27 @@ def validate(env):
     if env.has_option("repo:module:option") or env.has_module("repo:module"):
         env.log.info("Module option: '{}'".format(env["repo:module:option"]))
 
-    # You can also use incomplete queries, see Name Resolution
+    # Call shared functions from other modules with arguments
+    shared_function = env.query("repo:module:shared_function")
+    result = shared_function("argument")
+    # Or just precomputed properties without arguments
+    data = env.query("repo:module:shared_property")
+
+    # You may also use incomplete queries, see Name Resolution
     env.has_module(":module") # instead of repo:module
     env.has_option("::option") # repo:module:option
     # And use fnmatch queries
     # matches any module starting with `mod` and option starting with `name`.
     env.has_option(":mod*:name*")
+    env.has_query("::shared_*")
 
-    # You can raise a ValidationException if something is wrong
+    # Raise a ValidateException if something is wrong
     if defaulted_option + repo_option != "hello world":
-        raise ValidationException("Options are invalid because ...")
+        raise ValidateException("Options are invalid because ...")
 
     # If you do heavy computations here for validation, you can store the
     # data in a global variable and reuse this for the build step
+    global build_data
     build_data = defaulted_option * 2
 
 
@@ -604,6 +623,21 @@ Each option must have a unique name within their parent repository or module.
 If you do not provide a default value, the option is marked as REQUIRED and
 the project cannot be built without it.
 
+```python
+def prepare(module, options):
+    # Add option to module
+    option = Option(...)
+    module.add_option(option)
+
+def build(env):
+    # Check if options exist
+    exists = env.has_option(":module:option")
+    # Access option value or use default if option doesn't exist
+    value = env.get(":module:option", default="value")
+    # Access option values, this may raise an exception if option doesn't exist
+    value = env[":module:option"]
+```
+
 Options can have a dependency handler which is called when the project
 configuration is merged into the module options. It will give you the chosen
 input value and you can return a number of module dependencies.
@@ -698,6 +732,79 @@ The set is represented in the configuration as a comma separated list.
 <option name=":module:enumeration-option">value</option>
 <!-- Any set of enumeration values is allowed -->
 <option name=":module:set-option">value, 1, obj</option>
+```
+
+
+### Queries
+
+It is sometimes necessary to share code and data between *lbuild* modules,
+which can be difficult when they are split across files and repositories.
+Queries allow you to share functions and computed properties with other modules
+using the global name resolution system.
+
+```python
+def prepare(module, options):
+    # Add queries to module
+    query = Query(...)
+    module.add_query(query)
+
+def build(env):
+    exists = env.has_query(":module:query")
+    # Access query value or use default if query doesn't exist
+    data = env.query(":module:query", default="value")
+```
+
+**Note that queries must be stateless, since module build order is not
+guaranteed. You must enforce this property yourself.**
+
+
+#### Query
+
+This wraps any callable object into a query. By default the name is taken from
+the object's name, however, you may overwrite this.
+Note that when using a lambda function, you must provide a name.
+The description is taken from the objects docstring.
+
+```python
+def shared_function(args):
+    """
+    Describe what this query does.
+
+    :param args: what does it need?
+    :returns: what does it return?
+    """
+    return args
+
+query = Query(function=shared_function)
+query = Query(name="different_name",
+              function=shared_function)
+```
+
+
+#### EnvironmentQuery
+
+This query's result is computed only once on demand and then cached.
+
+The data must be returned from a factory function that gets passed the
+environment of the first module to access this query.
+The return value is then cached for all further accesses.
+This allows you to lazily compute your shared properties only once and only if
+accessed by any module.
+
+```python
+def factory(env):
+    """
+    Describe what this query is about, but don't document the `env` argument.
+
+    :returns: an immutable object
+    """
+    # You can read the build environment, but cannot modify it here
+    value = env["repo:module:option"]
+    # This return data is cached, so this function is only called once.
+    return {"key": value}
+
+query = EnvironmentQuery(name="name",
+                         factory=factory)
 ```
 
 

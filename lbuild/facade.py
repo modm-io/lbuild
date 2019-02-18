@@ -64,7 +64,7 @@ class RepositoryInitFacade(BaseNodeInitFacade):
         BaseNodeInitFacade.__init__(self, repository)
 
     def add_option(self, option):
-        self._node.add_option(option)
+        self._node.add_child(option)
 
     def add_ignore_patterns(self, *patterns):
         self._node._ignore_patterns.extend(patterns)
@@ -110,6 +110,9 @@ class ModulePrepareFacade(BaseNodePrepareFacade):
     def add_option(self, option):
         self._node._options.append(option)
 
+    def add_query(self, query):
+        self._node._queries.append(query)
+
     def add_modules(self, *modules):
         self._node._submodules.extend(modules)
 
@@ -147,16 +150,22 @@ class EnvironmentValidateFacade:
         return self._env.log
 
     def has_option(self, key):
-        return self._env.has_option(key)
+        return key in self._env.options
 
     def has_module(self, key):
-        return self._env.has_module(key)
+        return key in self._env.modules
+
+    def has_query(self, key):
+        return key in self._env.queries
 
     def get(self, key, default=None):
-        return self._env.get_option(key, default)
+        return self._env.options.get(key, default)
+
+    def query(self, key, default=None):
+        return self._env.queries.get(key, default)
 
     def __getitem__(self, key):
-        return self._env.__getitem__(key)
+        return self._env.options[key]
 
     # deprecated
     def get_option(self, key, default=None):

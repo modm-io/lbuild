@@ -32,7 +32,6 @@ class Option(BaseNode):
         self._output = None
         self._default = None
         self._set_default(default)
-        self.__hash = None
 
     def _set_default(self, default):
         if default is not None:
@@ -71,7 +70,7 @@ class Option(BaseNode):
         return self._input == self._default
 
     def format_value(self):
-        value = str(self._input).strip(" \n")
+        value = str(self._input).strip()
         if value == "":
             value = '""'
         return value
@@ -80,27 +79,6 @@ class Option(BaseNode):
         if self.is_default() or self._default == "":
             return _cw("String")
         return _cw("String: ") + _cw(str(self._default)).wrap("underlined")
-
-    def __hash__(self):
-        if self.__hash is None:
-            srepr = str(self.fullname)
-            srepr += str(self._input)
-            srepr += str(self.values)
-            srepr += str(self._description)
-            self.__hash = hash(srepr)
-        return self.__hash
-
-    def __eq__(self, other):
-        return hash(self) == hash(other)
-
-    def __lt__(self, other):
-        return self.fullname.__lt__(other.fullname)
-
-    def __str__(self):
-        return self.fullname
-
-    def __repr__(self):
-        return "{}({})".format(self.__class__.__name__, self.fullname)
 
 
 class StringOption(Option):

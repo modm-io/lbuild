@@ -69,6 +69,7 @@ class Environment:
 
     def __init__(self, module, buildlog):
         self.options = module.option_value_resolver
+        self.queries = module.query_resolver(self.facade_validate)
         self.modules = module.module_resolver
         self.__module = module
         self.__modulepath = module._filepath
@@ -386,41 +387,6 @@ class Environment:
         post-build step to generate additional files/data.
         """
         self.__buildlog.add_metadata(self.__module, key, values)
-
-    def has_option(self, key):
-        """Query whether an option exists."""
-        try:
-            _ = self.options[key]
-            return True
-        except LbuildException:
-            return False
-
-    def has_module(self, key):
-        """Query whether a module exists."""
-        try:
-            _ = self.modules[key]
-            return True
-        except LbuildException:
-            return False
-
-    def get_option(self, key, default=None):
-        """
-        Get an option value.
-
-        Returns a user configurable default value if the option is not found.
-        """
-        try:
-            return self.options[key]
-        except LbuildException:
-            return default
-
-    def __getitem__(self, key):
-        """
-        Get an option value.
-
-        Raises an exception if the option is not found.
-        """
-        return self.options[key]
 
     def __repr__(self):
         return repr(self.options)

@@ -43,7 +43,7 @@ class OptionTest(unittest.TestCase):
 
     def test_should_provide_string_representation_for_base_option_with_repo(self):
         option = lbuild.option.Option("test", "description", "value")
-        self.repo.add_option(option)
+        self.repo.add_child(option)
 
         output = option.description
         self.assertTrue(output.startswith(">> repo:test"))
@@ -51,7 +51,7 @@ class OptionTest(unittest.TestCase):
 
     def test_should_provide_string_representation_for_base_option_full(self):
         option = lbuild.option.Option("test", "description", "value")
-        self.module.add_option(option)
+        self.module.add_child(option)
 
         output = option.description
         self.assertTrue(output.startswith(">> repo:module:test"))

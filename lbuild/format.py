@@ -11,6 +11,7 @@
 import os
 import sys
 import shutil
+import anytree
 import colorful
 
 import lbuild.node
@@ -18,11 +19,17 @@ import lbuild.filter
 
 PLAIN = not sys.stdout.isatty()
 WIDTH = shutil.get_terminal_size((100, 0)).columns
+SHOW_NODES = {
+    lbuild.node.BaseNode.Type.REPOSITORY,
+    lbuild.node.BaseNode.Type.MODULE,
+    lbuild.node.BaseNode.Type.OPTION,
+}
 
 COLOR_SCHEME = {
     "parser": None,
     "repository": None,
     "option": None,
+    "query": None,
     "module": None,
     "description": None,
     "short_description": None,
@@ -183,7 +190,7 @@ def format_option_short_description(node):
 
 
 def format_description(node, description):
-    output = [_cw(">> ") + _cw(node.fullname).wrap(node).wrap("bold"), _cw("")]
+    output = [_cw(">> ") + _cw(node.description_name).wrap(node).wrap("bold"), _cw("")]
     if description:
         output += [_cw(description.strip(" \n"))]
 
@@ -192,24 +199,35 @@ def format_description(node, description):
         values = format_option_values(node, offset=9, single_line=False)
         output += [_cw(""), _cw("Value: ") + value, _cw("Inputs: [") + values + _cw("]")]
 
-    for option in node.options:
-        output.extend([_cw("\n"), _cw(">>") + _cw(option.description)])
+    children = []
+    # Print every node except the submodule, due to obvious recursion
+    for ntype in (SHOW_NODES - {lbuild.node.BaseNode.Type.MODULE}):
+        children += node._findall(ntype, depth=2)
+
+    for child in sorted(children, key=lambda c: (c.type, c.name)):
+        output.extend([_cw("\n"), _cw(">>") + _cw(child.description)])
+
     return "\n".join(map(str, output))
 
 
 def format_short_description(_, description):
-    lines = description.strip(" \n").splitlines() + [""]
+    lines = description.strip().splitlines() + [""]
     return lines[0].strip()
 
 
 def format_node(node, _):
-    context = _cw(node.fullname)
+    context = _cw(node.name)
     if node._type == node.Type.REPOSITORY:
         context = _cw(node.name + " @ " + os.path.relpath(node._filepath, os.getcwd()))
     elif node._type == node.Type.OPTION:
         context = format_option_name(node, fullname=False)
+    if node._type == node.Type.MODULE:
+        context = _cw(node.fullname).wrap(node)
 
     descr = (_cw(node.__class__.__name__ + "(") + context + _cw(")")).wrap(node)
+
+    if node._type == node.Type.QUERY:
+        descr = descr.wrap("bold")
 
     offset = node.depth * 4
     if node._type == node.Type.OPTION:
@@ -220,3 +238,24 @@ def format_node(node, _):
         descr += _cw("   " + node.short_description)
 
     return descr.limit(offset)
+
+
+def format_node_tree(node):
+    class Renderer(anytree.RenderTree):
+        def __init__(self, node):
+            anytree.RenderTree.__init__(self, node,
+                                        style=anytree.ContRoundStyle(),
+                                        childiter=self.childiter)
+
+        @staticmethod
+        def childiter(nodes):
+            nodes = [n for n in nodes if n.type in SHOW_NODES]
+            return sorted(nodes, key=lambda node: (node._type, node.name))
+
+        def __str__(self):
+            lines = []
+            for pre, _, node in self:
+                lines.append(pre + format_node(node, pre))
+            return "\n".join(lines)
+
+    return str(Renderer(node))

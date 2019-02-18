@@ -27,7 +27,7 @@ def load_functions_from_file(repository, filename: str, required, optional=None,
     try:
         localpath = os.path.dirname(os.path.realpath(filename))
 
-        if not local:
+        if local is None:
             local = {}
 
         local.update({
@@ -40,6 +40,9 @@ def load_functions_from_file(repository, filename: str, required, optional=None,
             'ValidateException': LbuildValidateException,
             'Module': lbuild.module.ModuleBase,
             # 'ignore_patterns': shutil.ignore_patterns,
+
+            'Query': lbuild.query.Query,
+            'EnvironmentQuery': lbuild.query.EnvironmentQuery,
 
             'StringOption': lbuild.option.StringOption,
             'BooleanOption': lbuild.option.BooleanOption,
@@ -97,36 +100,16 @@ class LocalFileReaderFactory:
         return LocalFileReader(self.basepath, filename)
 
 
-class Renderer(anytree.RenderTree):
-
-    def __init__(self, node):
-        anytree.RenderTree.__init__(self, node,
-                                    style=anytree.ContRoundStyle(),
-                                    childiter=self.childsort)
-
-    def __str__(self):
-        lines = [pre + lbuild.format.format_node(node, pre) for pre, _, node in self]
-        return "\n".join(lines)
-
-    @staticmethod
-    def childsort(items):
-
-        def sorting(item):
-            return (item._type != BaseNode.Type.OPTION, item.name)
-
-        return sorted(items, key=sorting)
-
-
 class NameResolver:
     """
     Name resolver for node.
     """
 
-    def __init__(self, node, nodetype, selected=True):
+    def __init__(self, node, nodetype, selected=True, returner=None):
         self._node = node
         self._type = nodetype
         self._str = nodetype.name.lower()
-        self._value_resolver = False
+        self._returner = (lambda n: n) if returner is None else returner
         self._selected = selected
 
     def __getitem__(self, key: str):
@@ -141,10 +124,7 @@ class NameResolver:
             raise LbuildException("'{}' is of type '{}', but searching for '{}'!"
                                   .format(node.fullname, node._type.name.lower(), self._str))
 
-        if node._type == BaseNode.Type.OPTION and self._value_resolver:
-            return node.value
-
-        return node
+        return self._returner(node)
 
     def get(self, key, default=None):
         try:
@@ -170,11 +150,14 @@ class BaseNode(anytree.Node):
     separator = ":"
     resolver = anytree.Resolver()
 
-    class Type(enum.Enum):
+    @enum.unique
+    class Type(enum.IntEnum):
+        """This order is used to sort the children for the tree view"""
         PARSER = 1
         REPOSITORY = 2
-        MODULE = 3
-        OPTION = 4
+        OPTION = 3
+        QUERY = 4
+        MODULE = 5
 
     def __init__(self, name, node_type, repository=None):
         anytree.Node.__init__(self, name)
@@ -196,14 +179,12 @@ class BaseNode(anytree.Node):
         self._selected_default = True
         self._format_description_default = lbuild.format.format_description
         self._format_short_description_default = lbuild.format.format_short_description
-        self._context_default = None
 
         # All _update()-able traits: defaults
         self._available = (self._type != BaseNode.Type.MODULE)
         self._selected = True
         self._format_description = self._format_description_default
         self._format_short_description = self._format_short_description_default
-        self._context = self._context_default
         self._ignore_patterns = lbuild.utils.DEFAULT_IGNORE_PATTERNS
         self._filters = lbuild.filter.DEFAULT_FILTERS
 
@@ -226,8 +207,16 @@ class BaseNode(anytree.Node):
         return self._fullname
 
     @property
+    def description_name(self):
+        return self.fullname
+
+    @property
     def type(self):
         return self._type
+
+    @property
+    def queries(self):
+        return self.all_queries(depth=2)
 
     @property
     def options(self):
@@ -263,20 +252,23 @@ class BaseNode(anytree.Node):
 
     @property
     def option_value_resolver(self):
-        resolver = NameResolver(self, self.Type.OPTION)
-        resolver._value_resolver = True
-        return resolver
+        return NameResolver(self, self.Type.OPTION,
+                            returner=lambda n: n.value)
 
     @property
     def option_resolver(self):
         return NameResolver(self, self.Type.OPTION)
+
+    def query_resolver(self, env):
+        return NameResolver(self, self.Type.QUERY,
+                            returner=lambda n: n.value(env))
 
     @property
     def module_resolver(self):
         return NameResolver(self, self.Type.MODULE)
 
     def render(self):
-        return Renderer(self)
+        return lbuild.format.format_node_tree(self)
 
     def add_dependencies(self, *dependencies):
         """
@@ -286,19 +278,17 @@ class BaseNode(anytree.Node):
         """
         self._dependency_module_names += dependencies
 
-    def add_option(self, option):
-        """
-        Define new option for this module.
+    def add_child(self, node):
+        if node.name in [child.name for child in self.children]:
+            raise LbuildException("{} name '{}' is already defined in Module '{}'!"
+                                  .format(node.__class__.__name__, node.name, self.fullname))
+        node._repository = self._repository
+        node.parent = self
+        node.add_dependencies(self.fullname)
+        node._fullname = self.fullname + ":" + node.name
 
-        The module options only influence the build process but not the
-        selection and dependencies of modules.
-        """
-        if option.name in [child.name for child in self.children]:
-            raise LbuildException("Option name '{}' is already defined".format(option.name))
-        option._repository = self._repository
-        option.parent = self
-        option.add_dependencies(self.fullname)
-        option._fullname = self.fullname + ":" + option.name
+    def all_queries(self, depth=None, selected=True):
+        return self._findall(self.Type.QUERY, depth, selected)
 
     def all_options(self, depth=None, selected=True):
         return self._findall(self.Type.OPTION, depth, selected)
@@ -448,7 +438,6 @@ class BaseNode(anytree.Node):
             self._update_attribute("_selected")
             self._update_attribute("_ignore_patterns")
             self._update_attribute("_filters")
-            self._update_attribute("_context")
 
         for child in self.children:
             child._update()
