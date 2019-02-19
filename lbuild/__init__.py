@@ -17,6 +17,7 @@ from . import exception
 from . import module
 from . import option
 from . import query
+from . import collector
 from . import parser
 from . import repository
 from . import utils
@@ -25,6 +26,7 @@ from . import main
 __all__ = [
     'builder',
     'buildlog',
+    'collector',
     'environment',
     'exception',
     'facade',

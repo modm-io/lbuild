@@ -112,6 +112,8 @@ class DiscoverAction(ManipulationActionBase):
                     ostream.extend(node.values)
                 else:
                     ostream.append(node.description)
+            if not args.values:
+                return "\n\n\n\n".join(ostream)
             return "\n".join(ostream)
 
         return builder.parser.render()

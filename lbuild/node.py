@@ -17,6 +17,7 @@ import anytree
 
 import lbuild.filter
 import lbuild.format
+import lbuild.utils
 
 from .exception import LbuildException, LbuildValidateException
 
@@ -31,18 +32,24 @@ def load_functions_from_file(repository, filename: str, required, optional=None,
             local = {}
 
         local.update({
-            # The localpath(...) function can be used to create
-            # a local path form the folder of the repository file.
             'localpath': RelocatePath(localpath),
             'repopath': RelocatePath(repository._filepath),
+            'listify': lbuild.utils.listify,
+            'listrify': lbuild.utils.listrify,
+
             'FileReader': LocalFileReaderFactory(localpath),
-            'listify': lbuild.filter.listify,
             'ValidateException': LbuildValidateException,
             'Module': lbuild.module.ModuleBase,
-            # 'ignore_patterns': shutil.ignore_patterns,
 
             'Query': lbuild.query.Query,
             'EnvironmentQuery': lbuild.query.EnvironmentQuery,
+
+            'StringCollector': lbuild.collector.StringCollector,
+            'PathCollector': lbuild.collector.PathCollector,
+            'BooleanCollector': lbuild.collector.BooleanCollector,
+            'NumericCollector': lbuild.collector.NumericCollector,
+            'EnumerationCollector': lbuild.collector.EnumerationCollector,
+            'CallableCollector': lbuild.collector.CallableCollector,
 
             'StringOption': lbuild.option.StringOption,
             'PathOption': lbuild.option.PathOption,
@@ -83,13 +90,16 @@ class LocalFileReader:
     def __init__(self, basepath, filename):
         self.basepath = basepath
         self.filename = filename
+        self._content = None
 
     def __str__(self):
         return self.read()
 
     def read(self):
-        with open(os.path.join(self.basepath, self.filename), encoding="utf-8") as file:
-            return file.read()
+        if self._content is None:
+            with open(os.path.join(self.basepath, self.filename), encoding="utf-8") as file:
+                self._content = file.read()
+        return self._content
 
 
 class LocalFileReaderFactory:
@@ -106,11 +116,12 @@ class NameResolver:
     Name resolver for node.
     """
 
-    def __init__(self, node, nodetype, selected=True, returner=None):
+    def __init__(self, node, nodetype, selected=True, returner=None, defaulter=None):
         self._node = node
         self._type = nodetype
         self._str = nodetype.name.lower()
         self._returner = (lambda n: n) if returner is None else returner
+        self._defaulter = (lambda n: n) if defaulter is None else defaulter
         self._selected = selected
 
     def get_node(self, key, check_dependencies=False):
@@ -125,12 +136,13 @@ class NameResolver:
             raise LbuildException("'{}' is of type '{}', but searching for '{}'!"
                                   .format(node.fullname, node._type.name.lower(), self._str))
 
-        if check_dependencies and node.type in {BaseNode.Type.OPTION, BaseNode.Type.QUERY}:
+        if check_dependencies and node.type in {BaseNode.Type.OPTION, BaseNode.Type.QUERY, BaseNode.Type.COLLECTOR}:
             if node.parent != self._node:
                 if all(n.type not in {BaseNode.Type.PARSER, BaseNode.Type.REPOSITORY} for n in {self._node, node.module}):
                     if node.parent not in self._node.dependencies:
-                        LOGGER.warning("Module '{}' accessing '{}' without depending on '{}'!"
-                                       .format(self._node.fullname, node.fullname, node.module.fullname))
+                        if self._selected or node.type not in {BaseNode.Type.COLLECTOR}:
+                            LOGGER.warning("Module '{}' accessing '{}' without depending on '{}'!"
+                                           .format(self._node.fullname, node.fullname, node.module.fullname))
 
         return node
 
@@ -143,7 +155,7 @@ class NameResolver:
             node = self.get_node(key)
             return self._returner(node)
         except LbuildException:
-            return default
+            return self._defaulter(default)
 
     def __contains__(self, key):
         try:
@@ -171,7 +183,8 @@ class BaseNode(anytree.Node):
         OPTION = 3
         CONFIG = 4
         QUERY = 5
-        MODULE = 6
+        COLLECTOR = 6
+        MODULE = 7
 
     def __init__(self, name, node_type, repository=None):
         anytree.Node.__init__(self, name)
@@ -228,6 +241,10 @@ class BaseNode(anytree.Node):
         return self.fullname
 
     @property
+    def class_name(self):
+        return self.__class__.__name__
+
+    @property
     def type(self):
         return self._type
 
@@ -248,14 +265,17 @@ class BaseNode(anytree.Node):
         return self._findall(self.Type.CONFIG, depth=2)
 
     @property
+    def collectors(self):
+        return self._findall(self.Type.COLLECTOR, depth=2)
+
+    @property
     def repository(self):
         return self._repository
 
     @property
     def dependencies(self):
-        if not self._dependencies_resolved:
-            self._resolve_dependencies()
-        return self._dependencies + [d for o in self.all_options(depth=2)
+        self._resolve_dependencies()
+        return self._dependencies + [d for o in self.options
                                      for d in o._dependencies
                                      if d != self]
 
@@ -269,7 +289,7 @@ class BaseNode(anytree.Node):
 
     @description.setter
     def description(self, description):
-        self._description = description
+        self._description = "" if description is None else description
 
     @property
     def option_value_resolver(self):
@@ -283,6 +303,20 @@ class BaseNode(anytree.Node):
     def query_resolver(self, env):
         return NameResolver(self, self.Type.QUERY,
                             returner=lambda n: n.value(env))
+
+    @property
+    def collector_resolver(self):
+        return NameResolver(self, self.Type.COLLECTOR)
+
+    @property
+    def collector_values_resolver(self):
+        return NameResolver(self, self.Type.COLLECTOR,
+                            returner=lambda n: n.values(),
+                            defaulter=lbuild.utils.listify)
+
+    @property
+    def collector_available_resolver(self):
+        return NameResolver(self, self.Type.COLLECTOR, selected=False)
 
     @property
     def module_resolver(self):

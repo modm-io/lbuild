@@ -123,6 +123,9 @@ class ModulePrepareFacade(BaseNodePrepareFacade):
     def add_query(self, query):
         self._node._queries.append(query)
 
+    def add_collector(self, collector):
+        self._node._collectors.append(collector)
+
     def add_modules(self, *modules):
         self._node._submodules.extend(modules)
 
@@ -168,11 +171,20 @@ class EnvironmentValidateFacade:
     def has_query(self, key):
         return key in self._env.queries
 
+    def has_collector(self, key):
+        return key in self._env.collectors_available
+
     def get(self, key, default=None):
         return self._env.options.get(key, default)
 
     def query(self, key, default=None):
         return self._env.queries.get(key, default)
+
+    def repopath(self, *path):
+        return self._env.repopath(*path)
+
+    def localpath(self, *path):
+        return self._env.modulepath(*path)
 
     def __getitem__(self, key):
         return self._env.options[key]
@@ -182,7 +194,7 @@ class EnvironmentValidateFacade:
         return self.get(key, default)
 
 
-class EnvironmentPostBuildFacade(EnvironmentValidateFacade):
+class EnvironmentBuildCommonFacade(EnvironmentValidateFacade):
 
     def __init__(self, env):
         EnvironmentValidateFacade.__init__(self, env)
@@ -204,19 +216,20 @@ class EnvironmentPostBuildFacade(EnvironmentValidateFacade):
         self._env.substitutions = substitutions
 
     def copy(self, src, dest=None, ignore=None, metadata=None):
-        self._env.copy(src, dest, ignore, metadata)
+        return self._env.copy(src, dest, ignore, metadata)
 
     def extract(self, archive, src=None, dest=None, ignore=None, metadata=None):
-        self._env.extract(archive, src, dest, ignore, metadata)
+        return self._env.extract(archive, src, dest, ignore, metadata)
 
     def template(self, src, dest=None, substitutions=None, filters=None, metadata=None):
-        self._env.template(src, dest, substitutions, filters, metadata)
+        return self._env.template(src, dest, substitutions, filters, metadata)
 
     def generated_local_files(self, filterfunc=None):
         return self._env.generated_local_files(filterfunc)
 
     def reloutpath(self, path, relative=None):
         return self._env.reloutpath(path, relative)
+
 
     @staticmethod
     def ignore_files(*files):
@@ -225,6 +238,7 @@ class EnvironmentPostBuildFacade(EnvironmentValidateFacade):
     @staticmethod
     def ignore_paths(*paths):
         return lbuild.utils.ignore_patterns(*paths)
+
 
     # deprecated
     @staticmethod
@@ -240,10 +254,28 @@ class EnvironmentPostBuildFacade(EnvironmentValidateFacade):
         return self._env.outpath(*path, basepath=basepath)
 
 
-class EnvironmentBuildFacade(EnvironmentPostBuildFacade):
+class EnvironmentPostBuildFacade(EnvironmentBuildCommonFacade):
 
     def __init__(self, env):
-        EnvironmentPostBuildFacade.__init__(self, env)
+        EnvironmentBuildCommonFacade.__init__(self, env)
+
+    def has_collector(self, key):
+        return key in self._env.collectors
+
+    def collector_values(self, key, default=None, filterfunc=None, unique=True):
+        return self._env.collector_values(key, default, filterfunc, unique)
+
+    def collector(self, key):
+        return CollectorFacade(self._env.collectors[key])
+
+
+class EnvironmentBuildFacade(EnvironmentBuildCommonFacade):
+
+    def __init__(self, env):
+        EnvironmentBuildCommonFacade.__init__(self, env)
+
+    def collect(self, key, *values, operations=None):
+        self._env.add_to_collector(key, *values, operations=operations)
 
     def add_metadata(self, key, *values):
         self._env.add_metadata(key, *values)
@@ -257,10 +289,25 @@ class EnvironmentBuildFacade(EnvironmentPostBuildFacade):
         self._env.add_metadata(key, *values)
 
 
+class CollectorFacade:
+    def __init__(self, collector):
+        self._collector = collector
+
+    def values(self, filterfunc=None, unique=True):
+        return self._collector.values(filterfunc, unique)
+
+    def items(self):
+        return self._collector.items()
+
+    def operations(self):
+        return self._collector.keys()
+
+
 class BuildLogOperationFacade:
 
     def __init__(self, operation):
         self._operation = operation
+        self.has_filename = True
 
     @property
     def module_name(self):

@@ -32,6 +32,7 @@ COLOR_SCHEME = {
     "option": None,
     "query": None,
     "config": None,
+    "collector": None,
     "module": None,
     "description": None,
     "short_description": None,
@@ -167,9 +168,9 @@ def format_option_value(node, single_line=True):
 
 
 def format_option_values(node, offset=0, single_line=True):
-    values = _cw(node.format_values())
+    values = node.format_values()
     if not single_line:
-        if WIDTH - offset > 10:
+        if (offset + len(values)) > WIDTH:
             values = lbuild.filter.indent(lbuild.filter.wordwrap(values._string, WIDTH - offset),
                                           offset)
     return _cw(values).wrap("bold")
@@ -192,7 +193,7 @@ def format_option_short_description(node):
 
 
 def format_description(node, description):
-    type_description = "  [{}]".format(node.__class__.__name__)
+    type_description = "  [{}]".format(node.class_name)
     output = [_cw(">> ") + _cw(node.description_name).wrap(node).wrap("bold") + _cw(type_description)]
     if description:
         description = description.strip()
@@ -203,6 +204,9 @@ def format_description(node, description):
         value = format_option_value(node, single_line=False)[0]
         values = format_option_values(node, offset=9, single_line=False)
         output += [_cw(""), _cw("Value: ") + value, _cw("Inputs: [") + values + _cw("]")]
+    elif node.type == node.Type.COLLECTOR:
+        values = format_option_values(node, offset=9, single_line=False)
+        output += [_cw(""), _cw("Inputs: [") + values + _cw("]")]
 
     children = []
     # Print every node except the submodule, due to obvious recursion
@@ -217,30 +221,34 @@ def format_description(node, description):
 
 def format_short_description(_, description):
     lines = description.strip().splitlines() + [""]
-    return lines[0].strip()
+    return lines[0].strip().rstrip(".,:;!?")
 
 
 def format_node(node, _):
-    context = _cw(node.name)
+    name = _cw(node.name)
+    class_name = _cw(node.class_name)
     if node._type == node.Type.REPOSITORY:
-        context = _cw(node.name + " @ " + os.path.relpath(node._filepath, os.getcwd()))
+        name = _cw(node.name + " @ " + os.path.relpath(node._filepath, os.getcwd()))
     elif node._type == node.Type.OPTION:
-        context = format_option_name(node, fullname=False)
+        name = format_option_name(node, fullname=False)
     elif node._type in [node.Type.MODULE, node.Type.CONFIG]:
-        context = _cw(node.fullname).wrap(node)
+        name = _cw(node.fullname).wrap(node)
+    elif node._type in [node.Type.QUERY, node.Type.COLLECTOR]:
+        class_name = class_name.wrap("underlined")
+        name = name.wrap("bold")
 
-    descr = (_cw(node.__class__.__name__ + "(") + context + _cw(")")).wrap(node)
-
-    if node._type == node.Type.QUERY:
-        descr = descr.wrap("bold")
+    descr = (class_name + _cw("(") + name + _cw(")")).wrap(node)
 
     offset = node.depth * 4
     if node._type == node.Type.OPTION:
         descr += _cw(" = ")
-        descr += format_option_value_description(node, offset=offset + len(descr),
-                                                 single_line=True)
-    else:
-        descr += _cw("   " + node.short_description)
+        descr += format_option_value_description(node, offset=offset + len(descr), single_line=True)
+    elif node._type == node.Type.COLLECTOR:
+        descr += _cw(" in [")
+        descr += format_option_values(node, offset=offset + len(descr), single_line=True)
+        descr += _cw("]")
+
+    descr += _cw("   " + node.short_description)
 
     return descr.limit(offset)
 

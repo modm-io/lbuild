@@ -307,7 +307,8 @@ global functions and classes for use in all files:
 - `FileReader(path)`: reads the contents of a file and turns it into a string.
 - `listify(obj)`: turns obj into a list, maps `None` to empty list.
 - `{*}Option(...)`: classes for describing options, [see Options](#Options).
-- `{*}Query(...)`: classes for describing queries, [see Queries](#Queries).
+- `{*}Query(...)`: classes for sharing code and data, [see Queries](#Queries).
+- `{*}Collector(...)`: classes for describing metadata sinks, [see Collectors](#Collectors).
 
 
 ### Repositories
@@ -370,6 +371,7 @@ Use whatever markup you want, lbuild treats it all as text.
     # See Options for more option types
     repo.add_option(StringOption(name="option", default="value"))
 
+
 def prepare(repo, options):
     # Access repository options via the `options` resolver
     if options["repo:option"] == "value":
@@ -379,9 +381,11 @@ def prepare(repo, options):
     # fnmatch(`modulefile`), while ignoring fnmatch(`ignore`) patterns
     repo.add_modules_recursive(basepath=".", modulefile="*.lb", ignore="*/ignore/patterns/*")
 
+
+# The build step is optional
 def build(env):
-    # Add the generated src/ to the metadata
-    env.add_metadata("include_path", "src")
+    # Add the generated src/ folder to the header search path collector
+    env.collect("::include_path", "src/")
     # See module.build(env) for complete feature description.
 ```
 
@@ -443,6 +447,7 @@ def init(module):
     # NOTE: the filter is namespace with the repository! {{ 65 | modm.character }} -> "A"
     module.add_filter("character", lambda number: chr(number))
 
+
 def prepare(module, options):
     # Access repository options via the `options` resolver
     if options["repo:option"] == "value":
@@ -464,10 +469,14 @@ def prepare(module, options):
         def init(module):
             module.name = str(self.instance)
             # module.parent is automatically set!
-        def prepare(module, options): ...
-        def validate(env): ... # optional
-        def build(env): ...
-        def post_build(env): ... # optional
+        def prepare(module, options):
+            pass
+        def validate(env): # optional
+            pass
+        def build(env):
+            pass
+        def post_build(env): # optional
+            pass
 
     # You can statically create and add these submodules
     for index in range(0, 5):
@@ -485,16 +494,20 @@ def prepare(module, options):
         This is useful to not have to duplicate code across module.lb files.
         """
         return args
-
-    # See Shared Objects for more object types
+    # See Queries for more query types
     module.add_query(Query(name="shared_function", function=common_operation))
+
+    # You can collect information from active modules, to use any post_build step
+    # See Collectors for more collector types
+    module.add_collector(
+        PathCollector(name="include_path", description="Global header search paths"))
 
     # Make this module available
     return True
 
+
 # store data computed in validate step for build step.
 build_data = None
-
 # The validation step is optional
 def validate(env):
     # Perform your input validations here
@@ -522,6 +535,7 @@ def validate(env):
     # matches any module starting with `mod` and option starting with `name`.
     env.has_option(":mod*:name*")
     env.has_query("::shared_*")
+    env.has_collector("::collector")
 
     # Raise a ValidateException if something is wrong
     if defaulted_option + repo_option != "hello world":
@@ -586,14 +600,13 @@ def build(env):
     # and use this information for a new template.
     env.template("module_header.hpp.in", substitutions={"headers": headers})
 
-    # You can add metadata to the build log which then made
-    # available in the post_build step. This is like a dictionary.
-    env.add_metadata("include_path", "generated_folder/")
+    # Add values to a collector, all these are type checked
+    env.collect("::include_path", "repo/must_be_valid_path/", "repo/folder2/")
 
 
 # The post build step can do everything the build step can,
 # but you can't add to the metadata anymore:
-# - env.add_metadata() unavailable
+# - env.collect() unavailable
 # You have access to the entire buildlog up to this point
 def post_build(env, buildlog):
     # The absolute path to the lbuild output directory
@@ -609,14 +622,13 @@ def post_build(env, buildlog):
     # iterate over all operations directly
     for operation in buildlog:
         # Get the module name that generated this file
-        env.log.info("{} generated the '{}' file".format(
+        env.log.info("Module({}) generated the '{}' file".format(
                      operation.module_name, operation.filename_out()))
         # You can also get the filename relative to a subfolder in outpath
         operation.filename_out(path="subfolder/")
 
-    # get the metadata: this is a dictionary of lists!
-    metadata = buildlog.metadata
-    include_paths = [("-I" + p) for p in metadata.get("include_path", [])]
+    # get all include paths from all active modules
+    include_paths = env.collector_values("::include_path")
 ```
 
 ### Options
@@ -763,7 +775,7 @@ from string to object. The dependency handler is passed the string value.
 
 ```python
 option = EnumerationOption(name="option-name",
-                           description="numeric",
+                           description="enumeration",
                            # must be implicitly convertible to string!
                            enumeration=["value", 1, obj],
                            # or use a dictionary explicitly
@@ -792,8 +804,11 @@ def build(env):
     data = env.query(":module:query", default="value")
 ```
 
-**Note that queries must be stateless, since module build order is not
-guaranteed. You must enforce this property yourself.**
+*Note that queries must be stateless (aka. a pure function), since module build
+order is not guaranteed. You must enforce this property yourself.*
+
+You can discover all the available queries in your repository using
+`lbuild discover --developer`.
 
 
 #### Query
@@ -843,6 +858,168 @@ def factory(env):
 
 query = EnvironmentQuery(name="name",
                          factory=factory)
+```
+
+
+### Collectors
+
+The post-build step has access to the build log containing the list of modules
+that were built and what files they generated.
+However, these modules also need to pass additional data to the post-build steps,
+so that this information can be computed locally.
+
+*lbuild* allows each module to declare what metadata it wants using a collector,
+which is given a name, description and optional limitations depending on type.
+In the build step, each module may add values to this collector, which the
+post-build steps then can access.
+
+```python
+def prepare(module, options):
+    # Add a collector to module
+    collector = Collector(...)
+    module.add_collector(collector)
+
+def build(env):
+    exists = env.has_collector(":module:collector")
+    # Add values to this collector
+    env.collect(":module:collector", "value1", "value2", "value3")
+
+def post_build(env):
+    # Get all unique values from all operations
+    unique_values = env.collector_values(":module:collector")
+    # get all values from all operations, even duplicates!
+    all_values = env.collector_values(":module:collector", unique=False)
+```
+
+Note that the ordering of values is preserved only relative to the order they
+were added within a module and only if accessing them non-uniquely!
+The above example will preserve the order of `value1`, `value2` and `value3`,
+only if the values are accessed not uniquely and only relative to each other.
+
+When you add values to a collector, the current operation is recorded, consisting
+out of the current module, but you may also explicitly set this to a set of
+file operations:
+
+```python
+def build(env):
+    operation = env.copy("file.hpp")
+    # Add values to this collector for the file operation
+    env.collect(":module:collector", "values", operations=operation)
+
+    # The return value from a file operation is actually a set of operations
+    operations = env.copy("folder1/")
+    # So you can extend this set for multiple file operations
+    operations |= env.copy("folder2/")
+    # And then filter this set of operations
+    operations = filter(lambda op: op.filename.endswith(".txt"), operations)
+    # Only add this metadata to .txt files
+    env.collect(":module:collector", "txt-file-values", operations=operations)
+
+    # A file operation object has these properties:
+    operation.module # full module name, this is always available
+    operation.repository # repository name, always available
+    operation.has_filename # Some operations are specific to files
+    operation.filename # The generated filename relative to outpath
+
+def post_build(env):
+    # You can use these operation properties to filter the collector values
+    txt_filter = lambda op: op.repository == "repo" and op.filename.endswith(".txt")
+    unique_txt_values = env.collector_values(":module:collector", filterfunc=txt_filter)
+    # May contain duplicate values!
+    all_txt_values = env.collector_values(":module:collector", filterfunc=txt_filter, unique=False)
+```
+
+If you have very special requirements for the ordering values (for example
+when collecting compile flags), consider iterating over the collectors items
+manually, and possibly de-duplicating and reordering the values yourself.
+
+```python
+def post_build(env):
+    # Get the collector, may return None if collector does not exist!
+    collector = env.collector(":module:collector")
+    if collector is not None:
+        for operation, values in collector.items():
+            # values is a list and may contain duplicates
+            print(operation.module, values)
+            if operation.has_filename: # not all operations have filenames!
+                print(operation.filename)
+```
+
+Note that collector values that were added by a module without explicit
+operations do not have filename, only module names!
+
+You can discover all the available collectors in your repository using
+`lbuild discover --developer`.
+
+Note that collectors are implemented using the same type-safe mechanisms as
+[Options](#Options), the only differences are the lack of dependency handlers
+and default values, since you can add default values in the modules build step.
+
+
+#### CallableCollector
+
+This collector allows you to collect callable objects, that the post-build step
+can execute. This can be useful for providing specializations to the post-build
+module without it needing to know how they work.
+
+```python
+collector = CallableCollector(name="collector-name",
+                              description="callable")
+```
+
+
+#### StringCollector
+
+See [StringOption](#StringOption) for documentation.
+
+```python
+collector = StringCollector(name="collector-name",
+                            description="string",
+                            validate=validate_function)
+```
+
+
+#### PathCollector
+
+See [PathOption](#PathOption) for documentation.
+
+```python
+collector = PathCollector(name="collector-name",
+                          description="path",
+                          empty_ok=False)
+```
+
+
+#### BooleanCollector
+
+See [BooleanOption](#BooleanOption) for documentation.
+
+```python
+collector = BooleanCollector(name="collector-name",
+                             description="boolean")
+```
+
+
+#### NumericCollector
+
+See [NumericOption](#NumericOption) for documentation.
+
+```python
+collector = NumericCollector(name="collector-name",
+                             description="numeric",
+                             minimum=0,
+                             maximum=100)
+```
+
+
+#### EnumerationCollector
+
+See [EnumerationOption](#EnumerationOption) for documentation.
+
+```python
+collector = EnumerationCollector(name="collector-name",
+                                 description="enumeration",
+                                 enumeration=enumeration)
 ```
 
 

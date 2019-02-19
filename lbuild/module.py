@@ -108,6 +108,7 @@ class ModuleInit:
         self._dependencies = []
         self._filters = {}
         self._queries = []
+        self._collectors = []
 
     @property
     def fullname(self):
@@ -179,6 +180,9 @@ class Module(BaseNode):
 
         for child in (module._options + module._queries):
             self.add_child(child)
+
+        for collector in module._collectors:
+            self.add_child(lbuild.collector.Collector(collector))
 
         self.add_dependencies(*module._dependencies)
         if ":" in module.parent:

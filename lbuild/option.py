@@ -27,7 +27,7 @@ class Option(BaseNode):
                  convert_input=None, convert_output=None):
         BaseNode.__init__(self, name, BaseNode.Type.OPTION)
         self._dependency_handler = dependencies
-        self._description = description
+        self.description = description
         self._in = str if convert_input is None else convert_input
         self._out = str if convert_output is None else convert_output
         self._input = None

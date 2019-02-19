@@ -21,7 +21,9 @@ import jinja2
 import lbuild.utils
 
 from .facade import EnvironmentValidateFacade, EnvironmentBuildFacade, EnvironmentPostBuildFacade
+from .facade import BuildLogFacade, BuildLogOperationFacade
 from .exception import LbuildException, LbuildTemplateException, LbuildForwardException
+from .parser import Parser
 
 SIMULATE = False
 
@@ -64,12 +66,13 @@ def _copytree(logger, src, dst, ignore=None,
                 total = endtime - starttime
                 logger(sourcepath, destpath, total)
 
-
 class Environment:
 
     def __init__(self, module, buildlog):
         self.options = module.option_value_resolver
         self.queries = module.query_resolver(self.facade_validate)
+        self.collectors = module.collector_resolver
+        self.collectors_available = module.collector_available_resolver
         self.modules = module.module_resolver
         self.__module = module
         self.__modulepath = module._filepath
@@ -82,6 +85,7 @@ class Environment:
         self.__template_global_substitutions = {
             'time': time.strftime("%d %b %Y, %H:%M:%S", time.localtime()),
             'options': self.options,
+            'collector_values': module.collector_values_resolver
         }
 
         self.log = logging.getLogger("user." + module.fullname.replace(":", "."))
@@ -122,6 +126,7 @@ class Environment:
             raise LbuildException("Cannot access files outside of the repository!\n"
                                   "'{}'".format(archiverelpath))
 
+        operations = set()
         starttime = time.time()
         is_zip = archive_path.endswith(".zip")
         with (zipfile.ZipFile(archive_path, "r") if is_zip else
@@ -157,8 +162,7 @@ class Environment:
                     shutil.copy2(os.path.join(tempdir, srcpath), destpath)
 
             def log_copy(src, dest, operation_time):
-                self.__buildlog.log(self.__module,
-                                    os.path.join(archive_path, src), dest, operation_time, metadata)
+                operations.add(self.log_file(os.path.join(archive_path, src), dest, operation_time, metadata=metadata))
 
             if fn_isdir(src):
                 _copytree(log_copy, src, destpath, wrap_ignore,
@@ -171,6 +175,8 @@ class Environment:
                 endtime = time.time()
                 total = endtime - starttime
                 log_copy(src, destpath, total)
+
+        return operations
 
     def copy(self, src, dest=None, ignore=None, metadata=None):
         """
@@ -193,6 +199,7 @@ class Environment:
         if dest is None:
             dest = src
 
+        operations = set()
         starttime = time.time()
 
         srcpath = os.path.normpath(src if os.path.isabs(src) else self.modulepath(src))
@@ -204,7 +211,7 @@ class Environment:
                                   "'{}'".format(srcrelpath))
 
         def log_copy(src, dest, operation_time):
-            self.__buildlog.log(self.__module, src, dest, operation_time, metadata)
+            operations.add(self.log_file(src, dest, operation_time, metadata=metadata))
 
         if os.path.isdir(srcpath):
             _copytree(log_copy,
@@ -220,46 +227,7 @@ class Environment:
             total = endtime - starttime
             log_copy(srcpath, destpath, total)
 
-    def __reload_template_environment(self, filters):
-        if self.__template_environment_filters == filters:
-            return
-
-        self.__template_environment_filters = filters
-
-        # Overwrite jinja2 Environment in order to enable relative paths
-        # since this runs locally that should not be a security concern
-        # Code from:
-        # http://stackoverflow.com/questions/8512677/how-to-include-a-template-with-relative-path-in-jinja2
-        class RelEnvironment(jinja2.Environment):
-            """
-            Override join_path() to enable relative template paths.
-
-            Take care of paths. Jinja seems to use '/' as path separator in
-            templates.
-            """
-
-            def join_path(self, template, parent):
-                path = os.path.join(os.path.dirname(parent), template)
-                return os.path.normpath(path).replace('\\', '/')
-
-        environment = RelEnvironment(loader=jinja2.FileSystemLoader(self.__repopath),
-                                     extensions=['jinja2.ext.do'],
-                                     undefined=jinja2.StrictUndefined)
-
-        environment.filters.update(self.__module._filters)
-        environment.filters.update(filters)
-
-        # Jinja2 Line Statements
-        environment.line_statement_prefix = '%%'
-        environment.line_comment_prefix = '%#'
-
-        self.__template_environment = environment
-
-    @property
-    def template_environment(self):
-        if self.__template_environment is None:
-            self.__reload_template_environment({})
-        return self.__template_environment
+        return operations
 
     def template(self, src, dest=None, substitutions=None, filters=None, metadata=None):
         """
@@ -333,7 +301,14 @@ class Environment:
 
         endtime = time.time()
         total = endtime - starttime
-        self.__buildlog.log(self.__module, self.modulepath(src), outfile_name, total, metadata)
+        operations = set()
+        operations.add(self.log_file(self.modulepath(src), outfile_name, total, metadata=metadata))
+        return operations
+
+
+    def log_file(self, src, dest, operation_time, metadata=None):
+        operation = self.__buildlog.log(self.__module, src, dest, operation_time, metadata)
+        return BuildLogOperationFacade(operation)
 
     def modulepath(self, *path):
         """Relocate given path to the path of the module file."""
@@ -381,12 +356,66 @@ class Environment:
                 filenames.append(filename)
         return filenames
 
+    def add_to_collector(self, key, *values, operations=None):
+        self.collectors_available[key].add_values(values, self.__module, operations)
+
+    def collector_values(self, key, default=None, filterfunc=None, unique=True):
+        if default is None:
+            collector = self.collectors[key]
+        else:
+            collector = self.collectors.get(key)
+        if collector is not None:
+            return collector.values(default, filterfunc, unique)
+        else:
+            return lbuild.utils.listify(default)
+
     def add_metadata(self, key, *values):
         """
         Append additional information to the build log which can be used in the
         post-build step to generate additional files/data.
         """
         self.__buildlog.add_metadata(self.__module, key, values)
+
+    def __reload_template_environment(self, filters):
+        if self.__template_environment_filters == filters:
+            return
+
+        self.__template_environment_filters = filters
+
+        # Overwrite jinja2 Environment in order to enable relative paths
+        # since this runs locally that should not be a security concern
+        # Code from:
+        # http://stackoverflow.com/questions/8512677/how-to-include-a-template-with-relative-path-in-jinja2
+        class RelEnvironment(jinja2.Environment):
+            """
+            Override join_path() to enable relative template paths.
+
+            Take care of paths. Jinja seems to use '/' as path separator in
+            templates.
+            """
+
+            def join_path(self, template, parent):
+                path = os.path.join(os.path.dirname(parent), template)
+                return os.path.normpath(path).replace('\\', '/')
+
+        environment = RelEnvironment(loader=jinja2.FileSystemLoader(self.__repopath),
+                                     extensions=['jinja2.ext.do'],
+                                     undefined=jinja2.StrictUndefined)
+
+        environment.filters.update(self.__module._filters)
+        environment.filters.update(filters)
+
+        # Jinja2 Line Statements
+        environment.line_statement_prefix = '%%'
+        environment.line_comment_prefix = '%#'
+
+        self.__template_environment = environment
+
+    @property
+    def template_environment(self):
+        if self.__template_environment is None:
+            self.__reload_template_environment({})
+        return self.__template_environment
 
     def __repr__(self):
         return repr(self.options)
