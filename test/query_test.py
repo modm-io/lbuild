@@ -103,7 +103,7 @@ class QueryTest(unittest.TestCase):
 
         query = lbuild.query.EnvironmentQuery(factory=self.method)
         self.assertEqual("method", query.name)
-        self.assertTrue(query.description.startswith(">> method"))
+        self.assertTrue(query.description.startswith(">> method  [EnvironmentQuery]"))
         self.assertIn("method docstring", query.description)
 
     def test_should_call_function(self):

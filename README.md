@@ -205,7 +205,7 @@ Or check out specific module and option descriptions:
 This parent module defines a common set of functionality that is independent of
 the specific build system generator implementation.
 
->>>> modm:build:project.name
+>>>> modm:build:project.name  [StringOption]
 
 # Project Name
 
@@ -214,7 +214,7 @@ The project name defaults to the folder name you're calling lbuild from.
 Value: parent-folder
 Inputs: [String]
 
->>>> modm:build:build.path
+>>>> modm:build:build.path  [StringOption]
 
 # Build Path
 

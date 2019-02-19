@@ -38,7 +38,7 @@ class OptionTest(unittest.TestCase):
         option = lbuild.option.Option("test", "description", "value")
 
         output = option.description
-        self.assertTrue(output.startswith(">> test"))
+        self.assertTrue(output.startswith(">> test  [Option]"))
         self.assertTrue("value" in output)
 
     def test_should_provide_string_representation_for_base_option_with_repo(self):
@@ -46,7 +46,7 @@ class OptionTest(unittest.TestCase):
         self.repo.add_child(option)
 
         output = option.description
-        self.assertTrue(output.startswith(">> repo:test"))
+        self.assertTrue(output.startswith(">> repo:test  [Option]"))
         self.assertTrue("value" in output)
 
     def test_should_provide_string_representation_for_base_option_full(self):
@@ -54,7 +54,7 @@ class OptionTest(unittest.TestCase):
         self.module.add_child(option)
 
         output = option.description
-        self.assertTrue(output.startswith(">> repo:module:test"))
+        self.assertTrue(output.startswith(">> repo:module:test  [Option]"))
         self.assertTrue("value" in output)
 
     def test_should_provide_short_description(self):
@@ -65,7 +65,7 @@ class OptionTest(unittest.TestCase):
         option = lbuild.option.Option("test", "long description", "value")
         output = option.description
 
-        self.assertIn("test", output, "Option name")
+        self.assertIn("test  [Option]", output)
         self.assertIn("Value: value", output)
         self.assertIn("Inputs: [String]", output)
         self.assertIn("long description", output)
@@ -74,7 +74,7 @@ class OptionTest(unittest.TestCase):
         option = lbuild.option.Option("test", "long description")
         output = option.description
 
-        self.assertIn("test", output, "Option name")
+        self.assertIn("test  [Option]", output)
         self.assertIn("Value: REQUIRED", output)
         self.assertIn("Inputs: [String]", output)
         self.assertIn("long description", output)
@@ -83,6 +83,7 @@ class OptionTest(unittest.TestCase):
         option = lbuild.option.BooleanOption("test",
                                              "description",
                                              False)
+        self.assertIn("test  [BooleanOption]", option.description)
         self.assertEqual(False, option.value)
         option.value = 1
         self.assertEqual(True, option.value)
@@ -101,6 +102,7 @@ class OptionTest(unittest.TestCase):
                                              minimum=0,
                                              maximum=100,
                                              default=1)
+        self.assertIn("test  [NumericOption]", option.description)
         self.assertEqual(1, option.value)
         option.value = 2
         self.assertEqual(2, option.value)
@@ -140,6 +142,7 @@ class OptionTest(unittest.TestCase):
                                                  "description",
                                                  default=TestEnum.value1,
                                                  enumeration=TestEnum)
+        self.assertIn("test  [EnumerationOption]", option.description)
         self.assertEqual(1, option.value)
 
     def test_should_be_constructable_from_enum_set(self):
@@ -152,6 +155,7 @@ class OptionTest(unittest.TestCase):
                                          "description",
                                          default=[TestEnum.value1, TestEnum.value2],
                                          enumeration=TestEnum)
+        self.assertIn("test  [SetOption]", option.description)
         self.assertEqual([1, 2], option.value)
 
     def test_should_be_constructable_from_dict(self):

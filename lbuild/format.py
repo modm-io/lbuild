@@ -190,9 +190,12 @@ def format_option_short_description(node):
 
 
 def format_description(node, description):
-    output = [_cw(">> ") + _cw(node.description_name).wrap(node).wrap("bold"), _cw("")]
+    type_description = "  [{}]".format(node.__class__.__name__)
+    output = [_cw(">> ") + _cw(node.description_name).wrap(node).wrap("bold") + _cw(type_description)]
     if description:
-        output += [_cw(description.strip(" \n"))]
+        description = description.strip()
+        if len(description):
+            output += [_cw(""), _cw(description)]
 
     if node.type == node.Type.OPTION:
         value = format_option_value(node, single_line=False)[0]
