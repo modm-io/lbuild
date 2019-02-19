@@ -91,7 +91,8 @@ class Parser(BaseNode):
 
             # Parse only new repositories
             for repofile in repofiles:
-                config_map.update(self.parse_repository(repofile)._config_map)
+                repo = self.parse_repository(repofile)
+                config_map.update({c.fullname:c._config for c in repo.configurations})
 
             # nothing more to extend
             if not self._config_flat._extends:

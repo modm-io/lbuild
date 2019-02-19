@@ -23,6 +23,7 @@ SHOW_NODES = {
     lbuild.node.BaseNode.Type.REPOSITORY,
     lbuild.node.BaseNode.Type.MODULE,
     lbuild.node.BaseNode.Type.OPTION,
+    lbuild.node.BaseNode.Type.CONFIG,
 }
 
 COLOR_SCHEME = {
@@ -30,6 +31,7 @@ COLOR_SCHEME = {
     "repository": None,
     "option": None,
     "query": None,
+    "config": None,
     "module": None,
     "description": None,
     "short_description": None,
@@ -224,7 +226,7 @@ def format_node(node, _):
         context = _cw(node.name + " @ " + os.path.relpath(node._filepath, os.getcwd()))
     elif node._type == node.Type.OPTION:
         context = format_option_name(node, fullname=False)
-    if node._type == node.Type.MODULE:
+    elif node._type in [node.Type.MODULE, node.Type.CONFIG]:
         context = _cw(node.fullname).wrap(node)
 
     descr = (_cw(node.__class__.__name__ + "(") + context + _cw(")")).wrap(node)

@@ -158,23 +158,24 @@ for this specific repository option:
 Parser(lbuild)
 ╰── Repository(modm @ ../modm)   modm: a barebone embedded library generator
     ├── EnumerationOption(target) = stm32f407vgt in [at90can128, at90can32, at90can64, ...]
-    ├── Module(modm:board)
-    │   ╰── Module(modm:board:disco-f407vg)
-    ├── Module(modm:build)
+    ├── Configuration(modm:disco-f407vg)
+    ├── Module(modm:board)   Board Support Packages
+    │   ╰── Module(modm:board:disco-f469ni)   STM32F469IDISCOVERY
+    ├── Module(modm:build)   Build System Generators
     │   ├── Option(build.path) = build/parent-folder in [String]
     │   ├── Option(project.name) = parent-folder in [String]
     │   ╰── Module(modm:build:scons)  SCons Build Script Generator
     │       ├── BooleanOption(info.build) = False in [True, False]
     │       ╰── EnumerationOption(info.git) = Disabled in [Disabled, Info, Info+Status]
-    ├── Module(modm:platform)
-    │   ├── Module(modm:platform:can)
-    │   │   ╰── Module(modm:platform:can:1) CAN 1 instance
+    ├── Module(modm:platform)   Platform HAL
+    │   ├── Module(modm:platform:can)   Controller Area Network (CAN)
+    │   │   ├── Module(modm:platform:can:1)   Instance 1
     │   │       ├── NumericOption(buffer.rx) = 32 in [1 .. 32 .. 65534]
     │   │       ╰── NumericOption(buffer.tx) = 32 in [1 .. 32 .. 65534]
-    │   ├── Module(modm:platform:core)
+    │   ├── Module(modm:platform:core)   ARM Cortex-M Core
     │   │   ├── EnumerationOption(allocator) = newlib in [block, newlib, tlsf]
-    │   │   ├── NumericOption(main_stack_size) = 3040 in [256 .. 3040 .. 65536]
-    │   │   ╰── EnumerationOption(vector_table_location) = fastest in [fastest, ram, rom]
+    │   │   ├── NumericOption(main_stack_size) = 3072 in [256 .. 3072 .. 65536]
+    │   │   ╰── EnumerationOption(vector_table_location) = rom in [ram, rom]
 ```
 
 You can now discover all module options in more detail:

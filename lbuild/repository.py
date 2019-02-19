@@ -23,6 +23,16 @@ from .exception import LbuildException
 LOGGER = logging.getLogger('lbuild.repository')
 
 
+class Configuration(BaseNode):
+
+    def __init__(self, name, path, description):
+        BaseNode.__init__(self, name, BaseNode.Type.CONFIG)
+        self._config = path
+        if description is None:
+            description = ""
+        self._description = description
+
+
 class Repository(BaseNode):
     """
     A repository is a set of modules.
@@ -38,7 +48,6 @@ class Repository(BaseNode):
         BaseNode.__init__(self, name, self.Type.REPOSITORY, self)
         # Path to the repository file. All relative paths refer to this path.
         self._filename = os.path.realpath(filename)
-        self._config_map = {}
         self._new_filters = {}
 
         # List of module filenames which are later transfered into
@@ -72,12 +81,6 @@ class Repository(BaseNode):
         # Prefix the global filters with the `repo.` name
         for name, func in repo._new_filters.items():
             repo._filters[repo.name + "." + name] = func
-
-        # Prefix the global configuration map with the `repo:` name
-        config_map = repo._config_map.copy()
-        repo._config_map = {}
-        for name, path in config_map.items():
-            repo._config_map[repo.name + ":" + name] = path
 
         return repo
 
@@ -147,6 +150,9 @@ class Repository(BaseNode):
                 if not os.path.isfile(module):
                     raise LbuildException("Module file not found '%s'" % module)
                 self._module_files.append(module)
+
+    def add_configuration(self, name, path, description):
+        self.add_child(Configuration(name, path, description))
 
     def glob(self, pattern):
         pattern = os.path.abspath(self._relocate_relative_path(pattern))

@@ -156,11 +156,15 @@ class BaseNode(anytree.Node):
         PARSER = 1
         REPOSITORY = 2
         OPTION = 3
-        QUERY = 4
-        MODULE = 5
+        CONFIG = 4
+        QUERY = 5
+        MODULE = 6
 
     def __init__(self, name, node_type, repository=None):
         anytree.Node.__init__(self, name)
+        if self.separator in str(name):
+            raise LbuildException("Path separator ':' is not allowed in '{}({})' name!"
+                                  .format(self.__class__.__name__, self.name))
         self._type = node_type
         self._functions = {}
 
@@ -225,6 +229,10 @@ class BaseNode(anytree.Node):
     @property
     def submodules(self):
         return self.all_modules(depth=2)
+
+    @property
+    def configurations(self):
+        return self._findall(self.Type.CONFIG, depth=2)
 
     @property
     def repository(self):

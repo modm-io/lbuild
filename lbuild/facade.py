@@ -72,8 +72,8 @@ class RepositoryInitFacade(BaseNodeInitFacade):
     def add_filter(self, name, function):
         self._node._new_filters[name] = function
 
-    def add_configuration(self, name, path):
-        self._node._config_map[name] = path
+    def add_configuration(self, name, path, description=None):
+        self._node.add_configuration(name, path, description)
 
 
 class RepositoryPrepareFacade(BaseNodePrepareFacade):
