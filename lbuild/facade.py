@@ -259,6 +259,10 @@ class BuildLogOperationFacade:
     def filename_out(self, path=None):
         return self._operation.local_filename_out(path)
 
+    # deprecated
+    def local_filename_out(self, path=None):
+        return self.filename_out(path)
+
 
 class BuildLogFacade:
 
@@ -269,6 +273,7 @@ class BuildLogFacade:
         self.__repo_metadata = buildlog.repo_metadata
         self.__module_metadata = buildlog.module_metadata
         self.__operation_metadata = buildlog.operation_metadata
+        self.__operations = [BuildLogOperationFacade(operation) for operation in self._buildlog.operations]
 
     @property
     def outpath(self):
@@ -300,13 +305,13 @@ class BuildLogFacade:
 
     @property
     def operations(self):
-        return self._buildlog.operations
+        return self.__operations
 
     def operations_per_module(self, modulename: str):
         return self._buildlog.operations_per_module(modulename)
 
     def __iter__(self):
-        return iter(self._buildlog.operations)
+        return iter(self.__operations)
 
     # deprecated
     def get_operations_per_module(self, modulename: str):
