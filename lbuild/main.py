@@ -21,7 +21,7 @@ from lbuild.format import format_option_short_description
 
 from lbuild.api import Builder
 
-__version__ = '1.7.1'
+__version__ = '1.7.2'
 
 
 class InitAction:
@@ -393,6 +393,7 @@ def prepare_argument_parser():
 
 def run(args):
     lbuild.logger.configure_logger(args.verbose)
+    lbuild.facade.VERBOSE_DEPRECATION = args.verbose
     lbuild.format.plain = args.plain
 
     try:

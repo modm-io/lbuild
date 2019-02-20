@@ -8,7 +8,33 @@
 # 2-clause BSD license. See the file `LICENSE.txt` for the full license
 # governing this code.
 
+import os
 import lbuild.utils
+import warnings
+import logging
+import inspect
+
+LOGGER = logging.getLogger('lbuild.facade')
+VERBOSE_DEPRECATION = 0
+
+def deprecated(since, function, replacement=None, obj=None):
+    def pretty(function):
+        cname = function.__self__.__class__ if hasattr(function, "__self__") else obj
+        cname = cname.__name__.replace("Facade", "")
+        fname = function.__name__
+        fsig = str(inspect.signature(function))
+        return "{}.{}{}".format(cname, fname, fsig)
+
+    msg = "'{}' is deprecated since v{}".format(pretty(function), since)
+    if replacement:
+        msg += ", use '{}' instead".format(pretty(replacement))
+    msg += "!"
+    warnings.warn(msg, DeprecationWarning)
+
+    if VERBOSE_DEPRECATION > 0:
+        LOGGER.warning(msg)
+    else:
+        LOGGER.debug(msg)
 
 
 class BaseNodePrepareFacade:
@@ -95,6 +121,7 @@ class RepositoryPrepareFacade(BaseNodePrepareFacade):
 
     # deprecated
     def find_modules_recursive(self, basepath="", modulefile="module.lb", ignore=None):
+        deprecated("1.7.2", self.find_modules_recursive, self.add_modules_recursive)
         self.add_modules_recursive(basepath, modulefile, ignore)
 
 
@@ -169,6 +196,7 @@ class EnvironmentValidateFacade:
 
     # deprecated
     def get_option(self, key, default=None):
+        deprecated("1.7.2", self.get_option, self.get)
         return self.get(key, default)
 
 
@@ -205,8 +233,11 @@ class EnvironmentPostBuildFacade(EnvironmentValidateFacade):
     def generated_local_files(self, filterfunc=None):
         return self._env.generated_local_files(filterfunc)
 
-    def reloutpath(self, path, relative=None):
-        return self._env.reloutpath(path, relative)
+    def relative_outpath(self, path, relative_to=None):
+        return self._env.reloutpath(path, relative_to)
+
+    def real_outpath(self, path, basepath=None):
+        return self._env.outpath(path, basepath=basepath)
 
     @staticmethod
     def ignore_files(*files):
@@ -219,15 +250,25 @@ class EnvironmentPostBuildFacade(EnvironmentValidateFacade):
     # deprecated
     @staticmethod
     def ignore_patterns(*patterns):
-        return lbuild.utils.ignore_patterns(*patterns)
+        deprecated("1.7.2", EnvironmentPostBuildFacade.ignore_patterns,
+                            EnvironmentPostBuildFacade.ignore_paths,
+                            obj=EnvironmentPostBuildFacade)
+        return EnvironmentPostBuildFacade.ignore_paths(*patterns)
 
     # deprecated
     def get_generated_local_files(self, filterfunc=None):
+        deprecated("1.7.2", self.get_generated_local_files, self.generated_local_files)
         return self.generated_local_files(filterfunc)
 
     # deprecated
     def outpath(self, *path, basepath=None):
-        return self._env.outpath(*path, basepath=basepath)
+        deprecated("1.7.2", self.outpath, self.real_outpath)
+        return self.real_outpath(os.path.join(*path), basepath=basepath)
+
+    # deprecated
+    def reloutpath(self, path, relative=None):
+        deprecated("1.7.2", self.reloutpath, self.relative_outpath)
+        return self.relative_outpath(path, relative)
 
 
 class EnvironmentBuildFacade(EnvironmentPostBuildFacade):
@@ -240,6 +281,7 @@ class EnvironmentBuildFacade(EnvironmentPostBuildFacade):
 
     # deprecated
     def append_metadata(self, key, *values):
+        deprecated("1.7.2", self.append_metadata, self.add_metadata)
         self._env.add_metadata(key, *values)
 
     # deprecated
@@ -261,6 +303,7 @@ class BuildLogOperationFacade:
 
     # deprecated
     def local_filename_out(self, path=None):
+        deprecated("1.7.2", self.local_filename_out, self.filename_out)
         return self.filename_out(path)
 
 
@@ -315,4 +358,5 @@ class BuildLogFacade:
 
     # deprecated
     def get_operations_per_module(self, modulename: str):
+        deprecated("1.7.2", self.get_operations_per_module, self.operations_per_module)
         return self.operations_per_module(modulename)
