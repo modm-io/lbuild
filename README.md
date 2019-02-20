@@ -659,13 +659,20 @@ def add_option_dependencies(value):
 #### StringOption
 
 This is the most generic option, allowing to input any string.
+You may, however, provide your own validator that may raise a `ValueError`
+if the input string does not match your expectations.
 The string is passed unmodified from the configuration to the module and the
 dependency handler.
 
 ```python
+def validate_string(string):
+    if "please" not in string:
+        raise ValueError("Input does not contain the magic word!")
+
 option = StringOption(name="option-name",
                       description="inline", # or FileReader("file.md")
                       default="default string",
+                      validate=validate_string,
                       dependencies=add_option_dependencies)
 ```
 

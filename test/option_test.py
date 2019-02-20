@@ -79,6 +79,37 @@ class OptionTest(unittest.TestCase):
         self.assertIn("Inputs: [String]", output)
         self.assertIn("long description", output)
 
+    def test_should_be_constructable_from_string(self):
+        option = StringOption("test", "description", default="hello")
+        self.assertIn("test  [StringOption]", option.description)
+        self.assertEqual("hello", option.value)
+        option.value = "world"
+        self.assertEqual("world", option.value)
+        option.value = 1
+        self.assertEqual("1", option.value)
+        option.value = None
+        self.assertEqual("None", option.value)
+        option.value = False
+        self.assertEqual("False", option.value)
+
+        def validate_string(value):
+            if "magic" not in value:
+                raise ValueError("magic not in value")
+
+        option = StringOption("test", "description", default="magic",
+                              validate=validate_string)
+        self.assertEqual("magic", option.value)
+        option.value = "magic word"
+        self.assertEqual("magic word", option.value)
+
+        with self.assertRaises(ValueError):
+            option.value = "hello"
+
+        with self.assertRaises(ValueError):
+            StringOption("test", "description", default="hello",
+                         validate=validate_string)
+
+
     def test_should_be_constructable_from_boolean(self):
         option = BooleanOption("test", "description", False)
         self.assertIn("test  [BooleanOption]", option.description)

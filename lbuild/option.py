@@ -21,12 +21,12 @@ from .format import ColorWrapper as _cw
 class Option(BaseNode):
 
     def __init__(self, name, description, default=None, dependencies=None,
-                 convert_input=str, convert_output=str):
+                 convert_input=None, convert_output=None):
         BaseNode.__init__(self, name, BaseNode.Type.OPTION)
         self._dependency_handler = dependencies
         self._description = description
-        self._in = convert_input
-        self._out = convert_output
+        self._in = str if convert_input is None else convert_input
+        self._out = str if convert_output is None else convert_output
         self._input = None
         self._output = None
         self._default = None
@@ -36,7 +36,7 @@ class Option(BaseNode):
         if default is not None:
             self._input = self._in(default)
             self._output = self._out(default)
-            self._default = self._in(default)
+            self._default = self._input
 
     def _update_dependencies(self):
         self._dependencies_resolved = False
@@ -82,8 +82,17 @@ class Option(BaseNode):
 
 class StringOption(Option):
 
-    def __init__(self, name, description, default=None, dependencies=None):
-        Option.__init__(self, name, description, default, dependencies)
+    def __init__(self, name, description, default=None, dependencies=None, validate=None):
+        Option.__init__(self, name, description, None, dependencies,
+                        convert_input=self._validate_string)
+        self._validate = validate
+        self._set_default(default)
+
+    def _validate_string(self, value):
+        value = str(value)
+        if self._validate:
+            self._validate(value)
+        return value
 
 
 class BooleanOption(Option):
