@@ -21,11 +21,10 @@ from lbuild.format import format_option_short_description
 
 from lbuild.api import Builder
 
-__version__ = '1.7.1'
+__version__ = '1.8.0'
 
 
 class InitAction:
-    config_required = True
 
     def register(self, argument_parser):
         parser = argument_parser.add_parser(
@@ -40,7 +39,6 @@ class InitAction:
 
 
 class UpdateAction:
-    config_required = True
 
     def register(self, argument_parser):
         parser = argument_parser.add_parser(
@@ -61,7 +59,6 @@ class ManipulationActionBase:
     All subclasses must implement a `perform` function.
     """
     # pylint: disable=too-few-public-methods
-    config_required = True
 
     def load_repositories(self, args, builder):
         builder.load(args.repositories)
@@ -72,7 +69,6 @@ class ManipulationActionBase:
 
 
 class DiscoverAction(ManipulationActionBase):
-    config_required = False
 
     def register(self, argument_parser):
         parser = argument_parser.add_parser(
@@ -120,7 +116,6 @@ class DiscoverAction(ManipulationActionBase):
 
 
 class DiscoverOptionsAction(ManipulationActionBase):
-    config_required = False
 
     def register(self, argument_parser):
         parser = argument_parser.add_parser(
@@ -156,7 +151,6 @@ class DiscoverOptionsAction(ManipulationActionBase):
 
 
 class ValidateAction(ManipulationActionBase):
-    config_required = False
 
     def register(self, argument_parser):
         parser = argument_parser.add_parser(
@@ -179,7 +173,6 @@ class ValidateAction(ManipulationActionBase):
 
 
 class BuildAction(ManipulationActionBase):
-    config_required = False
 
     def register(self, argument_parser):
         parser = argument_parser.add_parser(
@@ -230,7 +223,6 @@ class BuildAction(ManipulationActionBase):
 
 
 class CleanAction(ManipulationActionBase):
-    config_required = False
 
     def register(self, argument_parser):
         parser = argument_parser.add_parser(
@@ -274,7 +266,6 @@ class CleanAction(ManipulationActionBase):
 
 
 class DependenciesAction(ManipulationActionBase):
-    config_required = False
 
     def register(self, argument_parser):
         parser = argument_parser.add_parser(
@@ -395,7 +386,8 @@ def prepare_argument_parser():
 
 def run(args):
     lbuild.logger.configure_logger(args.verbose)
-    lbuild.format.plain = args.plain
+    lbuild.facade.VERBOSE_DEPRECATION = args.verbose
+    lbuild.format.PLAIN = args.plain
 
     try:
         command = args.execute_action

@@ -9,6 +9,7 @@
 # governing this code.
 
 import sys
+import enum
 import os.path
 import random
 import logging
@@ -38,17 +39,29 @@ class Runner:
 
     def validate(self):
         if hasattr(self.node, "validate"):
-            self.node.validate(self.env.facade_validate)
+            self.env.stage = Parser.Stage.VALIDATE
+            self.node.validate(self.env)
 
     def build(self):
-        self.node.build(self.env.facade_build)
+        self.env.stage = Parser.Stage.BUILD
+        self.node.build(self.env)
 
     def post_build(self, buildlog):
         if hasattr(self.node, "post_build"):
-            self.node.post_build(self.env.facade_post_build, BuildLogFacade(buildlog))
+            self.env.stage = Parser.Stage.POST_BUILD
+            self.node.post_build(self.env)
 
 
 class Parser(BaseNode):
+
+    @enum.unique
+    class Stage(enum.IntEnum):
+        """This order of repo/module function calls"""
+        INIT = 1
+        PREPARE = 2
+        VALIDATE = 3
+        BUILD = 4
+        POST_BUILD = 5
 
     def __init__(self, config=None):
         BaseNode.__init__(self, "lbuild", BaseNode.Type.PARSER)

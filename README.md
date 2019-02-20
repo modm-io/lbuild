@@ -424,7 +424,7 @@ copy and generate files and folders from Jinja2 templates with the substitutions
 of you choice and the configuration of the modules. Each file operation is
 appended to a global build log, which you can also explicitly add metadata to.
 
-The `post_build(env, buildlog)` step is meant for modules that need to generate
+The `post_build(env)` step is meant for modules that need to generate
 files which receive information from all built modules. The typically use-case
 here is generating scripts for build systems, which need to know about what
 files were generated and all module's metadata.
@@ -608,24 +608,26 @@ def build(env):
 # but you can't add to the metadata anymore:
 # - env.collect() unavailable
 # You have access to the entire buildlog up to this point
-def post_build(env, buildlog):
+def post_build(env):
     # The absolute path to the lbuild output directory
-    outpath = buildlog.outpath
+    outpath = env.buildlog.outpath
 
     # All modules that were built
-    modules = buildlog.modules
+    modules = env.buildlog.modules
     # All file generation operations that were done
-    operations = buildlog.operations
+    operations = env.buildlog.operations
     # All operations per module
-    operations = buildlog.operations_per_module("repo:module")
+    operations = env.buildlog.operations_per_module("repo:module")
 
     # iterate over all operations directly
     for operation in buildlog:
         # Get the module name that generated this file
-        env.log.info("Module({}) generated the '{}' file".format(
-                     operation.module_name, operation.filename_out()))
+        env.log.info("Module({}) generated the '{}' file"
+                     .format(operation.module, operation.filename))
         # You can also get the filename relative to a subfolder in outpath
-        operation.filename_out(path="subfolder/")
+        env.relative_output(operation.filename, "subfolder/")
+        # or as an absolute path
+        env.real_output(operation.filename, "subfolder/")
 
     # get all include paths from all active modules
     include_paths = env.collector_values("::include_path")

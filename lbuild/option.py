@@ -336,4 +336,5 @@ class OptionSet(Option):
 
 class SetOption(OptionSet):
     def __init__(self, name, description, enumeration, default=None, dependencies=None):
+        LOGGER.warning("'SetOption(..., default)' is deprecated since v1.8.0, please use 'module.add_set_option(EnumerationOption(...), default)!")
         OptionSet.__init__(self, EnumerationOption(name, description, enumeration, None, dependencies), default)

@@ -8,8 +8,41 @@
 # 2-clause BSD license. See the file `LICENSE.txt` for the full license
 # governing this code.
 
+import os
 import lbuild.utils
+import lbuild.filter
+import warnings
+import logging
+import inspect
 from .option import OptionSet
+
+LOGGER = logging.getLogger('lbuild.facade')
+VERBOSE_DEPRECATION = 0
+
+def deprecated(since, function, replacement=None, obj=None):
+    def pretty(function):
+        if isinstance(function, str):
+            return function
+        cname = function.__self__.__class__ if hasattr(function, "__self__") else obj
+        cname = cname.__name__.replace("Facade", "")
+        fname = function.__name__
+        fsig = str(inspect.signature(function))
+        return "{}.{}{}".format(cname, fname, fsig)
+
+    msg = "'{}' is deprecated since v{}".format(pretty(function), since)
+    if replacement:
+        replacement = pretty(replacement)
+        if "\n" in replacement:
+            msg += ", use \n{}\ninstead!".format(lbuild.filter.indent(replacement, spaces=4, first_line=True))
+        else:
+            msg += ", use '{}' instead".format(replacement)
+    msg += "!"
+    warnings.warn(msg, DeprecationWarning)
+
+    if VERBOSE_DEPRECATION > 0:
+        LOGGER.warning(msg)
+    else:
+        LOGGER.debug(msg)
 
 
 class BaseNodePrepareFacade:
@@ -100,8 +133,9 @@ class RepositoryPrepareFacade(BaseNodePrepareFacade):
     def glob(self, pattern):
         return self._node.glob(pattern)
 
-    # deprecated
+    # deprecated functions
     def find_modules_recursive(self, basepath="", modulefile="module.lb", ignore=None):
+        deprecated("1.8.0", self.find_modules_recursive, self.add_modules_recursive)
         self.add_modules_recursive(basepath, modulefile, ignore)
 
 
@@ -178,7 +212,14 @@ class EnvironmentValidateFacade:
         return self._env.options.get(key, default)
 
     def query(self, key, default=None):
-        return self._env.queries.get(key, default)
+        if default is not None:
+            deprecated("1.8.0", self.query,
+                       "if env.has_query(key):\n"
+                       "    value = env.query(key)\n"
+                       "else:\n"
+                       "    value = default")
+            return self._env.queries.get(key, default)
+        return self._env.queries[key]
 
     def repopath(self, *path):
         return self._env.repopath(*path)
@@ -189,8 +230,9 @@ class EnvironmentValidateFacade:
     def __getitem__(self, key):
         return self._env.options[key]
 
-    # deprecated
+    # deprecated functions
     def get_option(self, key, default=None):
+        deprecated("1.8.0", self.get_option, self.get)
         return self.get(key, default)
 
 
@@ -216,19 +258,37 @@ class EnvironmentBuildCommonFacade(EnvironmentValidateFacade):
         self._env.substitutions = substitutions
 
     def copy(self, src, dest=None, ignore=None, metadata=None):
+        if metadata is not None:
+            deprecated("1.8.0", "EnvironmentBuild.copy(..., metadata=metadata)",
+                                "operations = env.copy(...)\n"
+                                "for key, values in metadata.items():\n"
+                                "    env.collect(key, *values, operations=operations)")
         return self._env.copy(src, dest, ignore, metadata)
 
     def extract(self, archive, src=None, dest=None, ignore=None, metadata=None):
+        if metadata is not None:
+            deprecated("1.8.0", "EnvironmentBuild.extract(..., metadata=metadata)",
+                                "operations = env.extract(...)\n"
+                                "for key, values in metadata.items():\n"
+                                "    env.collect(key, *values, operations=operations)")
         return self._env.extract(archive, src, dest, ignore, metadata)
 
     def template(self, src, dest=None, substitutions=None, filters=None, metadata=None):
+        if metadata is not None:
+            deprecated("1.8.0", "EnvironmentBuild.template(..., metadata=metadata)",
+                                "operations = env.template(...)\n"
+                                "for key, values in metadata.items():\n"
+                                "    env.collect(key, *values, operations=operations)")
         return self._env.template(src, dest, substitutions, filters, metadata)
 
     def generated_local_files(self, filterfunc=None):
         return self._env.generated_local_files(filterfunc)
 
-    def reloutpath(self, path, relative=None):
-        return self._env.reloutpath(path, relative)
+    def relative_outpath(self, path, relative_to=None):
+        return self._env.reloutpath(path, relative_to)
+
+    def real_outpath(self, path, basepath=None):
+        return self._env.outpath(path, basepath=basepath)
 
 
     @staticmethod
@@ -240,24 +300,35 @@ class EnvironmentBuildCommonFacade(EnvironmentValidateFacade):
         return lbuild.utils.ignore_patterns(*paths)
 
 
-    # deprecated
+    # deprecated functions
     @staticmethod
     def ignore_patterns(*patterns):
-        return lbuild.utils.ignore_patterns(*patterns)
+        deprecated("1.8.0", EnvironmentPostBuildFacade.ignore_patterns,
+                            EnvironmentPostBuildFacade.ignore_paths,
+                            obj=EnvironmentPostBuildFacade)
+        return EnvironmentPostBuildFacade.ignore_paths(*patterns)
 
-    # deprecated
     def get_generated_local_files(self, filterfunc=None):
+        deprecated("1.8.0", self.get_generated_local_files, self.generated_local_files)
         return self.generated_local_files(filterfunc)
 
-    # deprecated
     def outpath(self, *path, basepath=None):
-        return self._env.outpath(*path, basepath=basepath)
+        deprecated("1.8.0", self.outpath, self.real_outpath)
+        return self.real_outpath(os.path.join(*path), basepath=basepath)
+
+    def reloutpath(self, path, relative=None):
+        deprecated("1.8.0", self.reloutpath, self.relative_outpath)
+        return self.relative_outpath(path, relative)
 
 
 class EnvironmentPostBuildFacade(EnvironmentBuildCommonFacade):
 
     def __init__(self, env):
         EnvironmentBuildCommonFacade.__init__(self, env)
+
+    @property
+    def buildlog(self):
+        return self._env.facade_buildlog
 
     def has_collector(self, key):
         return key in self._env.collectors
@@ -277,15 +348,17 @@ class EnvironmentBuildFacade(EnvironmentBuildCommonFacade):
     def collect(self, key, *values, operations=None):
         self._env.add_to_collector(key, *values, operations=operations)
 
+    # deprecated functions
     def add_metadata(self, key, *values):
+        deprecated("1.8.0", self.add_metadata, self.collect)
         self._env.add_metadata(key, *values)
 
-    # deprecated
     def append_metadata(self, key, *values):
+        deprecated("1.8.0", self.append_metadata, self.add_metadata)
         self._env.add_metadata(key, *values)
 
-    # deprecated
     def append_metadata_unique(self, key, *values):
+        deprecated("1.8.0", self.append_metadata_unique, self.add_metadata)
         self._env.add_metadata(key, *values)
 
 
@@ -310,10 +383,25 @@ class BuildLogOperationFacade:
         self.has_filename = True
 
     @property
-    def module_name(self):
+    def repository(self):
+        return self.module.split(":")[0]
+
+    @property
+    def module(self):
         return self._operation.module_name
 
-    def filename_out(self, path=None):
+    @property
+    def filename(self):
+        return self._operation.local_filename_out()
+
+    # deprecated functions
+    @property
+    def module_name(self):
+        deprecated("1.8.0", "BuildLogOperation.module_name", "BuildLogOperation.module")
+        return self.module
+
+    def local_filename_out(self, path=None):
+        deprecated("1.8.0", self.local_filename_out, "BuildLogOperation.filename")
         return self._operation.local_filename_out(path)
 
 
@@ -322,30 +410,29 @@ class BuildLogFacade:
     def __init__(self, buildlog):
         self._buildlog = buildlog
 
-        self.__metadata = buildlog.metadata
-        self.__repo_metadata = buildlog.repo_metadata
-        self.__module_metadata = buildlog.module_metadata
-        self.__operation_metadata = buildlog.operation_metadata
-
     @property
     def outpath(self):
         return self._buildlog._outpath
 
     @property
     def metadata(self):
-        return self.__metadata
+        deprecated("1.8.0", "BuildLog.metadata", EnvironmentBuildFacade(None).collect)
+        return self._buildlog.metadata
 
     @property
     def operation_metadata(self):
-        return self.__operation_metadata
+        deprecated("1.8.0", "BuildLog.operation_metadata", EnvironmentBuildFacade(None).collect)
+        return self._buildlog.operation_metadata
 
     @property
     def module_metadata(self):
-        return self.__module_metadata
+        deprecated("1.8.0", "BuildLog.module_metadata", EnvironmentBuildFacade(None).collect)
+        return self._buildlog.module_metadata
 
     @property
     def repo_metadata(self):
-        return self.__repo_metadata
+        deprecated("1.8.0", "BuildLog.repo_metadata", EnvironmentBuildFacade(None).collect)
+        return self._buildlog.repo_metadata
 
     @property
     def repositories(self):
@@ -357,14 +444,15 @@ class BuildLogFacade:
 
     @property
     def operations(self):
-        return self._buildlog.operations
+        return [BuildLogOperationFacade(operation) for operation in self._buildlog.operations]
 
     def operations_per_module(self, modulename: str):
         return self._buildlog.operations_per_module(modulename)
 
     def __iter__(self):
-        return iter(self._buildlog.operations)
+        return iter(self.operations)
 
     # deprecated
     def get_operations_per_module(self, modulename: str):
+        deprecated("1.8.0", self.get_operations_per_module, self.operations_per_module)
         return self.operations_per_module(modulename)

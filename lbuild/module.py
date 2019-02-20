@@ -11,6 +11,7 @@
 
 import os
 import logging
+import inspect
 
 import lbuild.utils
 
@@ -192,17 +193,21 @@ class Module(BaseNode):
         validate = self._functions.get("validate", self._functions.get("pre_build", None))
         if validate is not None:
             LOGGER.info("Validate %s", self.fullname)
-            lbuild.utils.with_forward_exception(self, lambda: validate(env))
+            lbuild.utils.with_forward_exception(self, lambda: validate(env.facade))
 
     def build(self, env):
         LOGGER.info("Build %s", self.fullname)
-        lbuild.utils.with_forward_exception(self, lambda: self._functions["build"](env))
+        lbuild.utils.with_forward_exception(self, lambda: self._functions["build"](env.facade))
 
-    def post_build(self, env, buildlog):
+    def post_build(self, env):
         post_build = self._functions.get("post_build", None)
         if post_build is not None:
             LOGGER.info("Post-Build %s", self.fullname)
-            lbuild.utils.with_forward_exception(self, lambda: post_build(env, buildlog))
+            if len(inspect.signature(post_build).parameters.keys()) == 1:
+                func = lambda: post_build(env.facade)
+            else:
+                func = lambda: post_build(env.facade, env.facade_buildlog)
+            lbuild.utils.with_forward_exception(self, func)
 
     def __lt__(self, other):
         return self.fullname.__lt__(other.fullname)

@@ -70,16 +70,16 @@ class Environment:
 
     def __init__(self, module, buildlog):
         self.options = module.option_value_resolver
-        self.queries = module.query_resolver(self.facade_validate)
         self.collectors = module.collector_resolver
         self.collectors_available = module.collector_available_resolver
         self.modules = module.module_resolver
+
         self.__module = module
         self.__modulepath = module._filepath
         self.__repopath = module.repository._filepath
         self.__outpath = buildlog.outpath if buildlog else None
 
-        self.__buildlog = buildlog
+        self.buildlog = buildlog
         self.__template_environment = None
         self.__template_environment_filters = None
         self.__template_global_substitutions = {
@@ -91,18 +91,11 @@ class Environment:
         self.log = logging.getLogger("user." + module.fullname.replace(":", "."))
         self.outbasepath = None
         self.substitutions = {}
+        self.stage = Parser.Stage.INIT
 
     @property
-    def facade_validate(self):
-        return EnvironmentValidateFacade(self)
-
-    @property
-    def facade_build(self):
-        return EnvironmentBuildFacade(self)
-
-    @property
-    def facade_post_build(self):
-        return EnvironmentPostBuildFacade(self)
+    def queries(self):
+        return self.__module.query_resolver(self.facade)
 
     def extract(self, archive_path, src=None, dest=None, ignore=None, metadata=None):
 
@@ -305,9 +298,8 @@ class Environment:
         operations.add(self.log_file(self.modulepath(src), outfile_name, total, metadata=metadata))
         return operations
 
-
     def log_file(self, src, dest, operation_time, metadata=None):
-        operation = self.__buildlog.log(self.__module, src, dest, operation_time, metadata)
+        operation = self.buildlog.log(self.__module, src, dest, operation_time, metadata)
         return BuildLogOperationFacade(operation)
 
     def modulepath(self, *path):
@@ -346,7 +338,7 @@ class Environment:
             the path is added.
         """
         filenames = []
-        operations = self.__buildlog.operations_per_module(self.__module.fullname)
+        operations = self.buildlog.operations_per_module(self.__module.fullname)
         for operation in operations:
             filename = os.path.normpath(
                 os.path.join(os.path.relpath(os.path.dirname(operation.filename_out),
@@ -374,7 +366,21 @@ class Environment:
         Append additional information to the build log which can be used in the
         post-build step to generate additional files/data.
         """
-        self.__buildlog.add_metadata(self.__module, key, values)
+        self.buildlog.add_metadata(self.__module, key, values)
+
+    @property
+    def facade(self):
+        if self.stage == Parser.Stage.BUILD:
+            return EnvironmentBuildFacade(self)
+        if self.stage == Parser.Stage.POST_BUILD:
+            return EnvironmentPostBuildFacade(self)
+        return EnvironmentValidateFacade(self)
+
+    @property
+    def facade_buildlog(self):
+        if self.stage == Parser.Stage.POST_BUILD:
+            return BuildLogFacade(self.buildlog)
+        return None
 
     def __reload_template_environment(self, filters):
         if self.__template_environment_filters == filters:
