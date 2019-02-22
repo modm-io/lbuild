@@ -112,7 +112,7 @@ class NameResolver:
         self._returner = (lambda n: n) if returner is None else returner
         self._selected = selected
 
-    def __getitem__(self, key: str):
+    def get_node(self, key, check_dependencies=False):
         node = self._node._resolve_partial_max(key, max_results=1)[0]
         if not node._available:
             raise LbuildException("{} '{}' is not available!".format(self._str, node.fullname))
@@ -124,17 +124,29 @@ class NameResolver:
             raise LbuildException("'{}' is of type '{}', but searching for '{}'!"
                                   .format(node.fullname, node._type.name.lower(), self._str))
 
+        if check_dependencies and node.type in {BaseNode.Type.OPTION, BaseNode.Type.QUERY}:
+            if node.parent != self._node:
+                if all(n.type not in {BaseNode.Type.PARSER, BaseNode.Type.REPOSITORY} for n in {self._node, node.module}):
+                    if node.parent not in self._node.dependencies:
+                        LOGGER.warning("Module '{}' accessing '{}' without depending on '{}'!"
+                                       .format(self._node.fullname, node.fullname, node.module.fullname))
+
+        return node
+
+    def __getitem__(self, key: str):
+        node = self.get_node(key, check_dependencies=True)
         return self._returner(node)
 
     def get(self, key, default=None):
         try:
-            return self.__getitem__(key)
+            node = self.get_node(key)
+            return self._returner(node)
         except LbuildException:
             return default
 
     def __contains__(self, key):
         try:
-            _ = self.__getitem__(key)
+            _ = self.get_node(key)
             return True
         except LbuildException:
             return False
