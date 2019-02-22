@@ -45,6 +45,7 @@ def load_functions_from_file(repository, filename: str, required, optional=None,
             'EnvironmentQuery': lbuild.query.EnvironmentQuery,
 
             'StringOption': lbuild.option.StringOption,
+            'PathOption': lbuild.option.PathOption,
             'BooleanOption': lbuild.option.BooleanOption,
             'NumericOption': lbuild.option.NumericOption,
             'EnumerationOption': lbuild.option.EnumerationOption,

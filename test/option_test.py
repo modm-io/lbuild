@@ -109,6 +109,36 @@ class OptionTest(unittest.TestCase):
             StringOption("test", "description", default="hello",
                          validate=validate_string)
 
+    def test_should_be_constructable_from_path(self):
+        option = PathOption("test", "description", default="filename.txt")
+        self.assertIn("test  [PathOption]", option.description)
+        self.assertEqual("filename.txt", option.value)
+        option.value = "filename.txt.in"
+        self.assertEqual("filename.txt.in", option.value)
+        option.value = "path/filename.txt"
+        self.assertEqual("path/filename.txt", option.value)
+        option.value = "path/folder"
+        self.assertEqual("path/folder", option.value)
+        option.value = "path/folder/"
+        self.assertEqual("path/folder/", option.value)
+        option.value = "/path/folder/"
+        self.assertEqual("/path/folder/", option.value)
+        option.value = "/"
+        self.assertEqual("/", option.value)
+        option.value = "\tfile \n  "
+        self.assertEqual("file", option.value)
+
+        with self.assertRaises(ValueError):
+            option.value = ""
+        with self.assertRaises(ValueError):
+            option.value = "//"
+        with self.assertRaises(ValueError):
+            option.value = "/folder//"
+        with self.assertRaises(ValueError):
+            option.value = "//folder/"
+
+        option = PathOption("test", "description", default="", empty_ok=True)
+        self.assertEqual("", option.value)
 
     def test_should_be_constructable_from_boolean(self):
         option = BooleanOption("test", "description", False)

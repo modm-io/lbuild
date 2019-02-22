@@ -172,3 +172,33 @@ def with_forward_exception(module, function):
     except Exception as error:
         # Forward all exception which are not LbuildExceptions
         raise LbuildForwardException(module, error)
+
+
+import errno
+import tempfile
+
+def is_pathname_valid(path):
+    if not isinstance(path, str) or not path:
+        return False
+    if (os.path.sep + os.path.sep) in path:
+        return False
+    return _is_pathname_valid(path)
+
+# See https://stackoverflow.com/a/34102855
+def _is_pathname_valid(pathname: str) -> bool:
+    try:
+        _, pathname = os.path.splitdrive(pathname)
+        with tempfile.TemporaryDirectory() as root_dirname:
+            root_dirname = root_dirname.rstrip(os.path.sep) + os.path.sep
+            for pathname_part in pathname.split(os.path.sep):
+                try:
+                    os.lstat(root_dirname + pathname_part)
+                except OSError as exc:
+                    if hasattr(exc, "winerror"):
+                        if exc.winerror == 123:
+                            return False
+                    elif exc.errno in {errno.ENAMETOOLONG, errno.ERANGE}:
+                        return False
+    except TypeError as exc:
+        return False
+    return True

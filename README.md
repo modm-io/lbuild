@@ -162,14 +162,14 @@ Parser(lbuild)
     ├── Module(modm:board)   Board Support Packages
     │   ╰── Module(modm:board:disco-f469ni)   STM32F469IDISCOVERY
     ├── Module(modm:build)   Build System Generators
-    │   ├── Option(build.path) = build/parent-folder in [String]
-    │   ├── Option(project.name) = parent-folder in [String]
+    │   ├── PathOption(build.path) = build/parent-folder in [String]
+    │   ├── StringOption(project.name) = parent-folder in [String]
     │   ╰── Module(modm:build:scons)  SCons Build Script Generator
     │       ├── BooleanOption(info.build) = False in [True, False]
     │       ╰── EnumerationOption(info.git) = Disabled in [Disabled, Info, Info+Status]
     ├── Module(modm:platform)   Platform HAL
     │   ├── Module(modm:platform:can)   Controller Area Network (CAN)
-    │   │   ├── Module(modm:platform:can:1)   Instance 1
+    │   │   ╰── Module(modm:platform:can:1)   Instance 1
     │   │       ├── NumericOption(buffer.rx) = 32 in [1 .. 32 .. 65534]
     │   │       ╰── NumericOption(buffer.tx) = 32 in [1 .. 32 .. 65534]
     │   ├── Module(modm:platform:core)   ARM Cortex-M Core
@@ -621,7 +621,7 @@ def post_build(env, buildlog):
 
 *lbuild* options are mappings from strings to Python objects.
 Each option must have a unique name within their parent repository or module.
-If you do not provide a default value, the option is marked as REQUIRED and
+If you do not provide a default value, the option is marked as **REQUIRED** and
 the project cannot be built without it.
 
 ```python
@@ -674,6 +674,26 @@ option = StringOption(name="option-name",
                       default="default string",
                       validate=validate_string,
                       dependencies=add_option_dependencies)
+```
+
+
+#### PathOption
+
+This option operates on strings, but additionally validates them to be
+syntactically valid paths, so the filesystem accepts these strings
+as valid arguments to path operations. This option does not check if the path
+exists, or if it can be created, just if the string is properly formatted.
+
+Since an empty string is not a valid path, but it can be useful to allow an
+empty string as an input value to encode a special case (like a "disable" value),
+you may set `empty_ok=True` to tell the path validation to ignore empty strings.
+
+```python
+option = PathOption(name="option-name",
+                    description="path",
+                    default="path/to/folder/or/file",
+                    empty_ok=False, # is an empty path considered valid?
+                    dependencies=add_option_dependencies)
 ```
 
 

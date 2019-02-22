@@ -95,6 +95,44 @@ class StringOption(Option):
         return value
 
 
+class PathOption(Option):
+
+    def __init__(self, name, description, default=None, dependencies=None, empty_ok=False):
+        self._empty_ok = empty_ok
+        Option.__init__(self, name, description, default, dependencies,
+                        convert_input=self._validate_path,
+                        convert_output=lambda p: str(p).strip())
+
+    def _validate_path(self, path):
+        path = str(path).strip()
+        if not self.validate(path, self._empty_ok):
+            raise ValueError("Path '{}' is not valid!".format(path))
+        return path
+
+    @staticmethod
+    def validate(path, empty_ok=False):
+        if empty_ok and len(path) == 0:
+            return True
+        if not lbuild.utils.is_pathname_valid(path):
+            return False
+        return True
+
+    @property
+    def values(self):
+        return ["Path"]
+
+    def format_value(self):
+        value = str(self._input).strip()
+        if value == "":
+            value = "[]"
+        return value
+
+    def format_values(self):
+        if self.is_default() or self._default == "":
+            return _cw("Path")
+        return _cw("Path: ") + _cw(str(self._default)).wrap("underlined")
+
+
 class BooleanOption(Option):
 
     def __init__(self, name, description, default=False, dependencies=None):
