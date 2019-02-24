@@ -14,7 +14,6 @@ import collections
 
 import lbuild.utils
 
-from .exception import LbuildException
 from .node import BaseNode
 from .format import ColorWrapper as _cw
 
@@ -114,8 +113,8 @@ class BooleanOption(Option):
         if str(value).lower() in ['false', 'no', '0']:
             return False
 
-        raise LbuildException("Value '{}' ({}) must be boolean!"
-                              .format(value, type(value).__name__))
+        raise ValueError("Value '{}' ({}) must be boolean!"
+                         .format(value, type(value).__name__))
 
 
 class NumericOption(Option):
@@ -129,8 +128,8 @@ class NumericOption(Option):
         self.maximum = maximum
         if self.minimum is not None and self.maximum is not None:
             if self.minimum >= self.maximum:
-                raise LbuildException("Minimum '{}' must be smaller than maximum '{}'!"
-                                      .format(self.minimum, self.maximum))
+                raise ValueError("Minimum '{}' must be smaller than maximum '{}'!"
+                                 .format(self.minimum, self.maximum))
 
     # Disable warnings caused by property setters which are not properly recognised by pylint
     # pylint: disable=no-member
@@ -138,11 +137,11 @@ class NumericOption(Option):
     def value(self, value):
         numeric_value = self.as_numeric_value(value)
         if self.minimum is not None and numeric_value < self.minimum:
-            raise LbuildException("Value '{}' of '{}' must be greater than '{}'"
-                                  .format(numeric_value, self.fullname, self.minimum))
+            raise ValueError("Value '{}' of '{}' must be greater than '{}'"
+                             .format(numeric_value, self.fullname, self.minimum))
         if self.maximum is not None and numeric_value > self.maximum:
-            raise LbuildException("Value '{}' of '{}' must be smaller than '{}'"
-                                  .format(numeric_value, self.fullname, self.maximum))
+            raise ValueError("Value '{}' of '{}' must be smaller than '{}'"
+                             .format(numeric_value, self.fullname, self.maximum))
         self._set_value(value)
 
     @property
@@ -178,8 +177,8 @@ class NumericOption(Option):
             except ValueError:
                 pass
 
-        raise LbuildException("Value '{}' ({}) must be numeric!"
-                              .format(value, type(value).__name__))
+        raise ValueError("Value '{}' ({}) must be numeric!"
+                         .format(value, type(value).__name__))
 
 
 class EnumerationOption(Option):
@@ -199,10 +198,10 @@ class EnumerationOption(Option):
             self._enumeration = enumeration
             for key in self._enumeration:
                 if not isinstance(key, str):
-                    raise LbuildException("All enumeration keys must be of type string!")
+                    raise ValueError("All enumeration keys must be of type string!")
         else:
-            raise LbuildException("Type {} currently not supported"
-                                  .format(type(enumeration).__name__))
+            raise ValueError("Type {} currently not supported"
+                             .format(type(enumeration).__name__))
 
         self._set_default(default)
 
@@ -234,9 +233,9 @@ class EnumerationOption(Option):
         try:
             return self._enumeration[self._obj_to_str(value)]
         except KeyError:
-            raise LbuildException("Value '{}' not found in enumeration '{}'. " \
-                                  "Possible values are:\n'{}'."
-                                  .format(self.fullname, value, "', '".join(self._enumeration)))
+            raise ValueError("Value '{}' not found in enumeration '{}'. " \
+                             "Possible values are:\n'{}'."
+                             .format(self.fullname, value, "', '".join(self._enumeration)))
 
 
 class SetOption(EnumerationOption):

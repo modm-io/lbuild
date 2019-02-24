@@ -118,17 +118,17 @@ class OptionTest(unittest.TestCase):
         def set_text():
             option.value = "hello"
 
-        self.assertRaises(lbuild.exception.LbuildException, set_below)
-        self.assertRaises(lbuild.exception.LbuildException, set_above)
-        self.assertRaises(lbuild.exception.LbuildException, set_text)
+        self.assertRaises(ValueError, set_below)
+        self.assertRaises(ValueError, set_above)
+        self.assertRaises(ValueError, set_text)
 
-        self.assertRaises(lbuild.exception.LbuildException,
+        self.assertRaises(ValueError,
                           lambda: lbuild.option.NumericOption("test", "description",
                                                               minimum=0, maximum=0))
-        self.assertRaises(lbuild.exception.LbuildException,
+        self.assertRaises(ValueError,
                           lambda: lbuild.option.NumericOption("test", "description",
                                                               minimum=100, maximum=-100))
-        self.assertRaises(lbuild.exception.LbuildException,
+        self.assertRaises(ValueError,
                           lambda: lbuild.option.NumericOption("test", "description",
                                                               minimum=-10, maximum=-100))
 

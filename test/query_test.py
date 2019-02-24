@@ -46,13 +46,13 @@ class QueryTest(unittest.TestCase):
             """
             pass
 
-        with self.assertRaises(lbuild.exception.LbuildException):
+        with self.assertRaises(ValueError):
             query = lbuild.query.Query(function=int())
-        with self.assertRaises(lbuild.exception.LbuildException):
+        with self.assertRaises(ValueError):
             query = lbuild.query.Query(function=2)
-        with self.assertRaises(lbuild.exception.LbuildException):
+        with self.assertRaises(ValueError):
             query = lbuild.query.Query(function=lambda: None)
-        with self.assertRaises(lbuild.exception.LbuildException):
+        with self.assertRaises(ValueError):
             query = lbuild.query.Query(function=lambda arg: arg)
 
         query = lbuild.query.Query(function=local_function)
@@ -90,15 +90,15 @@ class QueryTest(unittest.TestCase):
             """
             pass
 
-        with self.assertRaises(lbuild.exception.LbuildException):
+        with self.assertRaises(ValueError):
             query = lbuild.query.EnvironmentQuery(factory=int())
-        with self.assertRaises(lbuild.exception.LbuildException):
+        with self.assertRaises(ValueError):
             query = lbuild.query.EnvironmentQuery(factory=2)
-        with self.assertRaises(lbuild.exception.LbuildException):
+        with self.assertRaises(ValueError):
             query = lbuild.query.EnvironmentQuery(factory=lambda: None)
-        with self.assertRaises(lbuild.exception.LbuildException):
+        with self.assertRaises(ValueError):
             query = lbuild.query.EnvironmentQuery(factory=lambda arg: arg)
-        with self.assertRaises(lbuild.exception.LbuildException):
+        with self.assertRaises(ValueError):
             query = lbuild.query.EnvironmentQuery(factory=local_factory)
 
         query = lbuild.query.EnvironmentQuery(factory=self.method)
