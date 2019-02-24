@@ -17,7 +17,7 @@ import unittest
 # Hack to support the usage of `coverage`
 sys.path.append(os.path.abspath("."))
 
-import lbuild.option
+from lbuild.option import *
 from lbuild.repository import Repository
 
 
@@ -35,14 +35,14 @@ class OptionTest(unittest.TestCase):
         lbuild.format.PLAIN = True
 
     def test_should_provide_string_representation_for_base_option(self):
-        option = lbuild.option.Option("test", "description", "value")
+        option = Option("test", "description", "value")
 
         output = option.description
         self.assertTrue(output.startswith(">> test  [Option]"))
         self.assertTrue("value" in output)
 
     def test_should_provide_string_representation_for_base_option_with_repo(self):
-        option = lbuild.option.Option("test", "description", "value")
+        option = Option("test", "description", "value")
         self.repo.add_child(option)
 
         output = option.description
@@ -50,7 +50,7 @@ class OptionTest(unittest.TestCase):
         self.assertTrue("value" in output)
 
     def test_should_provide_string_representation_for_base_option_full(self):
-        option = lbuild.option.Option("test", "description", "value")
+        option = Option("test", "description", "value")
         self.module.add_child(option)
 
         output = option.description
@@ -58,11 +58,11 @@ class OptionTest(unittest.TestCase):
         self.assertTrue("value" in output)
 
     def test_should_provide_short_description(self):
-        option = lbuild.option.Option("test", "first paragraph\n\nsecond paragraph", "value")
+        option = Option("test", "first paragraph\n\nsecond paragraph", "value")
         self.assertEqual("first paragraph", option.short_description)
 
     def test_should_provide_factsheet(self):
-        option = lbuild.option.Option("test", "long description", "value")
+        option = Option("test", "long description", "value")
         output = option.description
 
         self.assertIn("test  [Option]", output)
@@ -71,7 +71,7 @@ class OptionTest(unittest.TestCase):
         self.assertIn("long description", output)
 
     def test_should_provide_factsheet_without_value(self):
-        option = lbuild.option.Option("test", "long description")
+        option = Option("test", "long description")
         output = option.description
 
         self.assertIn("test  [Option]", output)
@@ -80,9 +80,7 @@ class OptionTest(unittest.TestCase):
         self.assertIn("long description", output)
 
     def test_should_be_constructable_from_boolean(self):
-        option = lbuild.option.BooleanOption("test",
-                                             "description",
-                                             False)
+        option = BooleanOption("test", "description", False)
         self.assertIn("test  [BooleanOption]", option.description)
         self.assertEqual(False, option.value)
         option.value = 1
@@ -96,12 +94,12 @@ class OptionTest(unittest.TestCase):
         option.value = False
         self.assertEqual(False, option.value)
 
+        with self.assertRaises(ValueError):
+            option.value = "hello"
+
     def test_should_be_constructable_from_number(self):
-        option = lbuild.option.NumericOption("test",
-                                             "description",
-                                             minimum=0,
-                                             maximum=100,
-                                             default=1)
+        option = NumericOption("test", "description", default=1,
+                               minimum=0, maximum=100)
         self.assertIn("test  [NumericOption]", option.description)
         self.assertEqual(1, option.value)
         option.value = 2
@@ -109,28 +107,19 @@ class OptionTest(unittest.TestCase):
         option.value = "3"
         self.assertEqual(3, option.value)
 
-        def set_below():
+        with self.assertRaises(ValueError):
             option.value = -1
-
-        def set_above():
+        with self.assertRaises(ValueError):
             option.value = 1000
-
-        def set_text():
+        with self.assertRaises(ValueError):
             option.value = "hello"
 
-        self.assertRaises(ValueError, set_below)
-        self.assertRaises(ValueError, set_above)
-        self.assertRaises(ValueError, set_text)
-
-        self.assertRaises(ValueError,
-                          lambda: lbuild.option.NumericOption("test", "description",
-                                                              minimum=0, maximum=0))
-        self.assertRaises(ValueError,
-                          lambda: lbuild.option.NumericOption("test", "description",
-                                                              minimum=100, maximum=-100))
-        self.assertRaises(ValueError,
-                          lambda: lbuild.option.NumericOption("test", "description",
-                                                              minimum=-10, maximum=-100))
+        with self.assertRaises(ValueError):
+            NumericOption("test", "description", minimum=0, maximum=0)
+        with self.assertRaises(ValueError):
+            NumericOption("test", "description", minimum=100, maximum=-100)
+        with self.assertRaises(ValueError):
+            NumericOption("test", "description", minimum=-10, maximum=-100)
 
     def test_should_be_constructable_from_enum(self):
 
@@ -138,12 +127,16 @@ class OptionTest(unittest.TestCase):
             value1 = 1
             value2 = 2
 
-        option = lbuild.option.EnumerationOption("test",
-                                                 "description",
-                                                 default=TestEnum.value1,
-                                                 enumeration=TestEnum)
+        option = EnumerationOption("test", "description",
+                                   default=TestEnum.value1,
+                                   enumeration=TestEnum)
         self.assertIn("test  [EnumerationOption]", option.description)
         self.assertEqual(1, option.value)
+
+        with self.assertRaises(ValueError):
+            option.value = 1
+        with self.assertRaises(ValueError):
+            option.value = "hello"
 
     def test_should_be_constructable_from_enum_set(self):
 
@@ -151,100 +144,107 @@ class OptionTest(unittest.TestCase):
             value1 = 1
             value2 = 2
 
-        option = lbuild.option.SetOption("test",
-                                         "description",
-                                         default=[TestEnum.value1, TestEnum.value2],
-                                         enumeration=TestEnum)
+        option = SetOption("test", "description",
+                           default=[TestEnum.value1, TestEnum.value2],
+                           enumeration=TestEnum)
         self.assertIn("test  [SetOption]", option.description)
         self.assertEqual([1, 2], option.value)
+
+        with self.assertRaises(ValueError):
+            option.value = 1
+        with self.assertRaises(ValueError):
+            option.value = {TestEnum.value1, 1}
 
     def test_should_be_constructable_from_dict(self):
         enum_dict = {
             "value1": 1,
             "value2": 2,
         }
-        option = lbuild.option.EnumerationOption("test",
-                                                 "description",
-                                                 default="value1",
-                                                 enumeration=enum_dict)
+        option = EnumerationOption("test", "description",
+                                   default="value1",
+                                   enumeration=enum_dict)
         self.assertEqual(1, option.value)
+
+        with self.assertRaises(ValueError):
+            option.value = 1
+        with self.assertRaises(ValueError):
+            option.value = "value3"
 
     def test_should_be_constructable_from_dict_set(self):
         enum_dict = {
             "value1": 1,
             "value2": 2,
         }
-        option = lbuild.option.SetOption("test",
-                                         "description",
-                                         default=["value1", "value2"],
-                                         enumeration=enum_dict)
+        option = SetOption("test", "description",
+                           default=["value1", "value2"],
+                           enumeration=enum_dict)
         self.assertEqual([1, 2], option.value)
+
+        with self.assertRaises(ValueError):
+            option.value = {1, 2}
+        with self.assertRaises(ValueError):
+            option.value = "value3"
 
     def test_should_be_constructable_from_list(self):
         enum_list = [
             "value1",
             "value2",
         ]
-        option = lbuild.option.EnumerationOption("test",
-                                                 "description",
-                                                 default="value1",
-                                                 enumeration=enum_list)
+        option = EnumerationOption("test", "description",
+                                   default="value1",
+                                   enumeration=enum_list)
         self.assertEqual("value1", option.value)
+        with self.assertRaises(ValueError):
+            option.value = "value3"
 
     def test_should_be_constructable_from_list_set(self):
         enum_list = [
             "value1",
             "value2",
         ]
-        option = lbuild.option.SetOption("test",
-                                         "description",
-                                         default=["value1", "value2"],
-                                         enumeration=enum_list)
+        option = SetOption("test", "description",
+                           default=["value1", "value2"],
+                           enumeration=enum_list)
         self.assertEqual(["value1", "value2"], option.value)
+        with self.assertRaises(ValueError):
+            option.value = {"value3"}
 
     def test_should_be_constructable_from_list_set_duplicates(self):
         enum_list = [
             "value1",
             "value2",
         ]
-        option = lbuild.option.SetOption("test",
-                                         "description",
-                                         default=["value1", "value1"],
-                                         enumeration=enum_list)
+        option = SetOption("test", "description",
+                           default=["value1", "value1"],
+                           enumeration=enum_list)
         self.assertEqual(["value1"], option.value)
 
     def test_should_be_constructable_from_range(self):
-        option = lbuild.option.EnumerationOption("test",
-                                                 "description",
-                                                 default=10,
-                                                 enumeration=range(1, 21))
+        option = EnumerationOption("test", "description",
+                                   default=10,
+                                   enumeration=range(1, 21))
         self.assertEqual(10, option.value)
 
     def test_should_be_constructable_from_range_set(self):
-        option = lbuild.option.SetOption("test",
-                                         "description",
-                                         default=range(5, 9),
-                                         enumeration=range(1, 21))
+        option = SetOption("test", "description",
+                           default=range(5, 9),
+                           enumeration=range(1, 21))
         self.assertEqual([5, 6, 7, 8], option.value)
 
     def test_should_be_constructable_from_set(self):
-        option = lbuild.option.EnumerationOption("test",
-                                                 "description",
-                                                 default=10,
-                                                 enumeration=set(range(1, 21)))
+        option = EnumerationOption("test", "description",
+                                   default=10,
+                                   enumeration=set(range(1, 21)))
         self.assertEqual(10, option.value)
 
     def test_should_be_constructable_from_set_set(self):
-        option = lbuild.option.SetOption("test",
-                                         "description",
-                                         default=set(range(5, 9)),
-                                         enumeration=set(range(1, 21)))
-        self.assertEqual(set([5, 6, 7, 8]), set(option.value))
+        option = SetOption("test", "description",
+                           default=set(range(5, 9)),
+                           enumeration=set(range(1, 21)))
+        self.assertEqual({5, 6, 7, 8}, set(option.value))
 
     def test_should_format_boolean_option(self):
-        option = lbuild.option.BooleanOption("test",
-                                             "description",
-                                             default=True)
+        option = BooleanOption("test", "description", default=True)
 
         output = str(lbuild.format.format_option_value_description(option))
         self.assertIn("True in [True, False]", output, "Output")
@@ -252,7 +252,7 @@ class OptionTest(unittest.TestCase):
     def test_should_format_numeric_option(self):
 
         def construct(minimum=None, maximum=None, default=None):
-            option = lbuild.option.NumericOption("test", "description", minimum, maximum, default)
+            option = NumericOption("test", "description", minimum, maximum, default)
             return str(lbuild.format.format_option_value_description(option))
 
         self.assertIn("REQUIRED in [-Inf ... +Inf]", construct())
@@ -269,10 +269,9 @@ class OptionTest(unittest.TestCase):
             "value1",
             "value2",
         ]
-        option = lbuild.option.EnumerationOption("test",
-                                                 "description",
-                                                 default="value1",
-                                                 enumeration=enum_list)
+        option = EnumerationOption("test", "description",
+                                   default="value1",
+                                   enumeration=enum_list)
 
         output = str(lbuild.format.format_option_value_description(option))
         self.assertIn("value1 in [value1, value2]", output, "Output")
@@ -282,10 +281,9 @@ class OptionTest(unittest.TestCase):
             "value1",
             "value2",
         ]
-        option = lbuild.option.SetOption("test",
-                                         "description",
-                                         default=["value1", "value2"],
-                                         enumeration=enum_list)
+        option = SetOption("test", "description",
+                           default=["value1", "value2"],
+                           enumeration=enum_list)
 
         output = str(lbuild.format.format_option_value_description(option))
         self.assertIn("{value1, value2} in [value1, value2]", output)
@@ -295,9 +293,8 @@ class OptionTest(unittest.TestCase):
             "value1",
             "value2",
         ]
-        option = lbuild.option.EnumerationOption("test",
-                                                 "description",
-                                                 enumeration=enum_list)
+        option = EnumerationOption("test", "description",
+                                   enumeration=enum_list)
 
         output = str(lbuild.format.format_option_value_description(option))
         self.assertIn("REQUIRED in [value1, value2]", output)
