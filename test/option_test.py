@@ -106,6 +106,10 @@ class OptionTest(unittest.TestCase):
         self.assertEqual(2, option.value)
         option.value = "3"
         self.assertEqual(3, option.value)
+        option.value = 4.5
+        self.assertEqual(4.5, option.value)
+        option.value = str(6.7)
+        self.assertEqual(6.7, option.value)
 
         with self.assertRaises(ValueError):
             option.value = -1

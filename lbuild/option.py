@@ -176,6 +176,10 @@ class NumericOption(Option):
                 return int(value, 0)
             except ValueError:
                 pass
+            try:
+                return float(value)
+            except ValueError:
+                pass
 
         raise ValueError("Value '{}' ({}) must be numeric!"
                          .format(value, type(value).__name__))
