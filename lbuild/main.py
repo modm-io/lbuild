@@ -90,6 +90,13 @@ class DiscoverAction(ManipulationActionBase):
             default=False,
             help="Display option values, instead of description")
         parser.add_argument(
+            "-t",
+            "--tree",
+            action="store_true",
+            default=False,
+            dest="show_subtree",
+            help="Show module tree instead of description.")
+        parser.add_argument(
             "--developer",
             action="store_true",
             default=False,
@@ -104,10 +111,13 @@ class DiscoverAction(ManipulationActionBase):
         if args.names:
             ostream = []
             for node in builder.parser.find_all(args.names):
-                if args.values and node.type == node.Type.OPTION:
-                    ostream.extend(node.values)
+                if args.show_subtree:
+                    ostream.append(node.render())
                 else:
-                    ostream.append(node.description)
+                    if args.values and node.type == node.Type.OPTION:
+                        ostream.extend(node.values)
+                    else:
+                        ostream.append(node.description)
             if not args.values:
                 return "\n\n\n\n".join(ostream)
             return "\n".join(ostream)
