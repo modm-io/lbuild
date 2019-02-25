@@ -28,14 +28,14 @@ The dedicated maintainer of *lbuild* is [@salkinium][salkinium].
 Consider this repository:
 
 ```
- $ lbuild discover-modules
+ $ lbuild discover
 Parser(lbuild)
 ╰── Repository(repo @ ../repo)
-    ├── EnumerationOption(option) = value
+    ├── EnumerationOption(option) = value in [value, special]
     ├── Module(repo:module)
-    │   ├── BooleanOption(option) = True
+    │   ├── BooleanOption(option) = True in [True, False]
     │   ├── Module(repo:module:submodule)
-    │   │   ╰── SetOption(option)
+    │   │   ╰── EnumerationOption(option) = REQUIRED in [1, 2, 3, 4, 5]
     │   ╰── Module(repo:module:submodule2)
     ╰── Module(modm:module2)
 ```
@@ -50,8 +50,8 @@ them with:
     <repository><path>../repo/repo.lb</path></repository>
   </repositories>
   <options>
-    <option name="repo:option">value</option>
-    <option name="repo:module:option">1,2,3</option>
+    <option name="repo:option">special</option>
+    <option name="repo:module:option">3</option>
   </options>
   <modules>
     <module>repo:module</module>
@@ -65,7 +65,9 @@ The `repo.lb` file is compiled by *lbuild* and the two functions `init`,
 ```python
 def init(repo):
     repo.name = "repo"
-    repo.add_option(EnumerationOption(name="option", enumeration=["value", "special"]))
+    repo.add_option(EnumerationOption(name="option",
+                                      enumeration=["value", "special"],
+                                      default="value"))
 
 def prepare(repo, options):
     repo.find_modules_recursive("src")
@@ -83,21 +85,21 @@ def init(module):
     module.name = "module"
 
 def prepare(module, options):
-    if options["repo:option"] == "value":
-        module.add_option(SetOption(name="option", enumeration=[1, 2, 3, 4, 5]))
+    if options["repo:option"] == "special":
+        module.add_option(EnumerationOption(name="option", enumeration=[1, 2, 3, 4, 5]))
         return True
     return False
 
 def build(env):
     env.outbasepath = "repo/module"
     env.copy("static.hpp")
-    for number in env["repo:module:option"]:
-        env.template("template.cpp.in", "template_{}.cpp".format(number))
+    for number in range(env["repo:module:option"]):
+        env.template("template.cpp.in", "template_{}.cpp".format(number + 1))
 ```
 
 The init step sets the module's name and its parent name. The prepare step
-then adds a `SetOption` and makes the module available, if the repository option
-is set to `"value"`. Finally in the build step, a number of files are generated
+then adds a `EnumerationOption` and makes the module available, if the repository option
+is set to `"special"`. Finally in the build step, a number of files are generated
 based on the option's content.
 
 The files are generated at the call-site of `lbuild build` which would then
@@ -252,7 +254,7 @@ which *lbuild* will search for in the current working directory.
   <options>
     <!-- Options are treated as key-value pairs -->
     <option name="repo:repo_option_name">value</option>
-    <!-- A SetOption is the only one allowing multiple values -->
+    <!-- An option set is the only one allowing multiple values -->
     <option name="repo:module:module_option_name">set, options, may, contain, commas</option>
   </options>
   <modules>
@@ -639,6 +641,30 @@ def build(env):
     value = env[":module:option"]
 ```
 
+If your option requires a set of input values, you can tell *lbuild* to wrap the
+option into a set using `module.add_set_option()`:
+
+```python
+def prepare(module, options):
+    # Add an option, but allow a set of values as input and output
+    module.add_set_option(option)
+
+def build(env):
+    # a list of option values is returned here
+    for value in env[":module:option"]:
+        print(value)
+```
+
+Option sets are declared as comma-separated strings, so that inheriting
+configurations or passing option values via CLI can overwrite these sets.
+A `StringOption` cannot be wrapped into a set for this reasons, however, it's
+easy to split your string value in Python exactly how you want.
+
+```xml
+<!-- All comma separated values are validated by the option -->
+<option name=":module:set-option">value, 1, obj</option>
+```
+
 Options can have a dependency handler which is called when the project
 configuration is merged into the module options. It will give you the chosen
 input value and you can return a number of module dependencies.
@@ -650,7 +676,7 @@ def add_option_dependencies(value):
         return "repo:module"
     if other_special_condition(value):
         # return multiple dependencies
-        return [":module1", "module2"]
+        return [":module1", ":module2"]
     # No additional dependencies
     return None
 ```
@@ -744,22 +770,6 @@ option = EnumerationOption(name="option-name",
                            enumeration={"value": "value", "1": 1, "obj": obj},
                            default="1",
                            dependencies=add_option_dependencies)
-```
-
-
-#### SetOption
-
-This option is the same as the `EnumerationOption`, however, it is allowed to
-contain multiple values from the enumeration as a set. The option will return a
-list of Python objects. The dependency handler is passed a list of strings.
-
-The set is represented in the configuration as a comma separated list.
-
-```xml
-<!-- Just one enumeration value is allowed -->
-<option name=":module:enumeration-option">value</option>
-<!-- Any set of enumeration values is allowed -->
-<option name=":module:set-option">value, 1, obj</option>
 ```
 
 

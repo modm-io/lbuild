@@ -9,6 +9,7 @@
 # governing this code.
 
 import lbuild.utils
+from .option import OptionSet
 
 
 class BaseNodePrepareFacade:
@@ -66,6 +67,12 @@ class RepositoryInitFacade(BaseNodeInitFacade):
     def add_option(self, option):
         self._node.add_child(option)
 
+    def add_set_option(self, option, default=None):
+        self._node.add_child(OptionSet(option, default))
+
+    def add_query(self, query):
+        self._node.add_child(query)
+
     def add_ignore_patterns(self, *patterns):
         self._node._ignore_patterns.extend(patterns)
 
@@ -109,6 +116,9 @@ class ModulePrepareFacade(BaseNodePrepareFacade):
 
     def add_option(self, option):
         self._node._options.append(option)
+
+    def add_set_option(self, option, default=None):
+        self._node._options.append(OptionSet(option, default))
 
     def add_query(self, query):
         self._node._queries.append(query)

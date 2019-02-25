@@ -209,10 +209,10 @@ class OptionTest(unittest.TestCase):
             value1 = 1
             value2 = 2
 
-        option = SetOption("test", "description",
-                           default=[TestEnum.value1, TestEnum.value2],
-                           enumeration=TestEnum)
-        self.assertIn("test  [SetOption]", option.description)
+        option = OptionSet(
+                    EnumerationOption("test", "description", enumeration=TestEnum),
+                    default=[TestEnum.value1, TestEnum.value2])
+        self.assertIn("test  [EnumerationSetOption]", option.description)
         self.assertEqual([1, 2], option.value)
 
         with self.assertRaises(ValueError):
@@ -240,9 +240,9 @@ class OptionTest(unittest.TestCase):
             "value1": 1,
             "value2": 2,
         }
-        option = SetOption("test", "description",
-                           default=["value1", "value2"],
-                           enumeration=enum_dict)
+        option = OptionSet(
+                    EnumerationOption("test", "description", enumeration=enum_dict),
+                    default=["value1", "value2"])
         self.assertEqual([1, 2], option.value)
 
         with self.assertRaises(ValueError):
@@ -267,9 +267,9 @@ class OptionTest(unittest.TestCase):
             "value1",
             "value2",
         ]
-        option = SetOption("test", "description",
-                           default=["value1", "value2"],
-                           enumeration=enum_list)
+        option = OptionSet(
+                    EnumerationOption("test", "description", enumeration=enum_list),
+                    default=["value1", "value2"])
         self.assertEqual(["value1", "value2"], option.value)
         with self.assertRaises(ValueError):
             option.value = {"value3"}
@@ -279,9 +279,9 @@ class OptionTest(unittest.TestCase):
             "value1",
             "value2",
         ]
-        option = SetOption("test", "description",
-                           default=["value1", "value1"],
-                           enumeration=enum_list)
+        option = OptionSet(
+                    EnumerationOption("test", "description", enumeration=enum_list),
+                    default=["value1", "value1"])
         self.assertEqual(["value1"], option.value)
 
     def test_should_be_constructable_from_range(self):
@@ -291,9 +291,9 @@ class OptionTest(unittest.TestCase):
         self.assertEqual(10, option.value)
 
     def test_should_be_constructable_from_range_set(self):
-        option = SetOption("test", "description",
-                           default=range(5, 9),
-                           enumeration=range(1, 21))
+        option = OptionSet(
+                    EnumerationOption("test", "description", enumeration=range(1, 21)),
+                    default=range(5, 9))
         self.assertEqual([5, 6, 7, 8], option.value)
 
     def test_should_be_constructable_from_set(self):
@@ -303,9 +303,9 @@ class OptionTest(unittest.TestCase):
         self.assertEqual(10, option.value)
 
     def test_should_be_constructable_from_set_set(self):
-        option = SetOption("test", "description",
-                           default=set(range(5, 9)),
-                           enumeration=set(range(1, 21)))
+        option = OptionSet(
+                    EnumerationOption("test", "description", enumeration=set(range(1, 21))),
+                    default=set(range(5, 9)))
         self.assertEqual({5, 6, 7, 8}, set(option.value))
 
     def test_should_format_boolean_option(self):
@@ -346,9 +346,9 @@ class OptionTest(unittest.TestCase):
             "value1",
             "value2",
         ]
-        option = SetOption("test", "description",
-                           default=["value1", "value2"],
-                           enumeration=enum_list)
+        option = OptionSet(
+                    EnumerationOption("test", "description", enumeration=enum_list),
+                    default=["value1", "value2"])
 
         output = str(lbuild.format.format_option_value_description(option))
         self.assertIn("{value1, value2} in [value1, value2]", output)

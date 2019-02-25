@@ -11,11 +11,14 @@
 import enum
 import inspect
 import collections
+import logging
 
 import lbuild.utils
 
 from .node import BaseNode
 from .format import ColorWrapper as _cw
+
+LOGGER = logging.getLogger('lbuild.option')
 
 
 class Option(BaseNode):
@@ -288,32 +291,49 @@ class EnumerationOption(Option):
                              "Possible values are:\n'{}'."
                              .format(self.fullname, value, "', '".join(self._enumeration)))
 
+class OptionSet(Option):
 
-class SetOption(EnumerationOption):
+    def __init__(self, option, default=None):
+        if isinstance(option, (SetOption, StringOption)):
+            raise ValueError("StringOption cannot be used as a set option!")
 
-    def __init__(self, name, description, enumeration, default=None, dependencies=None):
-        EnumerationOption.__init__(self, name, description, enumeration, None, dependencies)
-        self._in = self.str_to_set
-        self._out = self.as_set
-        self._set_default(default)
+        Option.__init__(self, option.name, option._description,
+                        convert_input=self.to_set,
+                        convert_output=self.as_set)
+        self._option = option
+        self._dependency_handler = option._dependency_handler
+        if default is not None:
+            self._set_default(default)
+        elif not option.is_default():
+            self._set_default(option._default)
 
     def format_value(self):
-        return "{{{}}}".format(", ".join(map(str, self._output)))
+        return "{{{}}}".format(", ".join(map(str, self._input)))
 
     def format_values(self):
-        values = [_cw(v).wrap("underlined") if v in self._default else _cw(v)
-                  for v in self._format_values()]
-        return _cw(", ").join(values)
+        if isinstance(self._option, EnumerationOption):
+            values = [_cw(v).wrap("underlined") if v in self._default else _cw(v)
+                      for v in self._option._format_values()]
+            return _cw(", ").join(values)
+        return self._option.format_values()
 
-    @staticmethod
-    def str_to_set(values):
+    @property
+    def class_name(self):
+        otype = self._option.class_name.replace("Option", "")
+        return "{}SetOption".format(otype)
+
+    def to_set(self, values):
         if isinstance(values, str):
             values = [v.strip() for v in values.split(",")]
-        else:
-            values = list(map(str, lbuild.utils.listify(values)))
+        values = list(map(self._option._in, lbuild.utils.listify(values)))
         return values
 
     def as_set(self, values):
-        values = self.str_to_set(values)
+        values = self.to_set(values)
         # remove duplicates, but retain order with OrderedDict
-        return [self.as_enumeration(value) for value in collections.OrderedDict.fromkeys(values)]
+        return [self._option._out(value) for value in collections.OrderedDict.fromkeys(values)]
+
+
+class SetOption(OptionSet):
+    def __init__(self, name, description, enumeration, default=None, dependencies=None):
+        OptionSet.__init__(self, EnumerationOption(name, description, enumeration, None, dependencies), default)
