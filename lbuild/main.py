@@ -21,7 +21,7 @@ from lbuild.format import format_option_short_description
 
 from lbuild.api import Builder
 
-__version__ = '1.9.0'
+__version__ = '1.9.1'
 
 
 class InitAction:
@@ -78,7 +78,15 @@ class DiscoverAction(ManipulationActionBase):
         parser.add_argument(
             dest="names",
             type=str,
-            nargs="?",
+            nargs="*",
+            help="Select a specific repository, module or option.")
+        parser.add_argument(
+            "-n",
+            "--name",
+            dest="names_explicit",
+            type=str,
+            action="append",
+            default=[],
             help="Select a specific repository, module or option.")
         parser.add_argument(
             "--values",
@@ -105,9 +113,10 @@ class DiscoverAction(ManipulationActionBase):
     def perform(args, builder):
         if args.show_developer_view:
             lbuild.format.SHOW_NODES.update(lbuild.node.BaseNode.Type)
-        if args.names:
+        names = args.names + args.names_explicit
+        if names:
             ostream = []
-            for node in builder.parser.find_all(args.names):
+            for node in builder.parser.find_all(names):
                 if args.show_subtree:
                     ostream.append(node.render())
                 else:
@@ -132,13 +141,22 @@ class DiscoverOptionsAction(ManipulationActionBase):
         parser.add_argument(
             dest="names",
             type=str,
-            nargs="?",
-            help="Select a specific repository or module.")
+            nargs="*",
+            help="Select a specific option.")
+        parser.add_argument(
+            "-n",
+            "--name",
+            dest="names_explicit",
+            type=str,
+            action="append",
+            default=[],
+            help="Select a specific option.")
         parser.set_defaults(execute_action=self.load_repositories)
 
     @staticmethod
     def perform(args, builder):
-        names = args.names if args.names else ["*", ":**"]
+        names = args.names + args.names_explicit
+        names = names if names else ["*", ":**"]
         nodes = builder.parser.find_any(names, (builder.parser.Type.MODULE,
                                                 builder.parser.Type.REPOSITORY))
         options = [o for n in nodes for o in n.options]
