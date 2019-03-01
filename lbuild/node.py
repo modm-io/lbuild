@@ -322,8 +322,8 @@ class BaseNode(anytree.Node):
     def module_resolver(self):
         return NameResolver(self, self.Type.MODULE)
 
-    def render(self):
-        return lbuild.format.format_node_tree(self)
+    def render(self, filterfunc=None):
+        return lbuild.format.format_node_tree(self, filterfunc)
 
     def add_dependencies(self, *dependencies):
         """

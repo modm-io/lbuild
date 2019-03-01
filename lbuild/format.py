@@ -253,7 +253,10 @@ def format_node(node, _):
     return descr.limit(offset)
 
 
-def format_node_tree(node):
+def format_node_tree(node, filterfunc=None):
+    if filterfunc is None:
+        filterfunc = lambda n: n.type in SHOW_NODES
+
     class Renderer(anytree.RenderTree):
         def __init__(self, node):
             anytree.RenderTree.__init__(self, node,
@@ -262,7 +265,7 @@ def format_node_tree(node):
 
         @staticmethod
         def childiter(nodes):
-            nodes = [n for n in nodes if n.type in SHOW_NODES]
+            nodes = [n for n in nodes if filterfunc(n)]
             return sorted(nodes, key=lambda node: (node._type, node.name))
 
         def __str__(self):
