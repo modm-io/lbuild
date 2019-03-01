@@ -10,9 +10,9 @@
 # governing this code.
 
 import os
+import re
 import sys
 import argparse
-import textwrap
 import traceback
 
 import lbuild.logger
@@ -21,7 +21,7 @@ from lbuild.format import format_option_short_description
 
 from lbuild.api import Builder
 
-__version__ = '1.8.0'
+__version__ = '1.9.0'
 
 
 class InitAction:
@@ -152,6 +152,63 @@ class DiscoverOptionsAction(ManipulationActionBase):
             ostream.append("")
 
         return "\n".join(ostream)
+
+
+class SearchAction(ManipulationActionBase):
+
+    def register(self, argument_parser):
+        parser = argument_parser.add_parser(
+            "search",
+            help="Search the descriptions of the repository tree and render the results "
+                 "as a partial tree and the matching lines of the descriptions.")
+        parser.add_argument(
+            dest="queries",
+            type=str,
+            nargs="+",
+            help="Regex-patters to be matched. Patterns are ORed together!")
+        parser.set_defaults(execute_action=self.load_repositories)
+
+    @staticmethod
+    def perform(args, builder):
+        nodes = builder.parser.find_any(["*", ":**"])
+        nodes.sort(key=lambda n: n.fullname)
+        show_nodes = lbuild.format.SHOW_NODES
+        plain = lbuild.format.PLAIN
+
+        search = "|".join(args.queries)
+        fnodes = []
+        ostream = ""
+        lbuild.format.PLAIN = True
+
+        for node in nodes:
+            lbuild.format.SHOW_NODES = {node.type}
+            description = node.description.splitlines()
+            olines = []
+
+            for line, descr in enumerate(description):
+                if re.search(search, descr, flags=re.I):
+                    olines.append("{:>3}  ".format(line-1) + descr)
+
+            if olines:
+                fnodes.append(node)
+                ostream += "\n\n\n" + description[0]
+                if olines[0].startswith(" -1  >> "):
+                    olines = olines[1:]
+                if olines:
+                    ostream += "\n\n" + "\n".join(olines)
+
+        tnodes = {a  for n in fnodes  for a in n.ancestors} | set(fnodes)
+        ostream = builder.parser.render(lambda n: n.type in show_nodes and n in tnodes) + ostream
+
+        if not plain:
+            lbuild.format.PLAIN = False
+            from lbuild.format import ansi_escape as c
+            replace = r"{}\g<1>{}".format(str(c("bold")), str(c("no_bold")))
+            ostream = re.sub(r"({})".format(search), replace, ostream, flags=re.I)
+            replace = r">> {}\g<1>{}  [".format(str(c("bold")), str(c("no_bold")))
+            ostream = re.sub(r">> (.*?)  \[", replace, ostream, flags=re.I)
+
+        return ostream
 
 
 class ValidateAction(ManipulationActionBase):
@@ -374,6 +431,8 @@ def prepare_argument_parser():
     actions = [
         DiscoverAction(),
         DiscoverOptionsAction(),
+        SearchAction(),
+
         ValidateAction(),
         BuildAction(),
         CleanAction(),
