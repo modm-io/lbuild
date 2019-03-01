@@ -76,12 +76,9 @@ class DiscoverAction(ManipulationActionBase):
             help="Render the available repository tree with modules and options. "
                  "You may need to provide options to see the entire tree!")
         parser.add_argument(
-            "-n",
-            "--name",
             dest="names",
             type=str,
-            action="append",
-            default=[],
+            nargs="?",
             help="Select a specific repository, module or option.")
         parser.add_argument(
             "--values",
@@ -101,7 +98,7 @@ class DiscoverAction(ManipulationActionBase):
             action="store_true",
             default=False,
             dest="show_developer_view",
-            help="Show module queries in tree view and descriptions.")
+            help="Show developer nodes in tree view and descriptions.")
         parser.set_defaults(execute_action=self.load_repositories)
 
     @staticmethod
@@ -133,12 +130,9 @@ class DiscoverOptionsAction(ManipulationActionBase):
             help="Display all known option names, current values, allowed inputs and "
                  "short descriptions.")
         parser.add_argument(
-            "-n",
-            "--name",
             dest="names",
             type=str,
-            action="append",
-            default=[],
+            nargs="?",
             help="Select a specific repository or module.")
         parser.set_defaults(execute_action=self.load_repositories)
 
@@ -155,7 +149,7 @@ class DiscoverOptionsAction(ManipulationActionBase):
             if option.short_description:
                 ostream.append("")
                 ostream.append(textwrap.indent(option.short_description, "  "))
-                ostream.append("")
+            ostream.append("")
 
         return "\n".join(ostream)
 
