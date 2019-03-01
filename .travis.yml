@@ -1,11 +1,16 @@
 language: python
 python:
-  - "3.5"
-  - "3.6"
-  - "nightly"
-
-# command to install dependencies
-install: "pip install -r requirements.txt"
-
-# command to run tests
+- '3.5'
+- '3.6'
+- nightly
+install: pip install -r requirements.txt
 script: make test
+deploy:
+  provider: pypi
+  distributions: "sdist bdist_wheel"
+  skip_existing: true
+  user: salkinium
+  password:
+    secure: gJ3UPzn/Tm8WfUBb85d9QfbO6c1XZ2CxoPEjw/Ct221OEmMFnzyfIj4cEQp8oWE/cTp1sZmaFa1We+QjqLbcWIg2dKMD8IZyffSu1V/Rkf5uojkJ6m0uMMWg95YhHEOgBYAtSGoJLFRrBgu8JPRBMHfiWV5GiuFPz2WsIVfmup5gXXH8fEowDPGUEOZFbIUl3nvlWbCYQHbla/wk2NyXdrk/AkOWZfa8U5ZDbm6BZ9I6tGfJn7gS3YXoFrRGTdymOvBaKZfn0TqKtcfpNU6h0VABGUpXHeE2IikUl1RTCX7PbJHd9nrhabfALX7yqil3uyyyCxQW1MyBjzb0PVW4ihvpjjQgjUou6YLZsAga7CaA4cmLFPJwDAjifWWd+X1lP6ueMWifOZwL3SQNP0ou0kj0sLmzoS4QGT4gE3HCPc+B8YC/4sCHEcpTLEZsDDZ92OU+zETncaghZDnfjSFXHzbRbDj32qmhUx6qaqHy62w1Ot4Ij5D1OtsQEH+QY++YuYix42ukyR7SCQHT3pcHdv8omEvMMEZs10ikSc9p/T2GmmKy+7Pv8nFom/kMbUg7fgKSY/qvSQ+KtKmKZWCXb8y/Rm25RIyzxky8oJ2Sq0vdzc9PnyrR36o3jRyxx5BQ0uWgu1w4SHiROMXXuLm2rnIpezrM71OZhIWhuDhRF6g=
+  on:
+    branch: develop
