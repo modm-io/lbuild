@@ -14,6 +14,7 @@ from os.path import realpath, join
 import pkgutil
 import logging
 import collections
+import functools
 from pathlib import Path
 
 import lxml.etree
@@ -90,9 +91,10 @@ class ConfigNode(anytree.AnyNode):
             config.parent = node
             if below:
                 below.parent = config
+        return node
 
     def extend_last(self, config):
-        self.extend(self.last, config)
+        return self.extend(self.last, config)
 
     @property
     def last(self):
@@ -110,8 +112,8 @@ class ConfigNode(anytree.AnyNode):
     @staticmethod
     def from_filesystem(startpath=None, name="lbuild.xml"):
         """
-        Iterate upwards from the starting folder to find a
-        configuration file.
+        Iterate upwards from the starting folder to find all
+        configuration files.
 
         Args:
             startpath -- Start point for the iteration. If omitted
@@ -122,14 +124,18 @@ class ConfigNode(anytree.AnyNode):
             `ConfigNode` if a configuration file was found, `None`
             otherwise.
         """
+        configs = []
         startpath = Path(startpath) if startpath else Path.cwd()
         while startpath.exists():
             config = (startpath / name)
             if config.exists():
-                return ConfigNode.from_file(config)
+                configs.append(ConfigNode.from_file(config))
             if startpath.parent == startpath:
                 break
             startpath = startpath.parent
+
+        if configs:
+            return functools.reduce(lambda c1, c2: c1.extend_last(c2), configs)
         return None
 
     @staticmethod
