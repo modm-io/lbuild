@@ -14,6 +14,7 @@ import re
 import sys
 import argparse
 import traceback
+import textwrap
 
 import lbuild.logger
 import lbuild.vcs.common
@@ -21,7 +22,7 @@ from lbuild.format import format_option_short_description
 
 from lbuild.api import Builder
 
-__version__ = '1.9.1'
+__version__ = '1.9.2'
 
 
 class InitAction:

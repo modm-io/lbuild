@@ -224,7 +224,7 @@ def format_short_description(_, description):
     return lines[0].strip().rstrip(".,:;!?")
 
 
-def format_node(node, _):
+def format_node(node, _, depth):
     name = _cw(node.name)
     class_name = _cw(node.class_name)
     if node._type == node.Type.REPOSITORY:
@@ -239,7 +239,7 @@ def format_node(node, _):
 
     descr = (class_name + _cw("(") + name + _cw(")")).wrap(node)
 
-    offset = node.depth * 4
+    offset = (node.depth - depth) * 4
     if node._type == node.Type.OPTION:
         descr += _cw(" = ")
         descr += format_option_value_description(node, offset=offset + len(descr), single_line=True)
@@ -257,21 +257,14 @@ def format_node_tree(node, filterfunc=None):
     if filterfunc is None:
         filterfunc = lambda n: n.type in SHOW_NODES
 
-    class Renderer(anytree.RenderTree):
-        def __init__(self, node):
-            anytree.RenderTree.__init__(self, node,
-                                        style=anytree.ContRoundStyle(),
-                                        childiter=self.childiter)
+    def childiter(nodes):
+        nodes = [n for n in nodes if filterfunc(n)]
+        return sorted(nodes, key=lambda node: (node._type, node.name))
 
-        @staticmethod
-        def childiter(nodes):
-            nodes = [n for n in nodes if filterfunc(n)]
-            return sorted(nodes, key=lambda node: (node._type, node.name))
-
-        def __str__(self):
-            lines = []
-            for pre, _, node in self:
-                lines.append(pre + format_node(node, pre))
-            return "\n".join(lines)
-
-    return str(Renderer(node))
+    depth = node.depth
+    render = anytree.RenderTree(node, childiter=childiter,
+                                style=anytree.ContRoundStyle())
+    lines = []
+    for pre, _, node in render:
+        lines.append(pre + format_node(node, pre, depth))
+    return "\n".join(lines)
