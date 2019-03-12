@@ -91,7 +91,6 @@ class Parser(BaseNode):
     def load_repositories(self, repofilenames=None):
         repofiles = set(os.path.realpath(p) for p in utils.listify(repofilenames))
         parsed = set()
-        config_map = {}
 
         while True:
             # flatten configuration and collect repositories
@@ -105,7 +104,6 @@ class Parser(BaseNode):
             # Parse only new repositories
             for repofile in repofiles:
                 repo = self.parse_repository(repofile)
-                config_map.update({c.fullname:c._config for c in repo.configurations})
 
             # nothing more to extend
             if not self._config_flat._extends:
@@ -114,13 +112,17 @@ class Parser(BaseNode):
             for filename, aliases in self._config_flat._extends.items():
                 node = self._config.find(filename)
                 for alias in aliases:
-                    if alias not in config_map:
+                    fconfig = self.find_any(alias, types=BaseNode.Type.CONFIG)
+                    if not fconfig:
                         raise LbuildException("Configuration alias '{}' not found in any map! "
                                               "Available aliases: '{}'"
-                                              .format(alias,
-                                                      "', '".join(config_map)))
-                    self._config.extend(node, ConfigNode.from_file(config_map[alias]))
-                del node._extends[filename]
+                                              .format(alias, "', '".join(config_map)))
+                    if len(fconfig) > 1:
+                        raise LbuildException("Configuration alias '{}' is ambiguous! "
+                                              "Found multiple matches: '{}'! "
+                                              .format(alias, "', '".join(f.fullname for f in fconfig)))
+                    self._config.extend(node, ConfigNode.from_file(fconfig[0]._config))
+                node._extends.pop(filename)
 
         self._update_format()
         LOGGER.info("\n%s", self._config.render())

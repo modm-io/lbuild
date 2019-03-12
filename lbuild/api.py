@@ -41,17 +41,21 @@ class Builder:
         self.cwd = cwd
 
         try:
-            config = ConfigNode.from_file(config)
+            file_config = ConfigNode.from_file(config)
         except lbuild.exception.LbuildException:
-            config = None
+            file_config = ConfigNode()
+            file_config.filename = "command-line"
+            file_config._extends["command-line"].append(config)
 
-        file_config = ConfigNode.from_filesystem(cwd)
-        if config:
-            config.extend_last(file_config)
+        filesystem_config = ConfigNode.from_filesystem(cwd)
+        if file_config is not None:
+            file_config.extend_last(filesystem_config)
+        elif filesystem_config is not None:
+            file_config = filesystem_config
         else:
-            config = file_config if file_config else ConfigNode()
+            file_config = ConfigNode()
 
-        self.config = config
+        self.config = file_config
         self.config.add_commandline_options(listify(options))
         self.parser = Parser(self.config)
 
