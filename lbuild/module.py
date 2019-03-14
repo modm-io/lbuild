@@ -124,6 +124,8 @@ class ModuleInit:
         if self.name is None:
             raise LbuildException("The init(module) function must set a module name! "
                                   "Please set the 'name' attribute.")
+        if ":" in self.name:
+            self.parent, self.name = self.name.rsplit(":", 1)
 
         if self.parent.startswith(":"):
             self.parent = self.repository.name + self.parent
