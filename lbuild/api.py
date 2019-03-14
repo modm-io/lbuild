@@ -40,12 +40,15 @@ class Builder:
             cwd = os.getcwd() if config is None else os.path.dirname(config)
         self.cwd = cwd
 
+
+        file_config = None
         try:
             file_config = ConfigNode.from_file(config)
         except lbuild.exception.LbuildException:
-            file_config = ConfigNode()
-            file_config.filename = "command-line"
-            file_config._extends["command-line"].append(config)
+            if ":" in config:
+                file_config = ConfigNode()
+                file_config.filename = "command-line"
+                file_config._extends["command-line"].append(config)
 
         filesystem_config = ConfigNode.from_filesystem(cwd)
         if file_config is not None:
