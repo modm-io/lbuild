@@ -37,7 +37,7 @@ class Builder:
                 "key=value" format.
         """
         if cwd is None:
-            cwd = os.getcwd() if config is None else os.path.dirname(config)
+            cwd = os.getcwd() if config is None else os.path.abspath(os.path.dirname(config))
         self.cwd = cwd
 
 
