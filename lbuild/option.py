@@ -69,7 +69,7 @@ class Option(BaseNode):
         return ["String"]
 
     def is_default(self):
-        return self._input == self._default
+        return self._default is None or self._input == self._default
 
     def format_value(self):
         value = str(self._input).strip()
