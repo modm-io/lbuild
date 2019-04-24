@@ -361,7 +361,7 @@ class BaseNode(anytree.Node):
 
         return anytree.search.findall(self, maxlevel=depth, filter_=_filter)
 
-    def _resolve_dependencies(self, ignore_failure=False):
+    def _resolve_dependencies(self, ignore_failure=True):
         """
         Update the internal list of dependencies.
 
