@@ -10,27 +10,23 @@
 import inspect
 import textwrap
 
-from .exception import LbuildException
+from .exception import LbuildQueryConstructionException
 from .node import BaseNode
 
 
 class Query(BaseNode):
 
     def __init__(self, function, name=None):
+        BaseNode.__init__(self, name, BaseNode.Type.QUERY)
         if not callable(function):
-            raise ValueError("Query '{}' ({}) must be callable!"
-                             .format(function, type(function).__name__))
+            raise LbuildQueryConstructionException(self, "'{}' must be callable!".format(function))
         fname = function.__name__
         if name is None:
             if "<lambda>" in fname:
-                raise ValueError("Query '{}' ({}) must have a name!"
-                                 .format(function, type(function).__name__))
-            name = fname
+                raise LbuildQueryConstructionException(self, "'{}' must have a name!".format(function))
+            self.name = fname
 
-        BaseNode.__init__(self, name, BaseNode.Type.QUERY)
-
-        fdoc = function.__doc__
-        self._description = textwrap.dedent("" if fdoc is None else fdoc).strip()
+        self._description = str(inspect.getdoc(function))
         self.suffix = str(inspect.signature(function))
         self._function = function
 
@@ -51,8 +47,7 @@ class EnvironmentQuery(Query):
     def __init__(self, factory, name=None):
         Query.__init__(self, name=name, function=factory)
         if len(inspect.signature(factory).parameters.keys()) != 1:
-            raise ValueError("EnvironmentQuery '{}' must take 'env' as argument!"
-                             .format(factory))
+            raise LbuildQueryConstructionException(self, "'{}' must take 'env' as argument!".format(factory))
         self.suffix = ""
         self.__result = None
         self.__called = False

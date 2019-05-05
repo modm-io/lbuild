@@ -17,8 +17,7 @@ import fnmatch
 import importlib.util
 import importlib.machinery
 
-from .exception import LbuildException
-from .exception import LbuildForwardException
+import lbuild.exception as le
 
 DEFAULT_IGNORE_PATTERNS = [
     "*/.git*",
@@ -102,13 +101,13 @@ def get_global_functions(env, required, optional=None):
         optional: List of optional functions.
     """
 
-    def get(name, required=True):
+    def get(name, fail=True):
         if isinstance(env, dict):
             val = env.get(name, None)
         else:
             val = getattr(env, name, None)
-        if required and val is None:
-            raise LbuildException("No function '{}' found!".format(name))
+        if fail and val is None:
+            raise le.LbuildUtilsFunctionNotFoundException(name, required, optional)
         return val
 
     if optional is None:
@@ -154,8 +153,11 @@ def load_module_from_file(filename, local, modulename=None):
     # be available in the global namespace when executing the module.
     module.__dict__.update(local)
 
-    # Load the module. This executes the code inside the lbuild module file.
-    loader.exec_module(module)
+    try:
+        # Load the module. This executes the code inside the lbuild module file.
+        loader.exec_module(module)
+    except Exception as error:
+        raise le.LbuildForwardException(modulename, error)
 
     sys.modules[modulename] = module
     return module.__dict__
@@ -167,11 +169,10 @@ def with_forward_exception(module, function):
     """
     try:
         return function()
-    except LbuildException as error:
+    except le.LbuildException:
         raise
     except Exception as error:
-        # Forward all exception which are not LbuildExceptions
-        raise LbuildForwardException(module, error)
+        raise le.LbuildForwardException(module, error)
 
 
 import errno

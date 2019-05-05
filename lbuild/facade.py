@@ -29,17 +29,19 @@ def deprecated(since, function, replacement=None, obj=None):
         fsig = str(inspect.signature(function))
         return "{}.{}{}".format(cname, fname, fsig)
 
-    msg = "'{}' is deprecated since v{}".format(pretty(function), since)
+
+    call_site = lbuild.exception._call_site(plain=True) if VERBOSE_DEPRECATION else ""
+    msg = "{}\n'{}' is deprecated since v{}".format(call_site, pretty(function), since)
     if replacement:
         replacement = pretty(replacement)
         if "\n" in replacement:
             msg += ", use \n{}\ninstead!".format(lbuild.filter.indent(replacement, spaces=4, first_line=True))
         else:
             msg += ", use '{}' instead".format(replacement)
-    msg += "!"
+    msg += "!\n"
     warnings.warn(msg, DeprecationWarning)
 
-    if VERBOSE_DEPRECATION > 0:
+    if VERBOSE_DEPRECATION:
         LOGGER.warning(msg)
     else:
         LOGGER.debug(msg)
@@ -70,14 +72,13 @@ class BaseNodePrepareFacade:
 class BaseNodeInitFacade(BaseNodePrepareFacade):
 
     def __init__(self, node):
-        BaseNodePrepareFacade.__init__(self, node)
+        super().__init__(node)
 
     # Disable warnings caused by property setters which are not properly recognised by pylint
     # pylint: disable=no-member
     @BaseNodePrepareFacade.name.setter
     def name(self, value):
         self._node.name = value
-        self._node._fullname = value
 
     @BaseNodePrepareFacade.description.setter
     def description(self, value):
@@ -95,31 +96,31 @@ class BaseNodeInitFacade(BaseNodePrepareFacade):
 class RepositoryInitFacade(BaseNodeInitFacade):
 
     def __init__(self, repository):
-        BaseNodeInitFacade.__init__(self, repository)
+        super().__init__(repository)
 
     def add_option(self, option):
-        self._node.add_child(option)
+        self._node._options.append(option)
 
     def add_set_option(self, option, default=None):
-        self._node.add_child(OptionSet(option, default))
+        self._node._options.append(OptionSet(option, default))
 
     def add_query(self, query):
-        self._node.add_child(query)
+        self._node._queries.append(query)
 
     def add_ignore_patterns(self, *patterns):
         self._node._ignore_patterns.extend(patterns)
 
     def add_filter(self, name, function):
-        self._node._new_filters[name] = function
+        self._node._filters.append( (name, function,) )
 
     def add_configuration(self, name, path, description=None):
-        self._node.add_configuration(name, path, description)
+        self._node._configurations.append( (name, path, description,) )
 
 
 class RepositoryPrepareFacade(BaseNodePrepareFacade):
 
     def __init__(self, repository):
-        BaseNodePrepareFacade.__init__(self, repository)
+        super().__init__(repository)
 
     def add_modules_recursive(self, basepath="", modulefile="module.lb", ignore=None):
         self._node.add_modules_recursive(basepath, modulefile, ignore)
@@ -142,7 +143,7 @@ class RepositoryPrepareFacade(BaseNodePrepareFacade):
 class ModulePrepareFacade(BaseNodePrepareFacade):
 
     def __init__(self, module):
-        BaseNodePrepareFacade.__init__(self, module)
+        super().__init__(module)
 
     @property
     def parent(self):
@@ -173,18 +174,21 @@ class ModulePrepareFacade(BaseNodePrepareFacade):
 class ModuleInitFacade(BaseNodeInitFacade):
 
     def __init__(self, module):
-        BaseNodeInitFacade.__init__(self, module)
+        super().__init__(module)
 
     @property
     def parent(self):
-        return self._node.parent
+        deprecated("1.11.0", "ModuleInit.parent")
+        return self._node.parent if self._node.parent is None else self._node.parent
 
     @parent.setter
     def parent(self, name):
+        deprecated("1.11.0", "ModuleInit.parent = \"parent\"",
+                   "module.name = \":parent:module\"")
         self._node.parent = name
 
     def add_filter(self, name, function):
-        self._node._filters[name] = function
+        self._node._filters.append( (name, function,) )
 
 
 class EnvironmentValidateFacade:
@@ -239,7 +243,7 @@ class EnvironmentValidateFacade:
 class EnvironmentBuildCommonFacade(EnvironmentValidateFacade):
 
     def __init__(self, env):
-        EnvironmentValidateFacade.__init__(self, env)
+        super().__init__(env)
 
     @property
     def outbasepath(self):
@@ -324,7 +328,7 @@ class EnvironmentBuildCommonFacade(EnvironmentValidateFacade):
 class EnvironmentPostBuildFacade(EnvironmentBuildCommonFacade):
 
     def __init__(self, env):
-        EnvironmentBuildCommonFacade.__init__(self, env)
+        super().__init__(env)
 
     @property
     def buildlog(self):
@@ -343,7 +347,7 @@ class EnvironmentPostBuildFacade(EnvironmentBuildCommonFacade):
 class EnvironmentBuildFacade(EnvironmentBuildCommonFacade):
 
     def __init__(self, env):
-        EnvironmentBuildCommonFacade.__init__(self, env)
+        super().__init__(env)
 
     def collect(self, key, *values, operations=None):
         self._env.add_to_collector(key, *values, operations=operations)

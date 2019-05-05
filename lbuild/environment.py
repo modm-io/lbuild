@@ -20,9 +20,8 @@ import jinja2
 
 import lbuild.utils
 
-from .facade import EnvironmentValidateFacade, EnvironmentBuildFacade, EnvironmentPostBuildFacade
-from .facade import BuildLogFacade, BuildLogOperationFacade
-from .exception import LbuildException, LbuildTemplateException, LbuildForwardException
+import lbuild.facade as lf
+import lbuild.exception as le
 from .parser import Parser
 
 SIMULATE = False
@@ -114,10 +113,10 @@ class Environment:
             archive_path if os.path.isabs(archive_path) else self.modulepath(archive_path))
 
         destpath = os.path.normpath(dest if os.path.isabs(dest) else self.outpath(dest))
-        archiverelpath = os.path.relpath(archive_path, self.__repopath)
-        if archiverelpath.startswith(".."):
-            raise LbuildException("Cannot access files outside of the repository!\n"
-                                  "'{}'".format(archiverelpath))
+        if self.repopath(archive_path).startswith(".."):
+            raise le.LbuildEnvironmentFileOutsideRepositoryException(self.__module, archive_path)
+        if not os.path.isfile(archive_path):
+            raise le.LbuildEnvironmentFileNotFoundException(self.__module, archive_path)
 
         operations = set()
         starttime = time.time()
@@ -132,9 +131,7 @@ class Environment:
                            m for m in archive.getnames()]
 
             if src != "" and src not in members:
-                raise LbuildException("Archive has no file or folder called '{}'! "
-                                      "Available files and folders are:\n  {}"
-                                      .format(src, "\n  ".join(members)))
+                raise le.LbuildEnvironmentArchiveNoFileException(self.__module, src, members)
 
             def fn_isdir(path):
                 return path.endswith("/") or path == ""
@@ -198,10 +195,10 @@ class Environment:
         srcpath = os.path.normpath(src if os.path.isabs(src) else self.modulepath(src))
         destpath = os.path.normpath(dest if os.path.isabs(dest) else self.outpath(dest))
 
-        srcrelpath = os.path.relpath(srcpath, self.__repopath)
-        if srcrelpath.startswith(".."):
-            raise LbuildException("Cannot access files outside of the repository!\n"
-                                  "'{}'".format(srcrelpath))
+        if self.repopath(srcpath).startswith(".."):
+            raise le.LbuildEnvironmentFileOutsideRepositoryException(self.__module, srcpath)
+        if not (os.path.isfile(srcpath) or os.path.isdir(srcpath)):
+            raise le.LbuildEnvironmentFileNotFoundException(self.__module, srcpath)
 
         def log_copy(src, dest, operation_time):
             operations.add(self.log_file(src, dest, operation_time, metadata=metadata))
@@ -240,10 +237,13 @@ class Environment:
             else:
                 dest = src
 
-        src = self.repopath(src)
-        if src.startswith(".."):
-            raise LbuildException("Cannot access template outside of repository!\n"
-                                  "'{}'".format(src))
+        srcpath = os.path.normpath(src if os.path.isabs(src) else self.modulepath(src))
+        destpath = os.path.normpath(dest if os.path.isabs(dest) else self.outpath(dest))
+        srcrelpath = self.repopath(srcpath)
+        if srcrelpath.startswith(".."):
+            raise le.LbuildEnvironmentFileOutsideRepositoryException(self.__module, srcpath)
+        if not (os.path.isfile(srcpath) or os.path.isdir(srcpath)):
+            raise le.LbuildEnvironmentFileNotFoundException(self.__module, srcpath)
 
         if substitutions is None:
             substitutions = {}
@@ -256,31 +256,13 @@ class Environment:
                 self.__reload_template_environment(filters)
 
             template = self.template_environment.get_template(
-                src.replace('\\', '/'),
+                srcrelpath.replace('\\', '/'),
                 globals=self.__template_global_substitutions)
 
             output = template.render(substitutions)
-        except jinja2.TemplateNotFound as error:
-            raise LbuildException('Failed to retrieve Template: %s' % error)
-        except (jinja2.exceptions.TemplateAssertionError,
-                jinja2.exceptions.TemplateSyntaxError) as error:
-            raise LbuildException("Error in template '{}:{}':\n"
-                                  " {}: {}".format(error.filename,
-                                                   error.lineno,
-                                                   error.__class__.__name__,
-                                                   error))
-        except jinja2.exceptions.UndefinedError as error:
-            raise LbuildTemplateException("Error in template '{}':\n"
-                                          " {}: {}".format(self.modulepath(src),
-                                                           error.__class__.__name__,
-                                                           error))
-        except LbuildException as error:
-            raise LbuildException("Error in template '{}': \n"
-                                  "{}".format(self.modulepath(src), error))
+
         except Exception as error:
-            raise LbuildForwardException("Error in template '{}': \n"
-                                         "{}".format(self.modulepath(src), error),
-                                         error)
+            raise le.LbuildEnvironmentTemplateException(self.__module, srcpath, error)
 
         outfile_name = self.outpath(dest)
 
@@ -295,12 +277,12 @@ class Environment:
         endtime = time.time()
         total = endtime - starttime
         operations = set()
-        operations.add(self.log_file(self.modulepath(src), outfile_name, total, metadata=metadata))
+        operations.add(self.log_file(srcpath, outfile_name, total, metadata=metadata))
         return operations
 
     def log_file(self, src, dest, operation_time, metadata=None):
         operation = self.buildlog.log(self.__module, src, dest, operation_time, metadata)
-        return BuildLogOperationFacade(operation)
+        return lf.BuildLogOperationFacade(operation)
 
     def modulepath(self, *path):
         """Relocate given path to the path of the module file."""
@@ -349,7 +331,10 @@ class Environment:
         return filenames
 
     def add_to_collector(self, key, *values, operations=None):
-        self.collectors_available[key].add_values(values, self.__module, operations)
+        try:
+            self.collectors_available[key].add_values(values, self.__module, operations)
+        except le.LbuildOptionException as error:
+            raise le.LbuildEnvironmentCollectException(self.__module, str(error))
 
     def collector_values(self, key, default=None, filterfunc=None, unique=True):
         if default is None:
@@ -371,15 +356,15 @@ class Environment:
     @property
     def facade(self):
         if self.stage == Parser.Stage.BUILD:
-            return EnvironmentBuildFacade(self)
+            return lf.EnvironmentBuildFacade(self)
         if self.stage == Parser.Stage.POST_BUILD:
-            return EnvironmentPostBuildFacade(self)
-        return EnvironmentValidateFacade(self)
+            return lf.EnvironmentPostBuildFacade(self)
+        return lf.EnvironmentValidateFacade(self)
 
     @property
     def facade_buildlog(self):
         if self.stage == Parser.Stage.POST_BUILD:
-            return BuildLogFacade(self.buildlog)
+            return lf.BuildLogFacade(self.buildlog)
         return None
 
     def __reload_template_environment(self, filters):

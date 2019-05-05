@@ -37,26 +37,39 @@ class Builder:
                 "key=value" format.
         """
         if cwd is None:
-            cwd = os.getcwd() if config is None else os.path.abspath(os.path.dirname(config))
+            if config is None:
+                cwd = os.getcwd()
+            else:
+                cwd = os.path.abspath(os.path.dirname(config))
         self.cwd = cwd
 
-
         file_config = None
-        try:
-            file_config = ConfigNode.from_file(config)
-        except lbuild.exception.LbuildException:
-            if ":" in config:
-                file_config = ConfigNode()
-                file_config.filename = "command-line"
-                file_config._extends["command-line"].append(config)
+        filesystem_config = ConfigNode.from_path(self.cwd)
 
-        filesystem_config = ConfigNode.from_filesystem(cwd)
-        if file_config is not None:
-            file_config.extend_last(filesystem_config)
-        elif filesystem_config is not None:
-            file_config = filesystem_config
-        else:
+        # 0. config is default, but file doesn't exist, config = None
+        if config == "project.xml":
+            config = os.path.join(self.cwd, config)
+            if not os.path.exists(config):
+                config = None
+
+        # 1. config is None: use filesystem config
+        if config is None:
+            if filesystem_config is None:
+                file_config = ConfigNode()
+            else:
+                file_config = filesystem_config
+
+        # 2. config is alias: create virtual config and extend it with alias
+        elif ":" in config:
             file_config = ConfigNode()
+            file_config.filename = "command-line"
+            file_config._extends["command-line"].append(config)
+
+        # 3. config is file: create file config and extend if with filesystem config
+        else:
+            file_config = ConfigNode.from_file(config)
+            if file_config is not None:
+                file_config.extend_last(filesystem_config)
 
         self.config = file_config
         self.config.add_commandline_options(listify(options))

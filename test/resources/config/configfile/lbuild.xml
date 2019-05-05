@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<library>
+	<repositories>
+		<repository>
+			<path>repo2.lb</path>
+		</repository>
+	</repositories>
+
+	<options>
+		<option name="repo1:foo">42</option>
+	</options>
+
+	<modules>
+		<module>:module2</module>
+	</modules>
+</library>

@@ -81,8 +81,7 @@ Each `module.lb` file is then compiled by *lbuild*, and the three functions
 
 ```python
 def init(module):
-    module.parent = "repo"
-    module.name = "module"
+    module.name = ":module"
 
 def prepare(module, options):
     if options["repo:option"] == "special":
@@ -266,8 +265,8 @@ which *lbuild* will search for in the current working directory.
 </library>
 ```
 
-On startup, *lbuild* will search the current working directory upwards for a
-`lbuild.xml` file, which if found, is used as the base configuration, inherited
+On startup, *lbuild* will search the current working directory upwards for one or more
+`lbuild.xml` files, which if found, are used as the base configuration, inherited
 by all other configurations. This is very useful when several projects all
 require the same repositories, and you don't want to specify each repository
 path for each project.
@@ -361,8 +360,8 @@ Use whatever markup you want, lbuild treats it all as text.
     repo.add_ignore_patterns("*/*.lb", "*/board.xml")
 
     # Add Jinja2 filters for all repository modules
-    # NOTE: the filter is namespaced with the repository! {{ "A" | modm.number }} -> 65
-    repo.add_filter("number", lambda char: ord(char))
+    # NOTE: the filter is namespaced with the repository! {{ "A" | repo.number }} -> 65
+    repo.add_filter("repo.number", lambda char: ord(char))
 
     # Add an alias for a internal configuration
     # NOTE: the configuration is namespaced with the repository! <extends>repo:config</extends>
@@ -431,11 +430,9 @@ files were generated and all module's metadata.
 
 ```python
 def init(module):
-    # give your module a name
-    module.name = "name"
-    # Each module has a parent, you can reference any module here. If you don't
-    # set the module's parent, it is implicitly set to the repository
-    module.parent = "repo:module"
+    # give your module a hierarchical name, the repository name is implicit
+    module.name = "repo:name"
+    module.name = ":name"      # same as this
     # You can set a module description here
     module.description = "Description"
     module.description = """Multiline"""
@@ -444,8 +441,8 @@ def init(module):
     module.format_description = custom_format_description
     module.format_short_description = custom_format_short_description
     # Add Jinja2 filters for this modules and all submodules
-    # NOTE: the filter is namespace with the repository! {{ 65 | modm.character }} -> "A"
-    module.add_filter("character", lambda number: chr(number))
+    # NOTE: the filter is namespace with the repository! {{ 65 | repo.character }} -> "A"
+    module.add_filter("repo.character", lambda number: chr(number))
 
 
 def prepare(module, options):
@@ -468,7 +465,6 @@ def prepare(module, options):
             self.instance = instance
         def init(module):
             module.name = str(self.instance)
-            # module.parent is automatically set!
         def prepare(module, options):
             pass
         def validate(env): # optional

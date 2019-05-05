@@ -19,7 +19,7 @@ from os.path import join
 
 import lbuild
 from lbuild.config import ConfigNode
-
+import lbuild.exception as le
 
 class ConfigTest(unittest.TestCase):
 
@@ -29,29 +29,41 @@ class ConfigTest(unittest.TestCase):
 
     def _find_config(self, startpath=None, **kw):
         if startpath: startpath = self._get_path(startpath);
-        config = ConfigNode.from_filesystem(startpath, **kw)
+        config = ConfigNode.from_path(startpath, **kw)
         return config.flatten() if config else config
 
     def _parse_config(self, filename):
         return ConfigNode.from_file(self._get_path(filename)).flatten()
 
     def test_should_parse_system_configuration_file(self):
+        # Single lbuild.xml
         config = self._find_config(".")
         self.assertNotEqual(config, None)
         self.assertEqual(1, len(config.modules))
         self.assertIn(":module1", config.modules)
         self.assertIn(self._get_path("repo1.lb"), config.repositories)
 
+        # Multiple lbuild.xml
         config = self._find_config("configfile/")
         self.assertNotEqual(config, None)
-        self.assertEqual(1, len(config.modules))
+        self.assertEqual(2, len(config.modules))
         self.assertIn(":module1", config.modules)
+        self.assertIn(":module2", config.modules)
         self.assertIn(self._get_path("repo1.lb"), config.repositories)
+        self.assertIn(self._get_path("configfile/repo2.lb"), config.repositories)
 
+        # non-existant file name
         config = self._find_config("configfile/", name="television_rules_the_nation.xml")
         self.assertEqual(config, None)
 
+        # non-existant folder
+        config = self._find_config("non-existant-folder/")
+        self.assertEqual(config, None)
+
     def test_should_parse_configuration_file(self):
+        with self.assertRaises(le.LbuildConfigNotFoundException):
+            config = self._parse_config("non-existant.xml")
+
         config = self._parse_config("configfile/project.xml")
 
         modules = config.modules
@@ -104,7 +116,6 @@ class ConfigTest(unittest.TestCase):
 
     def test_should_recursive_inherit_configuration(self):
         config = self._parse_config("configfile_inheritance/depth_2.xml")
-
 
         self.assertEqual(2, len(config.repositories))
         self.assertIn(self._get_path("configfile_inheritance/repo1.lb"), config.repositories)

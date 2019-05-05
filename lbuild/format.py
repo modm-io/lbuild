@@ -17,7 +17,7 @@ import colorful
 import lbuild.node
 import lbuild.filter
 
-PLAIN = not sys.stdout.isatty()
+PLAIN = False
 WIDTH = shutil.get_terminal_size((100, 0)).columns
 SHOW_NODES = {
     lbuild.node.BaseNode.Type.REPOSITORY,

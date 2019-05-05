@@ -22,7 +22,7 @@ from lbuild.format import format_option_short_description
 
 from lbuild.api import Builder
 
-__version__ = '1.10.5'
+__version__ = '1.11.0'
 
 
 class InitAction:
@@ -244,11 +244,20 @@ class ValidateAction(ManipulationActionBase):
             action="append",
             default=[],
             help="Select a specific module.")
+        parser.add_argument(
+            "--all",
+            dest="validate_all",
+            action="store_true",
+            default=False,
+            help="Validate all available module and simulate a build on them.")
         parser.set_defaults(execute_action=self.load_repositories)
 
     @staticmethod
     def perform(args, builder):
-        builder.validate(args.modules)
+        if args.validate_all:
+            builder.build(args.path, [":**"], simulate=True)
+        else:
+            builder.validate(args.modules)
         return "Library configuration valid."
 
 
@@ -435,7 +444,7 @@ def prepare_argument_parser():
         "--plain",
         dest="plain",
         action="store_true",
-        default=not sys.stdout.isatty(),
+        default=(not sys.stdout.isatty() or not sys.stderr.isatty()),
         help="Disable styled output, only output plain ASCII.")
     argument_parser.add_argument(
         '--version',
@@ -474,7 +483,7 @@ def run(args):
     try:
         command = args.execute_action
     except AttributeError:
-        raise lbuild.exception.LbuildArgumentException("No command specified")
+        raise lbuild.exception.LbuildArgumentException("No command specified!")
 
     builder = Builder(config=args.config, options=args.options)
     return command(args, builder)
@@ -493,27 +502,14 @@ def main():
 
         output = run(args)
         print(output)
-    except lbuild.exception.LbuildAggregateException as aggregate:
-        for error in aggregate.exceptions:
-            sys.stderr.write('\nERROR: %s\n' % error)
-        sys.exit(2)
-    except lbuild.exception.LbuildForwardException as error:
-        sys.stderr.write("\nERROR in '{}'\n".format(error.module))
-        traceback.print_exception(type(error.exception),
-                                  error.exception,
-                                  error.exception.__traceback__,
-                                  limit=-1)
-        sys.exit(4)
+
     except lbuild.exception.LbuildArgumentException as error:
         argument_parser.print_help()
         print(error)
         sys.exit(2)
-    except lbuild.exception.LbuildTemplateException as error:
-        sys.stderr.write('\nERROR: %s\n' % error)
-        traceback.print_exc()
-        sys.exit(3)
+
     except lbuild.exception.LbuildException as error:
-        sys.stderr.write('\nERROR: %s\n' % error)
+        sys.stderr.write('\nERROR: {}\n'.format(error))
         if args.verbose >= 2:
             traceback.print_exc()
         sys.exit(1)

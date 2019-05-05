@@ -1,0 +1,9 @@
+
+def init(repo):
+	repo.name = "hello"
+	repo.add_option(BooleanOption("bool", ""))
+	repo.add_option(BooleanOption("bool", ""))
+	pass
+
+def prepare(repo, options):
+	pass

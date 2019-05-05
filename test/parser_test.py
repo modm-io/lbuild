@@ -18,6 +18,7 @@ import testfixtures
 sys.path.append(os.path.abspath("."))
 
 import lbuild
+import lbuild.exception as le
 
 
 class ParserTest(unittest.TestCase):
@@ -44,6 +45,19 @@ class ParserTest(unittest.TestCase):
 
     def setUp(self):
         self.parser = lbuild.parser.Parser()
+
+    def test_should_raise_no_repos(self):
+        with self.assertRaises(le.LbuildConfigNoReposException):
+            self.parser.load_repositories()
+
+    def test_should_not_load_duplicate_repo(self):
+        self.parser.parse_repository(self._get_path("combined/repo1.lb"))
+        with self.assertRaises(le.LbuildParserDuplicateRepoException):
+            self.parser.parse_repository(self._get_path("combined/repo1.lb"))
+
+    def test_should_not_find_nodes(self):
+        with self.assertRaises(le.LbuildParserNodeNotFoundException):
+            self.parser.find_any(":nope")
 
     def test_should_parse_repository_1(self):
         self.parser.parse_repository(self._get_path("combined/repo1.lb"))
@@ -160,18 +174,21 @@ class ParserTest(unittest.TestCase):
 
     def test_raise_unknown_module(self):
         self.parser.parse_repository(self._get_path("combined/repo1.lb"))
+        self.parser.parse_repository(self._get_path("combined/repo2/repo2.lb"))
         self.parser._config_flat = lbuild.config.ConfigNode.from_file(self._get_path("combined/test1.xml"))
 
         self.parser.merge_repository_options()
         modules = self.parser.prepare_repositories()
-        self.parser.config.modules.append(":unknown")
-        self.assertRaises(lbuild.exception.LbuildException,
-                          lambda: self.parser.find_modules(self.parser.config.modules))
 
-    def _get_build_modules(self):
+        self.parser.config.modules.append(":unknown")
+        with self.assertRaises(le.LbuildParserNodeNotFoundException):
+            self.parser.find_modules(self.parser.config.modules)
+
+    def _get_build_modules(self, options={}):
         self.parser.parse_repository(self._get_path("combined/repo1.lb"))
         self.parser.parse_repository(self._get_path("combined/repo2/repo2.lb"))
         self.parser._config_flat = lbuild.config.ConfigNode.from_file(self._get_path("combined/test1.xml"))
+        self.parser.config.options.update(options)
 
         self.parser.merge_repository_options()
         modules = self.parser.prepare_repositories()
@@ -206,6 +223,35 @@ class ParserTest(unittest.TestCase):
         self.assertEqual("Hello World!", options["repo1:other:abc"].value)
         self.assertEqual(15, options["repo1:module2:submodule3:subsubmodule1:price"].value)
         self.assertEqual(True, options["repo1:module2:submodule3:subsubmodule2:option1"].value)
+
+    def test_should_build_fail_to_find_repo_options(self):
+        # non-existant options should fail to resolve
+        with self.assertRaises(le.LbuildParserNodeNotFoundException):
+            self._get_build_modules({"repo1:NOPE": "NOPE"})
+
+    def test_should_build_fail_to_find_module_options(self):
+        with self.assertRaises(le.LbuildParserNodeNotFoundException):
+            self._get_build_modules({"repo1:other:NOPE": "NOPE"})
+            self.parser.merge_module_options()
+
+    def test_should_build_fail_to_validate_options(self):
+        # existant options with wrong input
+        with self.assertRaises(le.LbuildDumpConfigException):
+            self._get_build_modules({"repo1:target": "NOPE"})
+        with self.assertRaises(le.LbuildDumpConfigException):
+            self._get_build_modules({"repo1:other:xyz": "NOPE"})
+            self.parser.merge_module_options()
+
+    def test_should_not_build_modules_for_missing_options(self):
+        build_modules, config_options = self._get_build_modules()
+        with self.assertRaises(le.LbuildOptionRequiredInputsException):
+            self.parser.build_modules(build_modules, None)
+
+    def test_should_not_build_modules_for_missing_modules(self):
+        self._get_build_modules()
+        self.parser.merge_module_options()
+        with self.assertRaises(le.LbuildConfigNoModulesException):
+            self.parser.build_modules([], None)
 
     @testfixtures.tempdir()
     def test_should_build_modules(self, tempdir):
@@ -344,7 +390,7 @@ class ParserTest(unittest.TestCase):
 
         outpath = tempdir.path
         log = lbuild.buildlog.BuildLog(outpath)
-        self.assertRaises(lbuild.exception.LbuildBuildException,
+        self.assertRaises(le.LbuildBuildlogOverwritingFileException,
                           lambda: self.parser.build_modules(build_modules, log))
 
     @testfixtures.tempdir()
@@ -354,14 +400,14 @@ class ParserTest(unittest.TestCase):
 
         outpath = tempdir.path
         log = lbuild.buildlog.BuildLog(outpath)
-        self.assertRaises(lbuild.exception.LbuildBuildException,
+        self.assertRaises(le.LbuildBuildlogOverwritingFileException,
                           lambda: self.parser.build_modules(build_modules, log))
 
     @testfixtures.tempdir()
     def test_should_raise_when_no_module_is_found(self, tempdir):
         self.parser.parse_repository(self._get_path("empty_repository/repo.lb"))
 
-        self.assertRaises(lbuild.exception.LbuildBuildException,
+        self.assertRaises(le.LbuildParserRepositoryEmptyException,
                           lambda: self.prepare_modules(self.parser))
 
     @testfixtures.tempdir()

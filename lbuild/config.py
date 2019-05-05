@@ -20,7 +20,7 @@ from pathlib import Path
 import lxml.etree
 import anytree
 
-from .exception import LbuildException
+from .exception import LbuildConfigException, LbuildConfigNotFoundException
 
 LOGGER = logging.getLogger('lbuild.config')
 DEFAULT_CACHE_FOLDER = ".lbuild_cache"
@@ -87,9 +87,9 @@ class ConfigNode(anytree.AnyNode):
     @staticmethod
     def extend(node, config):
         if config and node:
-            below = node.children[0] if node.children else None
+            below = next(iter(node.children), None)
             config.parent = node
-            if below:
+            if below is not None:
                 below.parent = config
         return node
 
@@ -106,11 +106,11 @@ class ConfigNode(anytree.AnyNode):
 
     def render(self):
         if self.filename == Path():
-            return "ConfigNode(Empty)"
+            return "ConfigNode(command-line)"
         return anytree.RenderTree(self, anytree.ContRoundStyle())
 
     @staticmethod
-    def from_filesystem(startpath=None, name="lbuild.xml"):
+    def from_path(startpath=None, name="lbuild.xml"):
         """
         Iterate upwards from the starting folder to find all
         configuration files.
@@ -150,29 +150,25 @@ class ConfigNode(anytree.AnyNode):
         Returns:
             Configuration as a `ConfigNode` instance.
         """
-        filename = os.path.relpath(str(configfile), os.getcwd())
-        LOGGER.debug("Parse configuration '%s'", filename)
+        filename = realpath(str(configfile))
         if not os.path.exists(filename):
-            raise LbuildException("No configuration file found!")
+            raise LbuildConfigNotFoundException(filename)
 
         xmltree = ConfigNode._load_and_verify(configfile)
 
         config = ConfigNode(parent)
-        config.filename = filename
-        configpath = str(Path(config.filename).parent)
+        config.filename = os.path.relpath(filename, os.getcwd())
+        LOGGER.debug("Parse configuration '%s'", config.filename)
+        configpath = os.path.dirname(config.filename)
         # load extend strings
         for node in xmltree.iterfind("extends"):
-            cpath = Path(ConfigNode._rel_path(node.text, configpath))
-            # Some Windows versions don't like `:` in their path
-            path_exists = False
-            try:
-                path_exists = cpath.exists()
-            except OSError:
-                pass
-            if path_exists:
-                ConfigNode.from_file(str(cpath), config)
-            else:
+            if ":" in node.text:
                 config._extends[config.filename].append(node.text)
+            else:
+                cpath = Path(ConfigNode._rel_path(node.text, configpath))
+                if not cpath.exists():
+                    raise LbuildConfigNotFoundException(cpath, filename)
+                ConfigNode.from_file(str(cpath), config)
 
         # Load cachefolder
         cache_node = xmltree.find("repositories/cache")
@@ -214,15 +210,14 @@ class ConfigNode(anytree.AnyNode):
 
             xmltree = xmlroot.getroot()
         except OSError as error:
-            raise LbuildException(error)
+            raise LbuildConfigException(configfile, error)
         except (lxml.etree.DocumentInvalid,
                 lxml.etree.XMLSyntaxError,
                 lxml.etree.XMLSchemaParseError,
                 lxml.etree.XIncludeError) as error:
             # lxml.etree has the used exception, but pylint is not able to detect them:
             # pylint: disable=no-member
-            raise LbuildException("While parsing '{}': {}"
-                                  .format(error.error_log.last_error.filename, error))
+            raise LbuildConfigException(configfile, error)
         return xmltree
 
     @staticmethod

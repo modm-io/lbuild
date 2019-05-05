@@ -17,7 +17,7 @@ from os.path import join, relpath, dirname, normpath, basename, isabs, abspath
 import lxml.etree
 import lbuild.utils
 
-from .exception import LbuildBuildException
+from .exception import LbuildBuildlogOverwritingFileException
 
 LOGGER = logging.getLogger('lbuild.buildlog')
 
@@ -164,11 +164,8 @@ class BuildLog:
 
             previous = self._build_files.get(filename_out, None)
             if previous is not None:
-                raise LbuildBuildException(
-                    "Overwrite file '{}' from '{}' (module '{}'). Previously "
-                    "generated from '{}' (module '{}').".format(
-                        filename_out, filename_in, module.fullname,
-                        previous.filename_in, previous.module_name))
+                raise LbuildBuildlogOverwritingFileException(
+                        module.fullname, filename_out, previous.module_name)
 
             self._build_files[filename_out] = operation
             self._operations[module.fullname].append(operation)
@@ -200,7 +197,7 @@ class BuildLog:
         with self.__lock:
             operations = [self._operations.get(name, []) for name in self.modules
                           if name.startswith(modulename)]
-        operations = [o for olists in operations for o in olists]
+        operations = (o for olists in operations for o in olists)
         return sorted(operations, key=lambda o: (o.module_name, o.filename_in, o.filename_out))
 
     @property
@@ -211,13 +208,13 @@ class BuildLog:
     def modules(self):
         with self.__lock:
             module_names = self._operations.keys()
-        return list(module_names)
+        return sorted(list(module_names))
 
     @property
     def operations(self):
         with self.__lock:
             operations = self._operations.values()
-        operations = [o for olists in operations for o in olists]
+        operations = (o for olists in operations for o in olists)
         return sorted(operations, key=lambda o: (o.module_name, o.filename_in, o.filename_out))
 
     @staticmethod

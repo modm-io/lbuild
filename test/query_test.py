@@ -18,13 +18,18 @@ sys.path.append(os.path.abspath("."))
 
 import lbuild.query
 from lbuild.repository import Repository
+import lbuild.exception as le
 
 
 class QueryTest(unittest.TestCase):
 
     def setUp(self):
-        self.repo = Repository("path", name="repo")
+        repoinit = lbuild.repository.RepositoryInit(None, "path")
+        repoinit.name = "repo"
+        self.repo = lbuild.repository.Repository(repoinit)
+
         module = lbuild.module.ModuleInit(self.repo, "filename")
+        module.parent = self.repo.name
         module.name = "module"
         module.available = True
         self.module = lbuild.module.build_modules([module])[0]
@@ -46,13 +51,13 @@ class QueryTest(unittest.TestCase):
             """
             pass
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildQueryConstructionException):
             query = lbuild.query.Query(function=int())
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildQueryConstructionException):
             query = lbuild.query.Query(function=2)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildQueryConstructionException):
             query = lbuild.query.Query(function=lambda: None)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildQueryConstructionException):
             query = lbuild.query.Query(function=lambda arg: arg)
 
         query = lbuild.query.Query(function=local_function)
@@ -90,15 +95,15 @@ class QueryTest(unittest.TestCase):
             """
             pass
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildQueryConstructionException):
             query = lbuild.query.EnvironmentQuery(factory=int())
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildQueryConstructionException):
             query = lbuild.query.EnvironmentQuery(factory=2)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildQueryConstructionException):
             query = lbuild.query.EnvironmentQuery(factory=lambda: None)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildQueryConstructionException):
             query = lbuild.query.EnvironmentQuery(factory=lambda arg: arg)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildQueryConstructionException):
             query = lbuild.query.EnvironmentQuery(factory=local_factory)
 
         query = lbuild.query.EnvironmentQuery(factory=self.method)

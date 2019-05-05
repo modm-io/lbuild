@@ -1,0 +1,13 @@
+
+def init(module):
+	module.name = "module2"
+
+def prepare(module, options):
+	# Forward option value to dependency handler
+	module.add_option(
+	        StringOption("dependency", "", dependencies=lambda v: v))
+
+	return True
+
+def build(env):
+	pass

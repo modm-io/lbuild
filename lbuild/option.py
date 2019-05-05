@@ -17,6 +17,7 @@ import lbuild.utils
 
 from .node import BaseNode
 from .format import ColorWrapper as _cw
+import lbuild.exception as le
 
 LOGGER = logging.getLogger('lbuild.option')
 
@@ -37,20 +38,24 @@ class Option(BaseNode):
 
     def _set_default(self, default):
         if default is not None:
-            self._input = self._in(default)
-            self._output = self._out(default)
+            self.__set_value(default)
             self._default = self._input
 
     def _update_dependencies(self):
-        self._dependencies_resolved = False
         if self._dependency_handler:
-            self._dependency_module_names += \
-                lbuild.utils.listify(self._dependency_handler(self._input))
+            deps = lbuild.utils.listify(self._dependency_handler(self._input))
+            self.parent.add_dependencies(*deps)
 
     def _set_value(self, value):
-        self._input = self._in(value)
-        self._output = self._out(value)
+        self.__set_value(value)
         self._update_dependencies()
+
+    def __set_value(self, value):
+        try:
+            self._input = self._in(value)
+            self._output = self._out(value)
+        except (TypeError, ValueError) as error:
+            raise le.LbuildOptionInputException(self, value, error)
 
     @property
     def module(self):
@@ -109,7 +114,7 @@ class PathOption(Option):
     def _validate_path(self, path):
         path = str(path).strip()
         if not self.validate(path, self._empty_ok):
-            raise ValueError("Path '{}' is not valid!".format(path))
+            raise TypeError("Input must be a path!")
         return path
 
     @staticmethod
@@ -163,8 +168,7 @@ class BooleanOption(Option):
         if str(value).lower() in ['false', 'no', '0']:
             return False
 
-        raise ValueError("Value '{}' ({}) must be boolean!"
-                         .format(value, type(value).__name__))
+        raise TypeError("Input must be boolean!")
 
 
 class NumericOption(Option):
@@ -178,20 +182,22 @@ class NumericOption(Option):
         self.maximum = maximum
         if self.minimum is not None and self.maximum is not None:
             if self.minimum >= self.maximum:
-                raise ValueError("Minimum '{}' must be smaller than maximum '{}'!"
-                                 .format(self.minimum, self.maximum))
+                raise le.LbuildOptionConstructionException(self,
+                        "Minimum '{}' must be smaller than maximum '{}'!"
+                            .format(self.minimum, self.maximum))
 
     # Disable warnings caused by property setters which are not properly recognised by pylint
     # pylint: disable=no-member
     @Option.value.setter
     def value(self, value):
-        numeric_value = self.as_numeric_value(value)
-        if self.minimum is not None and numeric_value < self.minimum:
-            raise ValueError("Value '{}' of '{}' must be greater than '{}'"
-                             .format(numeric_value, self.fullname, self.minimum))
-        if self.maximum is not None and numeric_value > self.maximum:
-            raise ValueError("Value '{}' of '{}' must be smaller than '{}'"
-                             .format(numeric_value, self.fullname, self.maximum))
+        try:
+            numeric_value = self.as_numeric_value(value)
+            if self.minimum is not None and numeric_value < self.minimum:
+                raise ValueError("Input must be greater or equal to '{}'".format(self.minimum))
+            if self.maximum is not None and numeric_value > self.maximum:
+                raise ValueError("Input must be smaller or equal to '{}'".format(self.maximum))
+        except (TypeError, ValueError) as error:
+            raise le.LbuildOptionInputException(self, value, error)
         self._set_value(value)
 
     @property
@@ -223,16 +229,13 @@ class NumericOption(Option):
             return value
         if isinstance(value, str):
             try:
-                return int(value, 0)
-            except ValueError:
-                pass
-            try:
-                return float(value)
-            except ValueError:
+                value = eval(value)
+                if isinstance(value, (int, float)):
+                    return value
+            except:
                 pass
 
-        raise ValueError("Value '{}' ({}) must be numeric!"
-                         .format(value, type(value).__name__))
+        raise TypeError("Input must be numeric!")
 
 
 class EnumerationOption(Option):
@@ -250,12 +253,14 @@ class EnumerationOption(Option):
             self._enumeration = {self._obj_to_str(entry): entry for entry in enumeration}
         elif isinstance(enumeration, dict):
             self._enumeration = enumeration
-            for key in self._enumeration:
+            for key in self._enumeration.keys():
                 if not isinstance(key, str):
-                    raise ValueError("All enumeration keys must be of type string!")
+                    raise le.LbuildOptionConstructionException(self,
+                        "All enumeration keys must be of type string, but key '{}' is of type '{}'!"
+                        .format(key, type(key).__name__))
         else:
-            raise ValueError("Type {} currently not supported"
-                             .format(type(enumeration).__name__))
+            raise le.LbuildOptionConstructionException(self,
+                "Type '{}' not supported as enumeration!".format(type(enumeration).__name__))
 
         self._set_default(default)
 
@@ -267,7 +272,10 @@ class EnumerationOption(Option):
     def _obj_to_str(obj):
         if EnumerationOption._is_enum(obj):
             return str(obj.name)
-        return str(obj).strip()
+        try:
+            return str(obj).strip()
+        except:
+            raise TypeError("Input must be a string!", obj)
 
     @property
     def values(self):
@@ -287,15 +295,13 @@ class EnumerationOption(Option):
         try:
             return self._enumeration[self._obj_to_str(value)]
         except KeyError:
-            raise ValueError("Value '{}' not found in enumeration '{}'. " \
-                             "Possible values are:\n'{}'."
-                             .format(self.fullname, value, "', '".join(self._enumeration)))
+            raise TypeError("Input must be an element of the enumeration!")
 
 class OptionSet(Option):
 
     def __init__(self, option, default=None):
         if isinstance(option, (SetOption, StringOption)):
-            raise ValueError("StringOption cannot be used as a set option!")
+            raise le.LbuildOptionConstructionException(self, "StringOption cannot be used as a set option!")
 
         Option.__init__(self, option.name, option._description,
                         convert_input=self.to_set,

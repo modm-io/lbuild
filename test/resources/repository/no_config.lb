@@ -1,0 +1,8 @@
+
+def init(repo):
+	repo.name = "hello"
+	repo.add_configuration("hello", "", "NOPE.xml")
+	pass
+
+def prepare(repo, options):
+	pass

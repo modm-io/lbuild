@@ -14,10 +14,11 @@ import logging
 import inspect
 
 import lbuild.utils
+import lbuild.format
 
-from .exception import LbuildException
+import lbuild.exception as le
+import lbuild.facade as lf
 from .node import BaseNode
-from .facade import ModuleInitFacade, ModulePrepareFacade
 
 LOGGER = logging.getLogger('lbuild.module')
 
@@ -27,30 +28,28 @@ class ModuleBase:
 
 
 def load_module_from_file(repository, filename, parent=None):
-    module = ModuleInit(repository, filename)
-    if parent:
-        module.parent = parent
-
+    module = ModuleInit(repository, filename, parent)
     module.functions = lbuild.node.load_functions_from_file(
         repository,
         filename,
         required=['init', 'prepare', 'build'],
         optional=['pre_build', 'validate', 'post_build'],
-        local={'PreBuildException': lbuild.exception.LbuildValidateException})
+        local={'PreBuildException': le.LbuildValidateException})
 
     module.init()
     return module.prepare()
 
 
-def load_module_from_object(repository, module_obj, filename=None, parent=None):
-    module = ModuleInit(repository, filename)
-    if parent:
-        module.parent = parent
+def load_module_from_object(repository, module_obj, filename, parent=None):
+    module = ModuleInit(repository, filename, parent)
+    try:
+        module.functions = lbuild.utils.get_global_functions(
+            module_obj,
+            required=['init', 'prepare', 'build'],
+            optional=['pre_build', 'validate', 'post_build'])
 
-    module.functions = lbuild.utils.get_global_functions(
-        module_obj,
-        required=['init', 'prepare', 'build'],
-        optional=['pre_build', 'validate', 'post_build'])
+    except le.LbuildUtilsFunctionNotFoundException as error:
+        raise le.LbuildNodeMissingFunctionException(repository, filename, error, module_obj)
 
     module.init()
     return module.prepare()
@@ -81,80 +80,90 @@ def build_modules(initmodules):
             module._available = False;
             not_available.add(module.fullname)
         else:
-            raise LbuildException("The parent '{}' for module '{}' cannot be found!"
-                                  .format(parent_name, module.fullname))
+            raise le.LbuildModuleParentNotFoundException(module, parent_name)
 
     # Now update the tree
-    for module in modules:
-        module._update()
+    if modules:
+        modules[0].root._update()
 
     return modules
 
 
 class ModuleInit:
 
-    def __init__(self, repository, filename=None):
+    def __init__(self, repository, filename, parent=None):
         self.filename = os.path.realpath(filename)
         self.filepath = os.path.dirname(self.filename) if filename else None
         self.repository = repository
 
         self.name = None
-        self.parent = self.repository.name
+        self.parent = None
+        self.context_parent = parent
         self.description = ""
         self.functions = {}
         self.available = False
+        self._format_description = lbuild.format.format_description
+        self._format_short_description = lbuild.format.format_short_description
 
         self._submodules = []
         self._options = []
         self._dependencies = []
-        self._filters = {}
+        self._filters = []
         self._queries = []
         self._collectors = []
 
     @property
     def fullname(self):
-        return self.parent + ":" + self.name
+        if self.parent is None:
+            return "{}:{}".format(self.repository.name, self.name)
+        return "{}:{}".format(self.parent, self.name)
+
+    def _clean(self, name):
+        if name is None or not name: return ("", "");
+        if name.startswith("{}:".format(self.repository.name)):
+            name = name[len(self.repository.name):]
+        if not name.startswith(":"):
+            name = ":{}".format(name)
+        return name.rsplit(":", 1)
 
     def init(self):
         # Execute init() function from module to get module name
         lbuild.utils.with_forward_exception(
             self,
-            lambda: self.functions['init'](ModuleInitFacade(self)))
+            lambda: self.functions['init'](lf.ModuleInitFacade(self)))
 
         if self.name is None:
-            raise LbuildException("The init(module) function must set a module name! "
-                                  "Please set the 'name' attribute.")
-        if ":" in self.name:
-            self.parent, self.name = self.name.rsplit(":", 1)
+            raise le.LbuildModuleNoNameException(self)
 
-        if self.parent.startswith(":"):
-            self.parent = self.repository.name + self.parent
-        if not self.parent.startswith(self.repository.name):
-            self.parent = self.repository.name + ":" + self.parent
+        if self.parent is None and ":" not in self.name:
+            self.parent = self.context_parent
+
+        parent_parent, parent_name = self._clean(self.parent)
+        name_parent, self.name = self._clean(self.name)
+
+        self.parent = ":".join(p.strip(":") for p in (self.repository.name,
+                                parent_parent, parent_name, name_parent) if p)
 
     def prepare(self):
         self.available = lbuild.utils.with_forward_exception(
             self,
-            lambda: self.functions["prepare"](ModulePrepareFacade(self),
+            lambda: self.functions["prepare"](lf.ModulePrepareFacade(self),
                                               self.repository.option_value_resolver))
 
         all_modules = [self]
         if self.available is None:
-            raise LbuildException("The prepare() function for module '{}' must "
-                                  "return True or False."
-                                  .format(self.name))
+            raise le.LbuildModuleNoReturnAvailableException(self)
 
         for submodule in self._submodules:
-            if isinstance(submodule, ModuleBase):
+            if isinstance(submodule, str):
+                modules = load_module_from_file(repository=self.repository,
+                                                filename=os.path.join(self.filepath, submodule),
+                                                parent=self.fullname)
+            else:
                 modules = load_module_from_object(repository=self.repository,
                                                   module_obj=submodule,
                                                   filename=self.filename,
                                                   parent=self.fullname)
-            else:
-                modules = load_module_from_file(repository=self.repository,
-                                                filename=os.path.join(self.filepath, submodule),
-                                                parent=self.fullname)
-
             all_modules.extend(modules)
         return all_modules
 
@@ -178,23 +187,33 @@ class Module(BaseNode):
         self._description = module.description
         self._fullname = module.fullname
         self._available = module.available
-        self._filters.update({"{}.{}".format(self._repository.name, name): func
-                              for name, func in module._filters.items()})
 
-        for child in (module._options + module._queries):
-            self.add_child(child)
+        # Prefix the global filters with the `repo.` name
+        for (name, func) in module._filters:
+            if not name.startswith("{}.".format(self._repository.name)):
+                nname = "{}.{}".format(self._repository.name, name)
+                LOGGER.warning("Namespacing module filter '{}' to '{}'!"
+                               .format(name, nname))
+                name = nname
+            self._filters[name] = func
 
-        for collector in module._collectors:
-            self.add_child(lbuild.collector.Collector(collector))
+        try:
+            for child in (module._options + module._queries):
+                self.add_child(child)
+            for collector in module._collectors:
+                self.add_child(lbuild.collector.Collector(collector))
+        except le.LbuildNodeDuplicateChildException as error:
+            raise le.LbuildModuleDuplicateChildException(self, error)
 
-        self.add_dependencies(*module._dependencies)
+        dependencies = module._dependencies
         if ":" in module.parent:
-            self.add_dependencies(module.parent)
+            dependencies.append(module.parent)
+        self.add_dependencies(*dependencies)
 
     def validate(self, env):
         validate = self._functions.get("validate", self._functions.get("pre_build", None))
         if validate is not None:
-            LOGGER.info("Validate %s", self.fullname)
+            LOGGER.info("Validate {}".format(self.fullname))
             lbuild.utils.with_forward_exception(self, lambda: validate(env.facade))
 
     def build(self, env):
@@ -204,7 +223,7 @@ class Module(BaseNode):
     def post_build(self, env):
         post_build = self._functions.get("post_build", None)
         if post_build is not None:
-            LOGGER.info("Post-Build %s", self.fullname)
+            LOGGER.info("Post-Build {}".format(self.fullname))
             if len(inspect.signature(post_build).parameters.keys()) == 1:
                 func = lambda: post_build(env.facade)
             else:

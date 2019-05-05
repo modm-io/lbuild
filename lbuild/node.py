@@ -17,63 +17,56 @@ import anytree
 
 import lbuild.filter
 import lbuild.format
-import lbuild.utils
-
-from .exception import LbuildException, LbuildValidateException
+import lbuild.utils as lu
+import lbuild.exception as le
 
 LOGGER = logging.getLogger('lbuild.node')
 
 
 def load_functions_from_file(repository, filename: str, required, optional=None, local=None):
+    filename = os.path.realpath(filename)
+    localpath = os.path.dirname(filename)
+    if not os.path.isfile(filename):
+        raise FileNotFoundError(filename)
+
+    if local is None:
+        local = {}
+
+    local.update({
+        'localpath': RelocatePath(localpath),
+        'repopath': RelocatePath(repository._filepath),
+        'listify': lu.listify,
+        'listrify': lu.listrify,
+
+        'FileReader': LocalFileReaderFactory(localpath),
+        'ValidateException': le.LbuildValidateException,
+        'Module': lbuild.module.ModuleBase,
+
+        'Query': lbuild.query.Query,
+        'EnvironmentQuery': lbuild.query.EnvironmentQuery,
+
+        'StringCollector': lbuild.collector.StringCollector,
+        'PathCollector': lbuild.collector.PathCollector,
+        'BooleanCollector': lbuild.collector.BooleanCollector,
+        'NumericCollector': lbuild.collector.NumericCollector,
+        'EnumerationCollector': lbuild.collector.EnumerationCollector,
+        'CallableCollector': lbuild.collector.CallableCollector,
+
+        'StringOption': lbuild.option.StringOption,
+        'PathOption': lbuild.option.PathOption,
+        'BooleanOption': lbuild.option.BooleanOption,
+        'NumericOption': lbuild.option.NumericOption,
+        'EnumerationOption': lbuild.option.EnumerationOption,
+        'SetOption': lbuild.option.SetOption,
+    })
+
     try:
-        localpath = os.path.dirname(os.path.realpath(filename))
-
-        if local is None:
-            local = {}
-
-        local.update({
-            'localpath': RelocatePath(localpath),
-            'repopath': RelocatePath(repository._filepath),
-            'listify': lbuild.utils.listify,
-            'listrify': lbuild.utils.listrify,
-
-            'FileReader': LocalFileReaderFactory(localpath),
-            'ValidateException': LbuildValidateException,
-            'Module': lbuild.module.ModuleBase,
-
-            'Query': lbuild.query.Query,
-            'EnvironmentQuery': lbuild.query.EnvironmentQuery,
-
-            'StringCollector': lbuild.collector.StringCollector,
-            'PathCollector': lbuild.collector.PathCollector,
-            'BooleanCollector': lbuild.collector.BooleanCollector,
-            'NumericCollector': lbuild.collector.NumericCollector,
-            'EnumerationCollector': lbuild.collector.EnumerationCollector,
-            'CallableCollector': lbuild.collector.CallableCollector,
-
-            'StringOption': lbuild.option.StringOption,
-            'PathOption': lbuild.option.PathOption,
-            'BooleanOption': lbuild.option.BooleanOption,
-            'NumericOption': lbuild.option.NumericOption,
-            'EnumerationOption': lbuild.option.EnumerationOption,
-            'SetOption': lbuild.option.SetOption,
-        })
-
-        # LOGGER.debug("Parse filename '%s'", filename)
-        local = lbuild.utils.with_forward_exception(
-            repository,
-            lambda: lbuild.utils.load_module_from_file(filename, local))
-        functions = lbuild.utils.get_global_functions(local, required, optional)
+        local = lu.load_module_from_file(filename, local)
+        functions = lu.get_global_functions(local, required, optional)
         return functions
 
-    except FileNotFoundError as error:
-        raise LbuildException("Repository configuration file not found '{}'.".format(filename))
-
-    except KeyError as error:
-        raise LbuildException("Invalid repository configuration file '{}':\n"
-                              " {}: {}".format(filename,
-                                               error.__class__.__name__,
-                                               error))
+    except le.LbuildUtilsFunctionNotFoundException as error:
+        raise le.LbuildNodeMissingFunctionException(repository, filename, error)
 
 
 class RelocatePath:
@@ -119,22 +112,27 @@ class NameResolver:
     def __init__(self, node, nodetype, selected=True, returner=None, defaulter=None):
         self._node = node
         self._type = nodetype
-        self._str = nodetype.name.lower()
         self._returner = (lambda n: n) if returner is None else returner
         self._defaulter = (lambda n: n) if defaulter is None else defaulter
         self._selected = selected
 
-    def get_node(self, key, check_dependencies=False):
-        node = self._node._resolve_partial_max(key, max_results=1)[0]
+    def _get_node(self, key, check_dependencies=False, raise_on_fail=True):
+        node = self._node._resolve_partial_max(key, max_results=1, raise_on_fail=raise_on_fail)
+        if node is None: return None;
+        node = node[0]
         if not node._available:
-            raise LbuildException("{} '{}' is not available!".format(self._str, node.fullname))
+            if not raise_on_fail: return None;
+            raise le.LbuildResolverSearchException(self, node, "is not available!")
 
         if self._selected and not node._selected:
-            raise LbuildException("{} '{}' is not selected!".format(self._str, node.fullname))
+            if not raise_on_fail: return None;
+            raise le.LbuildResolverSearchException(self, node, "is not selected!")
 
         if node._type != self._type:
-            raise LbuildException("'{}' is of type '{}', but searching for '{}'!"
-                                  .format(node.fullname, node._type.name.lower(), self._str))
+            if not raise_on_fail: return None;
+            raise le.LbuildResolverSearchException(self, node,
+                    "is of type '{}', but searching for '{}'!".format(
+                            node._type.name.lower(), self._type.name.lower()))
 
         if check_dependencies and node.type in {BaseNode.Type.OPTION, BaseNode.Type.QUERY, BaseNode.Type.COLLECTOR}:
             if node.parent != self._node:
@@ -147,22 +145,17 @@ class NameResolver:
         return node
 
     def __getitem__(self, key: str):
-        node = self.get_node(key, check_dependencies=True)
+        node = self._get_node(key, check_dependencies=True, raise_on_fail=True)
         return self._returner(node)
 
     def get(self, key, default=None):
-        try:
-            node = self.get_node(key)
+        node = self._get_node(key, raise_on_fail=False)
+        if node is not None:
             return self._returner(node)
-        except LbuildException:
-            return self._defaulter(default)
+        return self._defaulter(default)
 
     def __contains__(self, key):
-        try:
-            _ = self.get_node(key)
-            return True
-        except LbuildException:
-            return False
+        return (self._get_node(key, raise_on_fail=False) is not None)
 
     def __len__(self):
         return len(self._node._findall(self._type, selected=self._selected))
@@ -188,9 +181,14 @@ class BaseNode(anytree.Node):
 
     def __init__(self, name, node_type, repository=None):
         anytree.Node.__init__(self, name)
+
         if self.separator in str(name):
-            raise LbuildException("Path separator ':' is not allowed in '{}({})' name!"
-                                  .format(self.__class__.__name__, self.name))
+            raise le.LbuildNodeConstructionException(repository, self,
+                    "Hierarchy separator '{}' is not allowed in name!".format(self.separator))
+        if "*" in str(name):
+            raise le.LbuildNodeConstructionException(repository, self,
+                    "Wildcart '*' is not allowed in name!")
+
         self._type = node_type
         self._functions = {}
 
@@ -275,9 +273,7 @@ class BaseNode(anytree.Node):
     @property
     def dependencies(self):
         self._resolve_dependencies()
-        return self._dependencies + [d for o in self.options
-                                     for d in o._dependencies
-                                     if d != self]
+        return self._dependencies
 
     @property
     def description(self):
@@ -326,17 +322,13 @@ class BaseNode(anytree.Node):
         return lbuild.format.format_node_tree(self, filterfunc)
 
     def add_dependencies(self, *dependencies):
-        """
-        Add a new dependencies.
-
-        The module name has not to be fully qualified.
-        """
         self._dependency_module_names += dependencies
+        self._dependencies_resolved = False
 
     def add_child(self, node):
-        if node.name in [child.name for child in self.children]:
-            raise LbuildException("{} name '{}' is already defined in Module '{}'!"
-                                  .format(node.__class__.__name__, node.name, self.fullname))
+        for child in self.children:
+            if node.name == child.name:
+                raise le.LbuildNodeDuplicateChildException(self, node, child)
         node._repository = self._repository
         node.parent = self
         node.add_dependencies(self.fullname)
@@ -361,7 +353,7 @@ class BaseNode(anytree.Node):
 
         return anytree.search.findall(self, maxlevel=depth, filter_=_filter)
 
-    def _resolve_dependencies(self, ignore_failure=True):
+    def _resolve_dependencies(self):
         """
         Update the internal list of dependencies.
 
@@ -369,29 +361,23 @@ class BaseNode(anytree.Node):
         """
         if self._dependencies_resolved:
             return
-        dependencies = set()
-        # print(self.fullname, self._dependency_module_names)
-        dependency_names = set(n for n in self._dependency_module_names if ":" in n)
-        for dependency_name in dependency_names:
-            try:
-                dependencies.add(self.module_resolver[dependency_name])
-            except LbuildException as error:
-                if not ignore_failure:
-                    raise LbuildException("Cannot resolve dependencies!\n{}".format(error))
-                LOGGER.debug("ignoring %s", dependency_name)
-        self._dependencies = list(dependencies)
-        self._dependencies_resolved = not ignore_failure
-        for child in self.children:
-            child._resolve_dependencies(ignore_failure)
 
-    def _resolve_partial_max(self, query, max_results=1):
+        dependencies = set()
+        for dependency_name in {n for n in self._dependency_module_names if ":" in n}:
+            dependency = self.module_resolver[dependency_name]
+            dependencies.add(dependency)
+
+        self._dependencies = list(dependencies)
+        self._dependencies_resolved = True
+
+    def _resolve_partial_max(self, query, max_results=1, raise_on_fail=True):
         nodes = self._resolve_partial(query, None)
         if nodes is None:
-            raise LbuildException("Unknown '{}' in module '{}'!".format(query, self.fullname))
+            if not raise_on_fail: return None;
+            raise le.LbuildResolverNoMatchException(self, query)
         if len(nodes) > max_results:
-            raise LbuildException("Ambiguous '{}'! Found: '{}'"
-                                  .format(query,
-                                          "', '".join([n.fullname for n in nodes])))
+            if not raise_on_fail: return None;
+            raise le.LbuildResolverAmbiguousMatchException(self, query, nodes)
         return nodes
 
     def _resolve_partial(self, query, default):
@@ -401,17 +387,18 @@ class BaseNode(anytree.Node):
             return resolved1
 
         # no result or ambiguous? try to fill the partial name
-        query = ":".join(self._fill_partial_name(["" if p == "*" else p for p in query.split(":")]))
+        query = ":".join(self._fill_partial_name(
+                            ["" if p == "*" else p for p in query.split(":")]))
         resolved2 = self._resolve(query, [])
 
         if not (resolved2 or resolved1):
             # neither found anything
             return default
+
         if not resolved2:
             return resolved1
         if not resolved1:
             return resolved2
-
         # return the less ambiguous one
         return resolved2 if len(resolved2) < len(resolved1) else resolved1
 
@@ -464,7 +451,8 @@ class BaseNode(anytree.Node):
         self_attr = getattr(self, attr, "unknown")
         parent_attr = getattr(self.parent, attr, "unknown")
         if self_attr == "unknown" or parent_attr == "unknown":
-            raise LbuildException("Cannot update non-existant attribute '{}'!".format(attr))
+            raise le.LbuildException("Internal: Cannot update non-existant "
+                                     "attribute '{}'!".format(attr))
 
         if isinstance(self_attr, list):
             self_attr = list(set(self_attr + parent_attr))

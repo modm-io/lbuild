@@ -1,0 +1,8 @@
+
+def init(repo):
+	repo.name = "no_module"
+	pass
+
+def prepare(repo, options):
+	repo.add_modules("NOPE.lb")
+	pass

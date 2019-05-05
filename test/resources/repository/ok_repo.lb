@@ -1,0 +1,7 @@
+
+def init(repo):
+	repo.name = "ok_repo"
+	pass
+
+def prepare(repo, options):
+	pass

@@ -19,13 +19,19 @@ sys.path.append(os.path.abspath("."))
 
 from lbuild.option import *
 from lbuild.repository import Repository
+import lbuild.exception as le
 
 
 class OptionTest(unittest.TestCase):
 
     def setUp(self):
-        self.repo = Repository("path", name="repo")
+        repoinit = lbuild.repository.RepositoryInit(None, "path")
+        repoinit.name = "repo"
+        self.repo = lbuild.repository.Repository(repoinit)
+
+
         module = lbuild.module.ModuleInit(self.repo, "filename")
+        module.parent = self.repo.name
         module.name = "module"
         module.available = True
 
@@ -93,6 +99,8 @@ class OptionTest(unittest.TestCase):
         self.assertEqual("False", option.value)
 
         def validate_string(value):
+            if not isinstance(value, str):
+                raise TypeError("must be of type str")
             if "magic" not in value:
                 raise ValueError("magic not in value")
 
@@ -102,10 +110,13 @@ class OptionTest(unittest.TestCase):
         option.value = "magic word"
         self.assertEqual("magic word", option.value)
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildOptionInputException):
             option.value = "hello"
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildOptionInputException):
+            option.value = 1
+
+        with self.assertRaises(le.LbuildOptionInputException):
             StringOption("test", "description", default="hello",
                          validate=validate_string)
 
@@ -128,13 +139,13 @@ class OptionTest(unittest.TestCase):
         option.value = "\tfile \n  "
         self.assertEqual("file", option.value)
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildOptionInputException):
             option.value = ""
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildOptionInputException):
             option.value = "//"
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildOptionInputException):
             option.value = "/folder//"
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildOptionInputException):
             option.value = "//folder/"
 
         option = PathOption("test", "description", default="", empty_ok=True)
@@ -155,7 +166,7 @@ class OptionTest(unittest.TestCase):
         option.value = False
         self.assertEqual(False, option.value)
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildOptionInputException):
             option.value = "hello"
 
     def test_should_be_constructable_from_number(self):
@@ -172,18 +183,18 @@ class OptionTest(unittest.TestCase):
         option.value = str(6.7)
         self.assertEqual(6.7, option.value)
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildOptionInputException):
             option.value = -1
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildOptionInputException):
             option.value = 1000
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildOptionInputException):
             option.value = "hello"
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildOptionConstructionException):
             NumericOption("test", "description", minimum=0, maximum=0)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildOptionConstructionException):
             NumericOption("test", "description", minimum=100, maximum=-100)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildOptionConstructionException):
             NumericOption("test", "description", minimum=-10, maximum=-100)
 
     def test_should_be_constructable_from_enum(self):
@@ -198,9 +209,9 @@ class OptionTest(unittest.TestCase):
         self.assertIn("test  [EnumerationOption]", option.description)
         self.assertEqual(1, option.value)
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildOptionInputException):
             option.value = 1
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildOptionInputException):
             option.value = "hello"
 
     def test_should_be_constructable_from_enum_set(self):
@@ -215,9 +226,9 @@ class OptionTest(unittest.TestCase):
         self.assertIn("test  [EnumerationSetOption]", option.description)
         self.assertEqual([1, 2], option.value)
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildOptionInputException):
             option.value = 1
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildOptionInputException):
             option.value = {TestEnum.value1, 1}
 
     def test_should_be_constructable_from_dict(self):
@@ -230,9 +241,9 @@ class OptionTest(unittest.TestCase):
                                    enumeration=enum_dict)
         self.assertEqual(1, option.value)
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildOptionInputException):
             option.value = 1
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildOptionInputException):
             option.value = "value3"
 
     def test_should_be_constructable_from_dict_set(self):
@@ -245,9 +256,9 @@ class OptionTest(unittest.TestCase):
                     default=["value1", "value2"])
         self.assertEqual([1, 2], option.value)
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildOptionInputException):
             option.value = {1, 2}
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildOptionInputException):
             option.value = "value3"
 
     def test_should_be_constructable_from_list(self):
@@ -259,7 +270,7 @@ class OptionTest(unittest.TestCase):
                                    default="value1",
                                    enumeration=enum_list)
         self.assertEqual("value1", option.value)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildOptionInputException):
             option.value = "value3"
 
     def test_should_be_constructable_from_list_set(self):
@@ -271,7 +282,7 @@ class OptionTest(unittest.TestCase):
                     EnumerationOption("test", "description", enumeration=enum_list),
                     default=["value1", "value2"])
         self.assertEqual(["value1", "value2"], option.value)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(le.LbuildOptionInputException):
             option.value = {"value3"}
 
     def test_should_be_constructable_from_list_set_duplicates(self):

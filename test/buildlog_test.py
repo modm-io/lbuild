@@ -22,10 +22,12 @@ import lbuild
 class BuildLogTest(unittest.TestCase):
 
     def setUp(self):
-        self.repo = lbuild.repository.Repository(".")
-        self.repo.name = "repo"
+        repoinit = lbuild.repository.RepositoryInit(None, ".")
+        repoinit.name = "repo"
+        self.repo = lbuild.repository.Repository(repoinit)
 
         module1 = lbuild.module.ModuleInit(self.repo, "/m1/module.lb")
+        module1.parent = self.repo.name
         module1.name = "module1"
         module1.available = True
 
@@ -35,6 +37,7 @@ class BuildLogTest(unittest.TestCase):
         module1a.available = True
 
         module2 = lbuild.module.ModuleInit(self.repo, "/m2/module.lb")
+        module2.parent = self.repo.name
         module2.name = "module2"
         module2.available = True
 
@@ -53,7 +56,7 @@ class BuildLogTest(unittest.TestCase):
 
     def test_should_raise_on_overwriting_a_file(self):
         self.log.log(self.module1, "in", "out")
-        self.assertRaises(lbuild.exception.LbuildBuildException,
+        self.assertRaises(lbuild.exception.LbuildBuildlogOverwritingFileException,
                           lambda: self.log.log(self.module1, "in", "out"))
 
     def test_should_generate_xml(self):
@@ -77,14 +80,18 @@ class BuildLogTest(unittest.TestCase):
 """, self.log.to_xml(path="/"))
 
     def test_should_provide_operations_per_module(self):
-        o1 = self.log.log(self.module1, "in1", "/out1")
         o1a = self.log.log(self.module1a, "in1a", "/out1a")
+        o1 = self.log.log(self.module1, "in1", "/out1")
         o2 = self.log.log(self.module2, "in2", "/out2")
 
         operations = self.log.operations_per_module("repo:module1")
         self.assertIn(o1, operations)
         self.assertIn(o1a, operations)
         self.assertNotIn(o2, operations)
+
+        self.assertEqual({"repo:module1", "repo:module1:module1a", "repo:module2"},
+                         set(self.log.modules))
+        self.assertEqual({"repo"}, set(self.log.repositories))
 
     def test_should_create_local_path(self):
         o1 = self.log.log(self.module1, "/m1/in1", "/test/out1")

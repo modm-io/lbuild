@@ -19,17 +19,23 @@ sys.path.append(os.path.abspath("."))
 
 from lbuild.collector import *
 from lbuild.repository import Repository
+import lbuild.exception as le
 
 
 class CollectorTest(unittest.TestCase):
 
     def setUp(self):
-        self.repo = Repository("path", name="repo")
+        repoinit = lbuild.repository.RepositoryInit(None, "path")
+        repoinit.name = "repo"
+        self.repo = lbuild.repository.Repository(repoinit)
+
         module1 = lbuild.module.ModuleInit(self.repo, "filename")
+        module1.parent = self.repo.name
         module1.name = "module1"
         module1.available = True
 
         module2 = lbuild.module.ModuleInit(self.repo, "filename2")
+        module2.parent = self.repo.name
         module2.name = "module2"
         module2.available = True
 
@@ -86,7 +92,8 @@ class CollectorTest(unittest.TestCase):
         collector.add_values(function, self.module1)
         self.assertEqual([function], collector.values())
 
-        self.assertRaises(ValueError, lambda: collector.add_values(1, self.module1))
+        self.assertRaises(le.LbuildOptionInputException,
+                          lambda: collector.add_values(1, self.module1))
 
 
 if __name__ == '__main__':
