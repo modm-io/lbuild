@@ -178,8 +178,22 @@ class NumericOption(Option):
         Option.__init__(self, name, description, default, dependencies,
                         convert_input=str,
                         convert_output=self.as_numeric_value)
-        self.minimum = minimum
-        self.maximum = maximum
+        self.minimum_input = str(minimum)
+        self.maximum_input = str(maximum)
+        self.minimum = None
+        self.maximum = None
+
+        try:
+            self.minimum = self.as_numeric_value(minimum)
+        except (TypeError, ValueError) as error:
+            raise le.LbuildOptionConstructionException(self,
+                    "Minimum '{}' is invalid! {}".format(minimum, error))
+        try:
+            self.maximum = self.as_numeric_value(maximum)
+        except (TypeError, ValueError) as error:
+            raise le.LbuildOptionConstructionException(self,
+                    "Maximum '{}' is invalid! {}".format(maximum, error))
+
         if self.minimum is not None and self.maximum is not None:
             if self.minimum >= self.maximum:
                 raise le.LbuildOptionConstructionException(self,
@@ -202,8 +216,14 @@ class NumericOption(Option):
 
     @property
     def values(self):
-        return ["-Inf" if self.minimum is None else str(self.minimum),
-                "+Inf" if self.maximum is None else str(self.maximum)]
+        return ["-Inf" if self.minimum is None else self.minimum_input,
+                "+Inf" if self.maximum is None else self.maximum_input]
+
+    def format_value(self):
+        value = str(self._input)
+        if value != str(self._output):
+            value += " ({})".format(self._output)
+        return value
 
     def format_values(self):
         minimum = _cw(self.values[0])

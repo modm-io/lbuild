@@ -182,6 +182,12 @@ class OptionTest(unittest.TestCase):
         self.assertEqual(4.5, option.value)
         option.value = str(6.7)
         self.assertEqual(6.7, option.value)
+        option.value = "2**6"
+        self.assertEqual(2**6, option.value)
+        option.value = "(30 + 30/2) * 4 - 100 # inline comment" # eval()
+        self.assertEqual(80, option.value)
+        option.value = "{'key1': 23, 'key2': 42*2}['key2']" # eval()
+        self.assertEqual(42*2, option.value)
 
         with self.assertRaises(le.LbuildOptionInputException):
             option.value = -1
@@ -196,6 +202,10 @@ class OptionTest(unittest.TestCase):
             NumericOption("test", "description", minimum=100, maximum=-100)
         with self.assertRaises(le.LbuildOptionConstructionException):
             NumericOption("test", "description", minimum=-10, maximum=-100)
+        with self.assertRaises(le.LbuildOptionConstructionException):
+            NumericOption("test", "description", minimum="str")
+        with self.assertRaises(le.LbuildOptionConstructionException):
+            NumericOption("test", "description", maximum="str")
 
     def test_should_be_constructable_from_enum(self):
 
@@ -327,8 +337,9 @@ class OptionTest(unittest.TestCase):
 
     def test_should_format_numeric_option(self):
 
-        def construct(minimum=None, maximum=None, default=None):
+        def construct(minimum=None, maximum=None, default=None, value=None):
             option = NumericOption("test", "description", minimum, maximum, default)
+            if value is not None: option.value = value;
             return str(lbuild.format.format_option_value_description(option))
 
         self.assertIn("REQUIRED in [-Inf ... +Inf]", construct())
@@ -338,7 +349,12 @@ class OptionTest(unittest.TestCase):
         self.assertIn("0 in [0 ... +Inf]", construct(minimum=0, default=0))
         self.assertIn("0 in [-Inf ... 0]", construct(maximum=0, default=0))
         self.assertIn("1 in [0 .. 1 .. 100]", construct(minimum=0, maximum=100, default=1))
-        self.assertIn("1 in [-100 .. -1 .. -10]", construct(minimum=-100, maximum=-10, default=-1))
+        self.assertIn("-1 in [-100 .. -1 .. -10]", construct(minimum=-100, maximum=-10, default=-1))
+
+        self.assertIn("2*30 (60) in [0*0 .. 2*30 .. 200*2]",
+                      construct(minimum="0*0", maximum="200*2", default="2*30"))
+        self.assertIn("3*60 (180) in [0*0 .. 2*30 .. 200*2]",
+                      construct(minimum="0*0", maximum="200*2", default="2*30", value="3*60"))
 
     def test_should_format_enumeration_option(self):
         enum_list = [
