@@ -58,18 +58,16 @@ class Builder:
                 file_config = ConfigNode()
             else:
                 file_config = filesystem_config
-
-        # 2. config is alias: create virtual config and extend it with alias
-        elif ":" in config:
-            file_config = ConfigNode()
-            file_config.filename = "command-line"
-            file_config._extends["command-line"].append(config)
-
-        # 3. config is file: create file config and extend if with filesystem config
-        else:
+        # 2. config is file: create file config and extend if with filesystem config
+        elif os.path.exists(config):
             file_config = ConfigNode.from_file(config)
             if file_config is not None:
                 file_config.extend_last(filesystem_config)
+        # 3. config is alias: create virtual config and extend it with alias
+        else:
+            file_config = ConfigNode()
+            file_config.filename = "command-line"
+            file_config._extends["command-line"].append(config)
 
         self.config = file_config
         self.config.add_commandline_options(listify(options))

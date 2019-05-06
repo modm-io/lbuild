@@ -167,13 +167,20 @@ class ConfigNode(anytree.AnyNode):
         configpath = os.path.dirname(config.filename)
         # load extend strings
         for node in xmltree.iterfind("extends"):
-            if ":" in node.text:
+            cpath = Path(ConfigNode._rel_path(node.text, configpath))
+            # We first need to check for the path, because in Windows `:`
+            # is allowed to be part of the path (`C:\path`)
+            try:
+                cpath_exists = cpath.exists()
+            except:
+                cpath_exists = False
+            if cpath_exists:
+                ConfigNode.from_file(str(cpath), config)
+            elif ":" in node.text:
                 config._extends[config.filename].append(node.text)
             else:
-                cpath = Path(ConfigNode._rel_path(node.text, configpath))
-                if not cpath.exists():
-                    raise LbuildConfigNotFoundException(cpath, filename)
-                ConfigNode.from_file(str(cpath), config)
+                raise LbuildConfigNotFoundException(cpath, filename)
+
 
         # Load cachefolder
         cache_node = xmltree.find("repositories/cache")
