@@ -14,7 +14,6 @@ from os.path import realpath, join
 import pkgutil
 import logging
 import collections
-import functools
 from pathlib import Path
 
 import lxml.etree
@@ -134,9 +133,15 @@ class ConfigNode(anytree.AnyNode):
                 break
             startpath = startpath.parent
 
-        if configs:
-            return functools.reduce(lambda c1, c2: c1.extend_last(c2), configs)
-        return None
+        if not configs:
+            return None
+        if len(configs) == 1:
+            return configs[0]
+
+        first = configs[0]
+        for node in configs[1:]:
+            first.extend_last(node)
+        return first
 
     @staticmethod
     def from_file(configfile, parent=None):

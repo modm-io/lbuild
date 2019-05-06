@@ -490,6 +490,7 @@ class BaseNode(anytree.Node):
         Relocate relative paths to the path of the repository
         configuration file.
         """
+        path = str(path)
         if not os.path.isabs(path):
             path = os.path.join(self._filepath, path)
         return os.path.normpath(path)
