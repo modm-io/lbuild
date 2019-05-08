@@ -247,11 +247,17 @@ class LbuildParserAddRepositoryNotFoundException(LbuildDumpConfigException):
 
 class LbuildParserCannotResolveDependencyException(LbuildDumpConfigException):
     def __init__(self, parser, error):
-        msg = ("Cannot resolve dependency '{}' of Module({})!\n{}\n"
-               "Hint: Did you use the full module name?\n"
-               "      Is the module available and selected?\n"
-               .format(_hl(error.query), _hl(error.node.fullname),
+        is_ambiguos = isinstance(error, LbuildResolverAmbiguousMatchException)
+        msg = ("Cannot resolve {}dependency '{}' of Module({})!\n{}\n"
+               .format("ambiguous " if is_ambiguos else "",
+                       _hl(error.query), _hl(error.node.fullname),
                        _call_site(error.node._functions['prepare'])))
+        if is_ambiguos:
+            msg += "Hint: Found these results:\n\n{}".format(
+                            _bp(lbuild.format.format_node(r, 0, 0) for r in error.results))
+        else:
+            msg += ("Hint: Did you use the full module name?\n"
+                    "      Is the module available and selected?\n")
         super().__init__(msg, parser)
 
 class LbuildParserNodeNotFoundException(LbuildDumpConfigException):
@@ -286,6 +292,12 @@ class LbuildParserRepositoryEmptyException(LbuildDumpConfigException):
                        _hl("prepare"), _hl('"path/to/module.lb"'), _hl('"directory"')))
         super().__init__(msg, repo)
 
+class LbuildParserDuplicateModuleException(LbuildDumpConfigException):
+    def __init__(self, parser, error):
+        msg = ("{}({}) already has a submodule named '{}'!\n{}"
+               .format(error.parent.class_name, _hl(error.parent.fullname),
+                       _hl(error.child.fullname), error.hint))
+        super().__init__(msg, parser)
 
 # ============================= MODULE EXCEPTIONS =============================
 class LbuildModuleNoNameException(LbuildDumpConfigException):
@@ -385,15 +397,22 @@ class LbuildNodeDuplicateChildException(LbuildDumpConfigException):
         prompt = ("{}({}) conflicts with existing {} for parent '{}'!\n"
                   .format(_hl(child.class_name), _hl(child.fullname),
                           _hl(conflict.class_name), _hl(parent.fullname)))
-        hint = ("Hint: This {}:\n\n"
+        hint = ("Hint: This {}{}:\n\n"
                 "    >>> {}\n\n"
-                "conflicts with this {}:\n\n"
+                "conflicts with this {}{}:\n\n"
                 "    >>> {}\n"
-                .format(_hl(child.class_name), lbuild.format.format_node(child, 0, 0),
-                        _hl(conflict.class_name), lbuild.format.format_node(conflict, 0, 0)))
+                .format(_hl(child.class_name), "" if child._filename is None else
+                            " defined in '{}'".format(_hl(_rel(child._filename))),
+                        lbuild.format.format_node(child, 0, 0),
+                        _hl(conflict.class_name), "" if conflict._filename is None else
+                            " defined in '{}'".format(_hl(_rel(conflict._filename))),
+                        lbuild.format.format_node(conflict, 0, 0)))
         super().__init__(prompt + hint, parent._repository)
         self.prompt = prompt
         self.hint = hint
+        self.parent = parent
+        self.child = child
+        self.conflict = conflict
 
 class LbuildNodeConstructionException(LbuildDumpConfigException):
     def __init__(self, repo, node, reason):

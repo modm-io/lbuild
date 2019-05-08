@@ -163,7 +163,10 @@ class Parser(BaseNode):
                 raise le.LbuildParserRepositoryEmptyException(repo)
             modules.extend(moduleinits)
 
-        modules = lbuild.module.build_modules(modules)
+        try:
+            modules = lbuild.module.build_modules(modules)
+        except le.LbuildNodeDuplicateChildException as error:
+            raise le.LbuildParserDuplicateModuleException(self, error)
         # Update the formatters now from repo to the module leaves
         self._update_format()
         return modules
@@ -216,7 +219,8 @@ class Parser(BaseNode):
                 additional = []
                 depth -= 1
 
-        except le.LbuildResolverNoMatchException as error:
+        except (le.LbuildResolverNoMatchException,
+                le.LbuildResolverAmbiguousMatchException) as error:
             raise le.LbuildParserCannotResolveDependencyException(self, error)
 
         # disable all non-selected modules

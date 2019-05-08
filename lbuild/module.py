@@ -73,7 +73,7 @@ def build_modules(initmodules):
         parent_name = ":".join(module.fullname.split(":")[:-1])
         parent = rmodules.get(parent_name) if ":" in parent_name else module._repository
         if parent:
-            module.parent = parent
+            parent.add_child(module)
         elif parent_name in not_available:
             # The parent module exists, but it is disabled and thus all its
             # children modules are disabled as well.
