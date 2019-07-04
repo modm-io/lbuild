@@ -227,19 +227,19 @@ class ParserTest(unittest.TestCase):
     def test_should_build_fail_to_find_repo_options(self):
         # non-existant options should fail to resolve
         with self.assertRaises(le.LbuildParserNodeNotFoundException):
-            self._get_build_modules({"repo1:NOPE": "NOPE"})
+            self._get_build_modules({"repo1:NOPE": ("NOPE", None)})
 
     def test_should_build_fail_to_find_module_options(self):
         with self.assertRaises(le.LbuildParserNodeNotFoundException):
-            self._get_build_modules({"repo1:other:NOPE": "NOPE"})
+            self._get_build_modules({"repo1:other:NOPE": ("NOPE", None)})
             self.parser.merge_module_options()
 
     def test_should_build_fail_to_validate_options(self):
         # existant options with wrong input
         with self.assertRaises(le.LbuildDumpConfigException):
-            self._get_build_modules({"repo1:target": "NOPE"})
+            self._get_build_modules({"repo1:target": ("NOPE", None)})
         with self.assertRaises(le.LbuildDumpConfigException):
-            self._get_build_modules({"repo1:other:xyz": "NOPE"})
+            self._get_build_modules({"repo1:other:xyz": ("NOPE", None)})
             self.parser.merge_module_options()
 
     def test_should_not_build_modules_for_missing_options(self):
@@ -367,11 +367,11 @@ class ParserTest(unittest.TestCase):
 
         selected_modules = ["repo2:module3"]
         config_options = {
-            'repo1:target': 'hosted',
-            ':other:xyz': 'No',
-            'repo1::bar': '768',
-            'repo1:other:foo': '456',
-            '::abc': 'Hello World!',
+            'repo1:target': ('hosted', None),
+            ':other:xyz': ('No', None),
+            'repo1::bar': ('768', None),
+            'repo1:other:foo': ('456', None),
+            '::abc': ('Hello World!', None),
         }
         build_modules = self.prepare_modules(self.parser, selected_modules, config_options)
 

@@ -50,7 +50,7 @@ class DepedencyTest(unittest.TestCase):
     def test_should_update_option_dependencies(self):
         self.parser.parse_repository(self._get_path("option_dependency/repo.lb"))
         self.parser.prepare_repositories()
-        self.parser.config.options[":module2:dependency"] = ":module1"
+        self.parser.config.options[":module2:dependency"] = (":module1", None)
         self.parser.merge_module_options()
 
         module = self.parser.find_module(":module2")

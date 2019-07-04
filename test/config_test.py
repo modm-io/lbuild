@@ -74,14 +74,14 @@ class ConfigTest(unittest.TestCase):
         self.assertIn("::submodule3", modules)
 
         self.assertEqual(7, len(config.options))
-        self.assertEqual(config.options[':target'], 'hosted')
-        self.assertEqual(config.options['repo1:foo'], '43')
+        self.assertEqual(config.options[':target'][0], 'hosted')
+        self.assertEqual(config.options['repo1:foo'][0], '43')
 
-        self.assertEqual(config.options['repo1:other:foo'], '456')
-        self.assertEqual(config.options['repo1::bar'], '768')
-        self.assertEqual(config.options[':other:xyz'], 'No')
-        self.assertEqual(config.options['::abc'], 'Hello World!')
-        self.assertEqual(config.options['::submodule3::price'], '15')
+        self.assertEqual(config.options['repo1:other:foo'][0], '456')
+        self.assertEqual(config.options['repo1::bar'][0], '768')
+        self.assertEqual(config.options[':other:xyz'][0], 'No')
+        self.assertEqual(config.options['::abc'][0], 'Hello World!')
+        self.assertEqual(config.options['::submodule3::price'][0], '15')
 
     def test_should_parse_base_configuration(self):
         config = self._parse_config("configfile_inheritance/depth_0.xml")
@@ -90,8 +90,8 @@ class ConfigTest(unittest.TestCase):
         self.assertIn(self._get_path("configfile_inheritance/repo3.lb"), config.repositories)
 
         self.assertEqual(2, len(config.options))
-        self.assertEqual(config.options[":other:xyz"], "No")
-        self.assertEqual(config.options["::abc"], "Hello World!")
+        self.assertEqual(config.options[":other:xyz"][0], "No")
+        self.assertEqual(config.options["::abc"][0], "Hello World!")
 
         self.assertEqual(1, len(config.modules))
         self.assertIn("repo1:other", config.modules)
@@ -104,11 +104,11 @@ class ConfigTest(unittest.TestCase):
         self.assertIn(self._get_path("configfile_inheritance/repo3.lb"), config.repositories)
 
         self.assertEqual(5, len(config.options))
-        self.assertEqual(config.options[":other:xyz"], "No")
-        self.assertEqual(config.options["::abc"], "Hello World!")
-        self.assertEqual(config.options["repo1:foo"], "43")
-        self.assertEqual(config.options["repo1:other:foo"], "456")
-        self.assertEqual(config.options["repo1::bar"], "768")
+        self.assertEqual(config.options[":other:xyz"][0], "No")
+        self.assertEqual(config.options["::abc"][0], "Hello World!")
+        self.assertEqual(config.options["repo1:foo"][0], "43")
+        self.assertEqual(config.options["repo1:other:foo"][0], "456")
+        self.assertEqual(config.options["repo1::bar"][0], "768")
 
         self.assertEqual(2, len(config.modules))
         self.assertIn("repo1:other", config.modules)
@@ -122,14 +122,14 @@ class ConfigTest(unittest.TestCase):
         self.assertIn(self._get_path("configfile_inheritance/repo3.lb"), config.repositories)
 
         self.assertEqual(6, len(config.options))
-        self.assertEqual(config.options[":other:xyz"], "No")
-        self.assertEqual(config.options["::abc"], "Hello World!")
+        self.assertEqual(config.options[":other:xyz"][0], "No")
+        self.assertEqual(config.options["::abc"][0], "Hello World!")
 
-        self.assertEqual(config.options["repo1:other:foo"], "456")
-        self.assertEqual(config.options["repo1::bar"], "768")
+        self.assertEqual(config.options["repo1:other:foo"][0], "456")
+        self.assertEqual(config.options["repo1::bar"][0], "768")
 
-        self.assertEqual(config.options[":target"], "hosted")
-        self.assertEqual(config.options["repo1:foo"], "42")
+        self.assertEqual(config.options[":target"][0], "hosted")
+        self.assertEqual(config.options["repo1:foo"][0], "42")
 
         self.assertEqual(3, len(config.modules))
         self.assertIn("repo1:other", config.modules)
@@ -145,15 +145,15 @@ class ConfigTest(unittest.TestCase):
         self.assertIn(self._get_path("configfile_inheritance/repo3.lb"), config.repositories)
 
         self.assertEqual(7, len(config.options))
-        self.assertEqual(config.options["repo1:other:foo"], "456")
-        self.assertEqual(config.options["repo1::bar"], "768")
+        self.assertEqual(config.options["repo1:other:foo"][0], "456")
+        self.assertEqual(config.options["repo1::bar"][0], "768")
 
-        self.assertEqual(config.options[":other:xyz"], "Yes")
-        self.assertEqual(config.options["::abc"], "Hello World!")
-        self.assertEqual(config.options["::submodule3::price"], "15")
+        self.assertEqual(config.options[":other:xyz"][0], "Yes")
+        self.assertEqual(config.options["::abc"][0], "Hello World!")
+        self.assertEqual(config.options["::submodule3::price"][0], "15")
 
-        self.assertEqual(config.options[":target"], "hosted")
-        self.assertEqual(config.options["repo1:foo"], "42")
+        self.assertEqual(config.options[":target"][0], "hosted")
+        self.assertEqual(config.options["repo1:foo"][0], "42")
 
         self.assertEqual(5, len(config.modules))
         self.assertIn("::submodule3:subsubmodule2", config.modules)

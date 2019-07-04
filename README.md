@@ -724,11 +724,20 @@ Since an empty string is not a valid path, but it can be useful to allow an
 empty string as an input value to encode a special case (like a "disable" value),
 you may set `empty_ok=True` to tell the path validation to ignore empty strings.
 
+By default, the path input is not modified and must be correctly interpreted in
+the context of the module that uses it (usually relocated to the output path).
+However, if you want to input an existing path you should set `absolute=True`,
+so that *lbuild* can relocate the *relative path* declared in the config files
+to an absolute path, which is indepented of the CWD.
+This is particularly useful if you declare paths in config files that are not
+located at the project root, like options inherited from multiple `lbuild.xml`.
+
 ```python
 option = PathOption(name="option-name",
                     description="path",
                     default="path/to/folder/or/file",
                     empty_ok=False, # is an empty path considered valid?
+                    absolute=False, # is the path relative to the config file?
                     dependencies=add_option_dependencies)
 ```
 
@@ -984,7 +993,8 @@ See [PathOption](#PathOption) for documentation.
 ```python
 collector = PathCollector(name="collector-name",
                           description="path",
-                          empty_ok=False)
+                          empty_ok=False,
+                          absolute=False)
 ```
 
 

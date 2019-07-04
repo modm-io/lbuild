@@ -8,6 +8,7 @@
 # 2-clause BSD license. See the file `LICENSE.txt` for the full license
 # governing this code.
 
+import os
 import enum
 import inspect
 import collections
@@ -34,6 +35,7 @@ class Option(BaseNode):
         self._input = None
         self._output = None
         self._default = None
+        self._filename = os.path.join(os.getcwd(), "dummy")
         self._set_default(default)
 
     def _set_default(self, default):
@@ -105,16 +107,31 @@ class StringOption(Option):
 
 class PathOption(Option):
 
-    def __init__(self, name, description, default=None, dependencies=None, empty_ok=False):
+    def __init__(self, name, description, default=None, dependencies=None, empty_ok=False, absolute=False):
         self._empty_ok = empty_ok
+        self._absolute = absolute
         Option.__init__(self, name, description, default, dependencies,
                         convert_input=self._validate_path,
-                        convert_output=lambda p: str(p).strip())
+                        convert_output=self._relocate_path)
+
+    def _relocate(self, path):
+        return self._absolute and (self._filename is not None) and (path != "")
+
+    def _relocate_path(self, path):
+        path = str(path).strip()
+        # relocate path relative to the option filepath to absolute
+        if self._relocate(path):
+            path = os.path.realpath(os.path.join(self._filepath, path))
+        return path
 
     def _validate_path(self, path):
         path = str(path).strip()
+        # call the path validator function
         if not self.validate(path, self._empty_ok):
             raise TypeError("Input must be a path!")
+        # Relocate path to be relative to the user's perspective
+        if self._relocate(path):
+            path = os.path.relpath(self._relocate_path(path), os.getcwd())
         return path
 
     @staticmethod

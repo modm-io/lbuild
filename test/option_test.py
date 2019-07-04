@@ -151,6 +151,24 @@ class OptionTest(unittest.TestCase):
         option = PathOption("test", "description", default="", empty_ok=True)
         self.assertEqual("", option.value)
 
+        option = PathOption("test", "description", default="filename.txt", absolute=True)
+        self.assertEqual("{}/filename.txt".format(os.getcwd()), option.value)
+        option._filename = "/root/test/hello.lb"
+        option.value = "filename.txt"
+        self.assertEqual("/root/test/filename.txt", option.value)
+        option.value = "/absolute/filename.txt"
+        self.assertEqual("/absolute/filename.txt", option.value)
+
+        option = PathOption("test", "description", default="", empty_ok=True, absolute=True)
+        self.assertEqual("", option.value)
+        option.value = "filename.txt"
+        self.assertEqual("{}/filename.txt".format(os.getcwd()), option.value)
+        option._filename = "/root/test/hello.lb"
+        option.value = "filename.txt"
+        self.assertEqual("/root/test/filename.txt", option.value)
+        option.value = "/absolute/filename.txt"
+        self.assertEqual("/absolute/filename.txt", option.value)
+
     def test_should_be_constructable_from_boolean(self):
         option = BooleanOption("test", "description", False)
         self.assertIn("test  [BooleanOption]", option.description)

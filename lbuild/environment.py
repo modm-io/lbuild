@@ -332,7 +332,10 @@ class Environment:
 
     def add_to_collector(self, key, *values, operations=None):
         try:
-            self.collectors_available[key].add_values(values, self.__module, operations)
+            self.collectors_available[key].add_values(values,
+                                                      module=self.__module.fullname,
+                                                      filename=self.__module._filename,
+                                                      operations=operations)
         except le.LbuildOptionException as error:
             raise le.LbuildEnvironmentCollectException(self.__module, str(error))
 

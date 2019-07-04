@@ -56,11 +56,11 @@ class CollectorTest(unittest.TestCase):
     def test_should_access_values(self):
         collector = Collector(NumericCollector("test", "long description"))
 
-        collector.add_values(1, self.module1)
-        collector.add_values(2, self.module1)
+        collector.add_values(1, self.module1.fullname)
+        collector.add_values(2, self.module1.fullname)
 
-        collector.add_values(2, self.module2)
-        collector.add_values([3, 3], self.module2)
+        collector.add_values(2, self.module2.fullname)
+        collector.add_values([3, 3], self.module2.fullname)
 
         unique_values = collector.values()
         unique_values1 = collector.values(filterfunc=lambda s: s.module == "repo:module1")
@@ -89,11 +89,11 @@ class CollectorTest(unittest.TestCase):
 
         def function():
             pass
-        collector.add_values(function, self.module1)
+        collector.add_values(function, self.module1.fullname)
         self.assertEqual([function], collector.values())
 
         self.assertRaises(le.LbuildOptionInputException,
-                          lambda: collector.add_values(1, self.module1))
+                          lambda: collector.add_values(1, self.module1.fullname))
 
 
 if __name__ == '__main__':

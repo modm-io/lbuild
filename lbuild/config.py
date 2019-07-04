@@ -62,7 +62,7 @@ class ConfigNode(anytree.AnyNode):
     def add_commandline_options(self, cmd_options):
         for option in cmd_options:
             parts = option.split('=')
-            self._options[parts[0]] = parts[1]
+            self._options[parts[0]] = (parts[1], os.path.join(os.getcwd(), "command-line"))
 
     def _flatten(self, config):
         for node in list(self.siblings) + [self]:
@@ -196,8 +196,8 @@ class ConfigNode(anytree.AnyNode):
         # Load repositories
         for path_node in xmltree.iterfind("repositories/repository/path"):
             repopath = path_node.text.format(cache=config._cachefolder)
-            filename = ConfigNode._rel_path(repopath, configpath)
-            config._repositories.append(filename)
+            rfilename = ConfigNode._rel_path(repopath, configpath)
+            config._repositories.append(rfilename)
 
         # Load all requested modules
         config._modules = xmltree.xpath('modules/module/text()')
@@ -206,7 +206,7 @@ class ConfigNode(anytree.AnyNode):
         for option_node in xmltree.xpath('options/option'):
             name = option_node.attrib['name']
             value = option_node.attrib.get('value', option_node.text)
-            config._options[name] = value
+            config._options[name] = (value, filename)
 
         return config
 

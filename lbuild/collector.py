@@ -42,8 +42,9 @@ class Collector(BaseNode):
     def module(self):
         return self.parent
 
-    def add_values(self, values, module, operations=None):
+    def add_values(self, values, module, operations=None, filename=None):
         checked_values = list()
+        self._option._filename = filename
         for value in lbuild.utils.listify(values):
             self._option.value = value
             checked_values.append(self._option.value)
@@ -53,7 +54,7 @@ class Collector(BaseNode):
                 context = CollectorContext(operation.module, operation.filename)
                 self._extend_values(context, checked_values)
         else:
-            self._extend_values(CollectorContext(module.fullname), checked_values)
+            self._extend_values(CollectorContext(module), checked_values)
 
     def _extend_values(self, context, values):
         if context not in self._values:
@@ -96,8 +97,8 @@ class StringCollector(StringOption):
 
 
 class PathCollector(PathOption):
-    def __init__(self, name, description, empty_ok=False):
-        PathOption.__init__(self, name, description, empty_ok=empty_ok)
+    def __init__(self, name, description, empty_ok=False, absolute=False):
+        PathOption.__init__(self, name, description, empty_ok=empty_ok, absolute=absolute)
 
 
 class BooleanCollector(BooleanOption):

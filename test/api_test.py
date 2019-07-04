@@ -56,7 +56,8 @@ class ApiTest(unittest.TestCase):
         self.assertEqual(api.cwd, self._get_path("parser/api"))
         self._assert_config(api,
             filename=self._rel_path("parser/api/simple.xml"),
-            options={"repo:option": "value", "repo:module:option": "value"},
+            options={"repo:option": ("value", self._get_path("parser/api/simple.xml")),
+                     "repo:module:option": ("value", self._get_path("parser/api/simple.xml"))},
             modules=["repo:module"],
             repositories=[self._get_path("parser/api/repo.lb")],
             cachefolder=self._rel_path("parser/api/.lbuild_cache"))
@@ -66,7 +67,7 @@ class ApiTest(unittest.TestCase):
         self.assertEqual(api.cwd, self._get_path("config"))
         self._assert_config(api,
             filename=self._rel_path("config/lbuild.xml"),
-            options={":target": "hosted"},
+            options={":target": ("hosted", self._get_path("config/lbuild.xml"))},
             modules=[":module1"],
             repositories=[self._get_path("config/repo1.lb")],
             cachefolder=self._rel_path("config/.lbuild_cache"))
@@ -76,7 +77,7 @@ class ApiTest(unittest.TestCase):
         self.assertEqual(api.cwd, self._get_path("parser/api"))
         self._assert_config(api,
             filename=self._rel_path("parser/api/project.xml"),
-            options={"repo:option": "value"},
+            options={"repo:option": ("value", self._get_path("parser/api/project.xml"))},
             modules=["repo:module"],
             repositories=[self._get_path("parser/api/repo.lb")],
             cachefolder=self._rel_path("parser/api/.lbuild_cache"))

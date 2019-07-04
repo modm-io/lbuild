@@ -140,10 +140,13 @@ class Parser(BaseNode):
     def merge_repository_options(self):
         # only deal with repo options that contain one `:`
         resolver = self.option_resolver
-        for name, value in {n: v for n, v in self.config.options.items()
-                            if n.count(":") == 1}.items():
+        # print(self.config.options.items())
+        for name, (value, filename) in filter(lambda i: i[0].count(":") == 1,
+                                              self.config.options.items()):
             try:
-                resolver[name].value = value
+                option = resolver[name]
+                option._filename = filename
+                option.value = value
             except le.LbuildOptionException as error:
                 raise le.LbuildDumpConfigException(
                     "Failed to validate repository options!\n{}".format(error), self)
@@ -174,10 +177,12 @@ class Parser(BaseNode):
     def merge_module_options(self):
         # only deal with repo options that contain one `:`
         resolver = self.option_resolver
-        for name, value in {n: v for n, v in self.config.options.items()
-                            if n.count(":") > 1}.items():
+        for name, (value, filename) in filter(lambda i: i[0].count(":") > 1,
+                                              self.config.options.items()):
             try:
-                resolver[name].value = value
+                option = resolver[name]
+                option._filename = filename
+                option.value = value
             except le.LbuildOptionException as error:
                 raise le.LbuildDumpConfigException(
                     "Failed to validate module options!\n{}".format(error), self)
