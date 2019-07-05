@@ -121,7 +121,7 @@ class PathOption(Option):
         path = str(path).strip()
         # relocate path relative to the option filepath to absolute
         if self._relocate(path):
-            path = os.path.realpath(os.path.join(self._filepath, path))
+            path = os.path.abspath(os.path.join(self._filepath, path))
         return path
 
     def _validate_path(self, path):

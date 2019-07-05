@@ -307,7 +307,7 @@ class Environment:
         else:
             relative = os.path.join(self.__outpath, relative)
         path = os.path.join(self.__outpath, path)
-        return os.path.relpath(path, relative)
+        return os.path.relpath(os.path.realpath(path), os.path.realpath(relative))
 
     def generated_local_files(self, filterfunc=None):
         """
