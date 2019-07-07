@@ -7,6 +7,7 @@
 		<repository>
 			<path>repo2/repo2.lb</path>
 		</repository>
+		<cache>hello_there/</cache>
 	</repositories>
 
 	<options>

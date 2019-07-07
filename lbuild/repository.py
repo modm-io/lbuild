@@ -149,6 +149,7 @@ class Repository(BaseNode):
     def build(self, env):
         build = self._functions.get("build", None)
         if build is not None:
+            LOGGER.info("Build %s", self.fullname)
             lbuild.utils.with_forward_exception(self, lambda: build(env.facade))
 
     def add_modules_recursive(self, basepath="", modulefile="module.lb", ignore=None):

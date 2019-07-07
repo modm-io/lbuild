@@ -37,7 +37,7 @@ class ApiTest(unittest.TestCase):
             "modules": list(),
             "repositories": list(),
             "vcs": list(),
-            "cachefolder": Path(),
+            "cachefolder": ".lbuild_cache",
         }
         defaults.update(kw)
         for key, default in defaults.items():

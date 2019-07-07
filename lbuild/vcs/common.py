@@ -26,6 +26,7 @@ def _parse_vcs(config: lbuild.config.ConfigNode,
                action):
     LOGGER.debug("Initialize VCS repositories")
 
+    config = config.flatten()
     for vcs in config.vcs:
         for tag, repoconfig in vcs.items():
             if tag == "git":

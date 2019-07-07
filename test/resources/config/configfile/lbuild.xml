@@ -4,6 +4,7 @@
 		<repository>
 			<path>repo2.lb</path>
 		</repository>
+		<cache>put/cache/in/.lbuild_cache</cache>
 	</repositories>
 
 	<options>

@@ -13,9 +13,10 @@ import os
 import sys
 import unittest
 
+
 # Hack to support the usage of `coverage`
 sys.path.append(os.path.abspath("."))
-from os.path import join
+from os.path import join, abspath
 
 import lbuild
 from lbuild.config import ConfigNode
@@ -42,6 +43,7 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(1, len(config.modules))
         self.assertIn(":module1", config.modules)
         self.assertIn(self._get_path("repo1.lb"), config.repositories)
+        self.assertEqual(self._get_path(".lbuild_cache"), abspath(config.cachefolder))
 
         # Multiple lbuild.xml
         config = self._find_config("configfile/")
@@ -51,6 +53,7 @@ class ConfigTest(unittest.TestCase):
         self.assertIn(":module2", config.modules)
         self.assertIn(self._get_path("repo1.lb"), config.repositories)
         self.assertIn(self._get_path("configfile/repo2.lb"), config.repositories)
+        self.assertEqual(self._get_path("configfile/put/cache/in/.lbuild_cache"), abspath(config.cachefolder))
 
         # non-existant file name
         config = self._find_config("configfile/", name="television_rules_the_nation.xml")
@@ -65,6 +68,7 @@ class ConfigTest(unittest.TestCase):
             config = self._parse_config("non-existant.xml")
 
         config = self._parse_config("configfile/project.xml")
+        self.assertEqual(self._get_path("configfile/hello_there"), abspath(config.cachefolder))
 
         modules = config.modules
         self.assertEqual(4, len(modules))
@@ -85,6 +89,7 @@ class ConfigTest(unittest.TestCase):
 
     def test_should_parse_base_configuration(self):
         config = self._parse_config("configfile_inheritance/depth_0.xml")
+        self.assertEqual(self._get_path("configfile_inheritance/.lbuild_cache"), abspath(config.cachefolder))
 
         self.assertEqual(1, len(config.repositories))
         self.assertIn(self._get_path("configfile_inheritance/repo3.lb"), config.repositories)
@@ -98,6 +103,7 @@ class ConfigTest(unittest.TestCase):
 
     def test_should_inherit_configuration(self):
         config = self._parse_config("configfile_inheritance/depth_1a.xml")
+        self.assertEqual(self._get_path("configfile_inheritance/.lbuild_cache"), abspath(config.cachefolder))
 
         self.assertEqual(2, len(config.repositories))
         self.assertIn(self._get_path("configfile_inheritance/repo1.lb"), config.repositories)

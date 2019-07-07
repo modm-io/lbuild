@@ -30,7 +30,7 @@ class ConfigNode(anytree.AnyNode):
     def __init__(self, parent=None):
         anytree.AnyNode.__init__(self, parent)
 
-        self._cachefolder = Path()
+        self._cachefolder = None
         self._extends = collections.defaultdict(list)
         self._vcs = []
         self._repositories = []
@@ -57,6 +57,8 @@ class ConfigNode(anytree.AnyNode):
 
     @property
     def cachefolder(self):
+        if self._cachefolder is None:
+            return str(Path(self.filename).parent / DEFAULT_CACHE_FOLDER)
         return self._cachefolder
 
     def add_commandline_options(self, cmd_options):
@@ -66,7 +68,8 @@ class ConfigNode(anytree.AnyNode):
 
     def _flatten(self, config):
         for node in list(self.siblings) + [self]:
-            config._cachefolder = node._cachefolder
+            if node._cachefolder is not None:
+                config._cachefolder = node._cachefolder
             config._extends.update(node._extends)
             config._vcs.extend(node._vcs)
             config._repositories.extend(node._repositories)
@@ -78,6 +81,7 @@ class ConfigNode(anytree.AnyNode):
 
     def flatten(self):
         config = ConfigNode()
+        config.filename = self.root.filename
         self.last._flatten(config)
         config._repositories = list(set(config._repositories))
         config._modules = list(set(config._modules))
@@ -186,8 +190,6 @@ class ConfigNode(anytree.AnyNode):
         cache_node = xmltree.find("repositories/cache")
         if cache_node is not None:
             config._cachefolder = ConfigNode._rel_path(cache_node.text, configpath)
-        else:
-            config._cachefolder = join(configpath, DEFAULT_CACHE_FOLDER)
 
         # Load version control nodes
         for vcs_node in xmltree.iterfind("repositories/repository/vcs"):
