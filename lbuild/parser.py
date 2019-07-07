@@ -149,10 +149,9 @@ class Parser(BaseNode):
                 option._filename = filename
                 option.value = value
             except le.LbuildOptionException as error:
-                raise le.LbuildDumpConfigException(
-                    "Failed to validate repository options!\n{}".format(error), self)
+                raise le.LbuildParserOptionInvalidException(self, error, filename)
             except le.LbuildResolverNoMatchException as error:
-                raise le.LbuildParserNodeNotFoundException(self, name, self.Type.OPTION)
+                raise le.LbuildParserNodeNotFoundException(self, name, self.Type.OPTION, filename)
 
 
     def prepare_repositories(self):
@@ -185,10 +184,9 @@ class Parser(BaseNode):
                 option._filename = filename
                 option.value = value
             except le.LbuildOptionException as error:
-                raise le.LbuildDumpConfigException(
-                    "Failed to validate module options!\n{}".format(error), self)
+                raise le.LbuildParserOptionInvalidException(self, error, filename)
             except le.LbuildResolverNoMatchException as error:
-                raise le.LbuildParserNodeNotFoundException(self, name, self.Type.OPTION)
+                raise le.LbuildParserNodeNotFoundException(self, name, self.Type.OPTION, filename)
 
     def resolve_dependencies(self, requested_modules, depth=sys.maxsize):
         """

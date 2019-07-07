@@ -234,11 +234,14 @@ class ParserTest(unittest.TestCase):
             self._get_build_modules({"repo1:other:NOPE": ("NOPE", None)})
             self.parser.merge_module_options()
 
-    def test_should_build_fail_to_validate_options(self):
+    def test_should_build_fail_to_validate_repo_options(self):
         # existant options with wrong input
-        with self.assertRaises(le.LbuildDumpConfigException):
+        with self.assertRaises(le.LbuildParserOptionInvalidException):
             self._get_build_modules({"repo1:target": ("NOPE", None)})
-        with self.assertRaises(le.LbuildDumpConfigException):
+
+    def test_should_build_fail_to_validate_module_options(self):
+        # existant options with wrong input
+        with self.assertRaises(le.LbuildParserOptionInvalidException):
             self._get_build_modules({"repo1:other:xyz": ("NOPE", None)})
             self.parser.merge_module_options()
 

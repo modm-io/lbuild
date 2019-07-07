@@ -18,7 +18,7 @@ def _hl(name, plain = False):
     return str(lbuild.format._cw(str(name)).wrap("bold"))
 
 def _rel(filename):
-    return os.path.relpath(str(filename), os.getcwd())
+    return os.path.relpath(str(filename))
 
 def _bp(values):
     return "".join("    - {}\n".format(_hl(v)) for v in values)
@@ -261,8 +261,9 @@ class LbuildParserCannotResolveDependencyException(LbuildDumpConfigException):
         super().__init__(msg, parser)
 
 class LbuildParserNodeNotFoundException(LbuildDumpConfigException):
-    def __init__(self, parser, query, types=None):
-        typestr = {"types": "", "plural": "Is the node"}
+    def __init__(self, parser, query, types=None, config=None):
+        typestr = {"types": "", "plural": "Is the node",
+                   "config": "" if config is None else " in '{}'".format(_hl(_rel(config)))}
         if types is not None:
             types = lbuild.utils.listify(types)
             is_plural = len(types) > 1
@@ -274,11 +275,17 @@ class LbuildParserNodeNotFoundException(LbuildDumpConfigException):
             else:
                 typestr["types"] = " of type {}".format(types[0])
                 typestr["plural"] = "Is the {}".format(types[0])
-        msg = ("Cannot resolve name '{}'{types}!\n\n"
+        msg = ("Cannot resolve name '{}'{types}{config}!\n\n"
                "Hint: Did you use the full name?\n"
                "      {plural} available and selected?\n"
                "      Check your command line and config files.\n"
                .format(_hl(query), **typestr))
+        super().__init__(msg, parser)
+
+class LbuildParserOptionInvalidException(LbuildDumpConfigException):
+    def __init__(self, parser, error, config):
+        msg = ("Configuration({}): Failed to validate {}!\n{}"
+               .format(_hl(_rel(config)), _hl(error.node.type.name.capitalize()), error))
         super().__init__(msg, parser)
 
 class LbuildParserRepositoryEmptyException(LbuildDumpConfigException):
