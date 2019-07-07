@@ -24,6 +24,7 @@ SHOW_NODES = {
     lbuild.node.BaseNode.Type.MODULE,
     lbuild.node.BaseNode.Type.OPTION,
     lbuild.node.BaseNode.Type.CONFIG,
+    lbuild.node.BaseNode.Type.COLLECTOR,
 }
 
 COLOR_SCHEME = {
@@ -225,16 +226,18 @@ def format_short_description(_, description):
 
 
 def format_node(node, _, depth):
+    class_name = _cw(node._type.name.capitalize())
+    if node._type == node.Type.QUERY:
+        class_name = class_name.wrap("underlined")
+
     name = _cw(node.name)
-    class_name = _cw(node.class_name)
     if node._type == node.Type.REPOSITORY:
         name = _cw(node.name + " @ " + os.path.relpath(node._filepath))
     elif node._type == node.Type.OPTION:
         name = format_option_name(node, fullname=False)
-    elif node._type in [node.Type.MODULE, node.Type.CONFIG]:
+    elif node._type in {node.Type.MODULE, node.Type.CONFIG}:
         name = _cw(node.fullname).wrap(node)
-    elif node._type in [node.Type.QUERY, node.Type.COLLECTOR]:
-        class_name = class_name.wrap("underlined")
+    elif node._type in {node.Type.QUERY, node.Type.COLLECTOR}:
         name = name.wrap("bold")
 
     descr = (class_name + _cw("(") + name + _cw(")")).wrap(node)
