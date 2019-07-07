@@ -26,7 +26,9 @@ class Query(BaseNode):
                 raise LbuildQueryConstructionException(self, "'{}' must have a name!".format(function))
             self.name = fname
 
-        self._description = str(inspect.getdoc(function))
+        descr = inspect.getdoc(function)
+        if descr is not None:
+            self._description = descr
         self.suffix = str(inspect.signature(function))
         self._function = function
 
