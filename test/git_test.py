@@ -37,10 +37,12 @@ class GitTest(unittest.TestCase):
         with tarfile.TarFile(self._get_path("repository.tar")) as archive:
             archive.extractall(tempdir.path)
 
-    def prepare_config_file(self, tempdir, branch, commit=""):
+    def prepare_config_file(self, tempdir, branch="", commit=""):
         config_filename = tempdir.getpath("config.xml")
         localpath = tempdir.getpath("source")
         url = tempdir.getpath("repository")
+        branch = "<branch>{}</branch>".format(branch) if branch else ""
+        commit = "<commit>{}</commit>".format(commit) if commit else ""
 
         with open(config_filename, "w") as config_file:
             with open(self._get_path("config.xml.in")) as template:
@@ -67,7 +69,7 @@ class GitTest(unittest.TestCase):
     @testfixtures.tempdir(ignore=[".git/"])
     def test_should_initialize_repository(self, tempdir):
         self.prepare_git_repository(tempdir)
-        config_file = self.prepare_config_file(tempdir, branch="master")
+        config_file = self.prepare_config_file(tempdir)
         args = self.prepare_arguments(config_file, ["init", ])
 
         # Run the command
@@ -84,7 +86,7 @@ class GitTest(unittest.TestCase):
     @testfixtures.tempdir(ignore=[".git/"])
     def test_should_initialize_repository_multiple_times(self, tempdir):
         self.prepare_git_repository(tempdir)
-        config_file = self.prepare_config_file(tempdir, branch="master")
+        config_file = self.prepare_config_file(tempdir)
         args = self.prepare_arguments(config_file, ["init", ])
 
         # Run the command
@@ -106,7 +108,7 @@ class GitTest(unittest.TestCase):
         self.prepare_git_repository(tempdir)
 
         # Add existing source directory with default checkout of 'master' branch
-        config_file = self.prepare_config_file(tempdir, branch="master")
+        config_file = self.prepare_config_file(tempdir)
         args = self.prepare_arguments(config_file, ["init", ])
         lbuild.main.run(args)
 
@@ -134,7 +136,7 @@ class GitTest(unittest.TestCase):
         warnings.simplefilter("ignore", ResourceWarning)
 
         self.prepare_git_repository(tempdir)
-        config_file = self.prepare_config_file(tempdir, branch="master")
+        config_file = self.prepare_config_file(tempdir)
         args = self.prepare_arguments(config_file, ["init", ])
 
         # Run the command
@@ -176,8 +178,8 @@ class GitTest(unittest.TestCase):
     def test_should_initialize_repository_with_head_commit(self, tempdir):
         self.prepare_git_repository(tempdir)
         config_file = self.prepare_config_file(tempdir,
-                                               branch="develop",
-                                               commit="<commit>fbfc82c8f77c7bb8676925a0f1dce196a55f1140</commit>")
+                                               branch="ignored",
+                                               commit="fbfc82c8f77c7bb8676925a0f1dce196a55f1140")
         args = self.prepare_arguments(config_file, ["init", ])
 
         # Run the command
@@ -197,8 +199,8 @@ class GitTest(unittest.TestCase):
     def test_should_initialize_repository_with_different_commit(self, tempdir):
         self.prepare_git_repository(tempdir)
         config_file = self.prepare_config_file(tempdir,
-                                               branch="develop",
-                                               commit="<commit>1671afbce8453c1e6c0f4c94c6d9ede2c5f49991</commit>")
+                                               branch="ignored",
+                                               commit="1671afbce8453c1e6c0f4c94c6d9ede2c5f49991")
         args = self.prepare_arguments(config_file, ["init", ])
 
         # Run the command

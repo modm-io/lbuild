@@ -6,7 +6,7 @@
         <git>
           <name>{localpath}</name>
           <url>{url}</url>
-          <branch>{branch}</branch>
+          {branch}
           {commit}
         </git>
       </vcs>

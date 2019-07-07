@@ -231,7 +231,7 @@ class ConfigNode(anytree.AnyNode):
                 lxml.etree.XIncludeError) as error:
             # lxml.etree has the used exception, but pylint is not able to detect them:
             # pylint: disable=no-member
-            raise LbuildConfigException(configfile, error)
+            raise LbuildConfigException(configfile, ": Validation failed!\n\n{}".format(error))
         return xmltree
 
     @staticmethod
