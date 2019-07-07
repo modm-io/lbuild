@@ -22,7 +22,7 @@ from lbuild.format import format_option_short_description
 
 from lbuild.api import Builder
 
-__version__ = '1.11.8'
+__version__ = '1.12.0'
 
 
 class InitAction:
@@ -432,6 +432,15 @@ def prepare_argument_parser():
              "from the configuration file and will overwrite the configuration "
              "file definitions.")
     argument_parser.add_argument(
+        '--collect',
+        metavar='COLLECTOR',
+        dest='collectors',
+        action='append',
+        type=str,
+        default=[],
+        help="Additional collectors. Values given here will be merged with collectors "
+             "from the configuration file.")
+    argument_parser.add_argument(
         '-v',
         '--verbose',
         action='count',
@@ -482,7 +491,7 @@ def run(args):
     except AttributeError:
         raise lbuild.exception.LbuildArgumentException("No command specified!")
 
-    builder = Builder(config=args.config, options=args.options)
+    builder = Builder(config=args.config, options=args.options, collectors=args.collectors)
     return command(args, builder)
 
 

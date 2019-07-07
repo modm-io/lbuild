@@ -24,7 +24,7 @@ from lbuild.utils import listify, listrify
 
 class Builder:
 
-    def __init__(self, cwd=None, config=None, options=None):
+    def __init__(self, cwd=None, config=None, options=None, collectors=None):
         """
         Build instance to invoke lbuild methods.
 
@@ -34,6 +34,8 @@ class Builder:
             config -- Path to a configuration file. If specified options,
                 repositories etc. will be loaded from there.
             options -- List of options. Must be list of strings in a
+                "key=value" format.
+            collectors -- List of collector values. Must be list of strings in a
                 "key=value" format.
         """
         if cwd is None:
@@ -71,6 +73,7 @@ class Builder:
 
         self.config = file_config
         self.config.add_commandline_options(listify(options))
+        self.config.add_commandline_collectors(listify(collectors))
         self.parser = Parser(self.config)
 
     def _load_repositories(self, repos=None):

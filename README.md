@@ -955,12 +955,24 @@ def post_build(env):
 Note that collector values that were added by a module without explicit
 operations do not have filename, only module names!
 
-You can discover all the available collectors in your repository using
-`lbuild discover --developer`.
-
-Note that collectors are implemented using the same type-safe mechanisms as
+Collectors are implemented using the same type-safe mechanisms as
 [Options](#Options), the only differences are the lack of dependency handlers
 and default values, since you can add default values in the modules build step.
+
+You may add collector values via the project configuration. However, since these
+collector values cannot be overwritten by inheriting configurations use this with care.
+
+```xml
+<library>
+  <collectors>
+    <collect name="repo:collector_name">value</collect>
+    <collect name="repo:collector_name">value2</collect>
+  </collectors>
+</library>
+```
+
+You can discover all the available collectors in your repository using
+`lbuild discover --developer`.
 
 
 #### CallableCollector

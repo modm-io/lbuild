@@ -20,6 +20,11 @@
 		<option name="::submodule3::price">15</option>
 	</options>
 
+	<collectors>
+		<collect name="::cllctr">hello</collect>
+		<collect name="::cllctr">wallaby</collect>
+	</collectors>
+
 	<modules>
 		<module>repo1:other</module>
 		<module>:module1</module>

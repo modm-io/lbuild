@@ -161,6 +161,18 @@ class ParserTest(unittest.TestCase):
         self.assertEqual("tree", options["repo2:target"].value)
         self.assertEqual(True, options["repo2:include_tests"].value)
 
+    def test_should_merge_collectors(self):
+        self.parser.parse_repository(self._get_path("combined/repo1.lb"))
+        self.parser.parse_repository(self._get_path("combined/repo2/repo2.lb"))
+        self.parser._config_flat = lbuild.config.ConfigNode.from_file(self._get_path("combined/test1.xml"))
+        self.parser.merge_repository_options()
+        options = self.parser.repo_options
+
+        self.assertEqual("hosted", options["repo1:target"].value)
+        self.assertEqual(43, options["repo1:foo"].value)
+        self.assertEqual("tree", options["repo2:target"].value)
+        self.assertEqual(True, options["repo2:include_tests"].value)
+
     def test_should_select_available_modules(self):
         self.parser.parse_repository(self._get_path("combined/repo1.lb"))
         self.parser.parse_repository(self._get_path("combined/repo2/repo2.lb"))
@@ -255,6 +267,17 @@ class ParserTest(unittest.TestCase):
         self.parser.merge_module_options()
         with self.assertRaises(le.LbuildConfigNoModulesException):
             self.parser.build_modules([], None)
+
+    def test_should_collect_values(self):
+        build_modules, config_options = self._get_build_modules()
+        module_options = self.parser.merge_module_options()
+
+        self.parser.build_modules(build_modules, simulate=True)
+
+        values = self.parser.collector_values_resolver["::cllctr"]
+        self.assertIn("hello", values)
+        self.assertIn("world", values)
+        self.assertIn("wallaby", values)
 
     @testfixtures.tempdir()
     def test_should_build_modules(self, tempdir):

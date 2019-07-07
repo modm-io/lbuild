@@ -36,6 +36,7 @@ class ConfigNode(anytree.AnyNode):
         self._repositories = []
         self._modules = []
         self._options = {}
+        self._collectors = []
 
         self.filename = Path()
 
@@ -52,6 +53,10 @@ class ConfigNode(anytree.AnyNode):
         return self._options
 
     @property
+    def collectors(self):
+        return self._collectors
+
+    @property
     def vcs(self):
         return self._vcs
 
@@ -66,6 +71,11 @@ class ConfigNode(anytree.AnyNode):
             parts = option.split('=')
             self._options[parts[0]] = (parts[1], os.path.join(os.getcwd(), "command-line"))
 
+    def add_commandline_collectors(self, cmd_collectors):
+        for collector in cmd_collectors:
+            parts = collector.split('=')
+            self._collectors.append( (parts[0], parts[1], os.path.join(os.getcwd(), "command-line")) )
+
     def _flatten(self, config):
         for node in list(self.siblings) + [self]:
             if node._cachefolder is not None:
@@ -75,6 +85,7 @@ class ConfigNode(anytree.AnyNode):
             config._repositories.extend(node._repositories)
             config._modules.extend(node._modules)
             config._options.update(node._options)
+            config._collectors.extend(node._collectors)
 
         if self.parent:
             self.parent._flatten(config)
@@ -166,7 +177,7 @@ class ConfigNode(anytree.AnyNode):
         xmltree = ConfigNode._load_and_verify(configfile)
 
         config = ConfigNode(parent)
-        config.filename = os.path.relpath(filename, os.getcwd())
+        config.filename = os.path.relpath(filename)
         LOGGER.debug("Parse configuration '%s'", config.filename)
         configpath = os.path.dirname(config.filename)
         # load extend strings
@@ -209,6 +220,11 @@ class ConfigNode(anytree.AnyNode):
             name = option_node.attrib['name']
             value = option_node.attrib.get('value', option_node.text)
             config._options[name] = (value, filename)
+
+        # Load collectors
+        for collector_node in xmltree.xpath('collectors/collect'):
+            name = collector_node.attrib['name']
+            config._collectors.append( (name, collector_node.text, filename,) )
 
         return config
 

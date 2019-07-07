@@ -13,8 +13,11 @@ def prepare(module, options):
 	module.add_option(NumericOption(name="bar", default=12, description="A second option"))
 	module.add_option(BooleanOption(name="xyz", default=False, description="Bla"))
 	module.add_option(StringOption(name="abc", description="Blub"))
+
+	module.add_collector(StringCollector(name="cllctr", description="Blub"))
 	return True
 
 def build(env):
 	env.copy('other/src', 'src')
 	env.copy('other/test', 'test')
+	env.collect("cllctr", "world")

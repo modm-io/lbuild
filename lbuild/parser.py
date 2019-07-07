@@ -284,6 +284,17 @@ class Parser(BaseNode):
             env = lbuild.environment.Environment(node, buildlog)
             groups[node.depth].append(Runner(node, env))
 
+        # Merge config collectors values
+        resolver = self.collector_available_resolver
+        for (name, value, filename) in self.config.collectors:
+            try:
+                collector = resolver[name]
+                collector.add_values(value, collector.repository, filename=filename)
+            except le.LbuildOptionException as error:
+                raise le.LbuildParserOptionInvalidException(self, error, filename)
+            except le.LbuildResolverNoMatchException as error:
+                raise le.LbuildParserNodeNotFoundException(self, name, self.Type.COLLECTOR, filename)
+
         exceptions = []
         # Enforce that the submodules are always build before their parent modules
         for index in sorted(groups, reverse=True):
