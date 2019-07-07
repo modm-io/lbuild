@@ -228,7 +228,7 @@ def format_node(node, _, depth):
     name = _cw(node.name)
     class_name = _cw(node.class_name)
     if node._type == node.Type.REPOSITORY:
-        name = _cw(node.name + " @ " + os.path.relpath(node._filepath, os.getcwd()))
+        name = _cw(node.name + " @ " + os.path.relpath(node._filepath))
     elif node._type == node.Type.OPTION:
         name = format_option_name(node, fullname=False)
     elif node._type in [node.Type.MODULE, node.Type.CONFIG]:

@@ -9,6 +9,7 @@
 # 2-clause BSD license. See the file `LICENSE.txt` for the full license
 # governing this code.
 
+import os
 import logging
 import collections
 import threading
@@ -76,10 +77,10 @@ class BuildLog:
     a specific file.
     """
 
-    def __init__(self, outpath):
+    def __init__(self, outpath=None):
         self._operations = collections.defaultdict(list)
         self._metadata = collections.defaultdict(lambda: collections.defaultdict(set))
-        self.outpath = abspath(outpath)
+        self.outpath = os.getcwd() if outpath is None else abspath(outpath)
 
         self._build_files = {}
         self.__lock = threading.RLock()

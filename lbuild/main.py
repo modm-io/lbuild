@@ -242,22 +242,19 @@ class ValidateAction(ManipulationActionBase):
             dest="modules",
             type=str,
             action="append",
-            default=[],
+            default=[":**"],
             help="Select a specific module.")
         parser.add_argument(
-            "--all",
-            dest="validate_all",
+            "--fast",
+            dest="validate_fast",
             action="store_true",
             default=False,
-            help="Validate all available module and simulate a build on them.")
+            help="Run only validation steps not build and post-build.")
         parser.set_defaults(execute_action=self.load_repositories)
 
     @staticmethod
     def perform(args, builder):
-        if args.validate_all:
-            builder.build(args.path, [":**"], simulate=True)
-        else:
-            builder.validate(args.modules)
+        builder.validate(args.modules, complete=not args.validate_fast)
         return "Library configuration valid."
 
 

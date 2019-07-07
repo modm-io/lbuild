@@ -98,7 +98,7 @@ class Builder:
         self._load_repositories(repos)
         self._load_modules()
 
-    def validate(self, modules=None):
+    def validate(self, modules=None, complete=True):
         """
         Generate and validate the required set of modules.
 
@@ -107,13 +107,14 @@ class Builder:
 
         Args:
             modules -- List of modules which should be validated.
+            complete -- Simulate a complete build to validate build and post-build steps.
 
         Returns:
             List of modules required for the given modules (after
             resolving dependencies).
         """
         build_modules = self._filter_modules(modules)
-        self.parser.validate_modules(build_modules)
+        self.parser.validate_modules(build_modules, complete)
         return build_modules
 
     def build(self, outpath, modules=None, simulate=False):
@@ -130,6 +131,5 @@ class Builder:
         """
         build_modules = self._filter_modules(modules)
         buildlog = BuildLog(outpath)
-        lbuild.environment.SIMULATE = simulate
-        self.parser.build_modules(build_modules, buildlog)
+        self.parser.build_modules(build_modules, buildlog, simulate=simulate)
         return buildlog

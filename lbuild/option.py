@@ -131,7 +131,7 @@ class PathOption(Option):
             raise TypeError("Input must be a path!")
         # Relocate path to be relative to the user's perspective
         if self._relocate(path):
-            path = os.path.relpath(self._relocate_path(path), os.getcwd())
+            path = os.path.relpath(self._relocate_path(path))
         return path
 
     @staticmethod

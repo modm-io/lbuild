@@ -23,6 +23,7 @@ import lbuild.exception as le
 from .node import BaseNode
 from .config import ConfigNode
 from .facade import BuildLogFacade
+from .buildlog import BuildLog
 
 from . import repository
 from . import utils
@@ -267,15 +268,17 @@ class Parser(BaseNode):
     def _undefined_repo_options(self):
         return self._undefined_options(self.repo_options.values())
 
-    def validate_modules(self, build_modules):
-        self.build_modules(build_modules, None)
+    def validate_modules(self, build_modules, complete=True):
+        self.build_modules(build_modules, simulate=complete)
 
-    def build_modules(self, build_modules, buildlog):
+    def build_modules(self, build_modules, buildlog=None, simulate=False):
         undefined = self._undefined_options(self.all_options())
         if undefined:
             raise le.LbuildOptionRequiredInputsException(undefined)
         if not build_modules:
             raise le.LbuildConfigNoModulesException(self)
+        if buildlog is None and simulate:
+            buildlog = BuildLog() # Create a buildlog for simulation
 
         groups = collections.defaultdict(list)
         # Build environments for all modules and repos
@@ -284,8 +287,7 @@ class Parser(BaseNode):
             groups[node.depth].append(Runner(node, env))
 
         exceptions = []
-        # Enforce that the submodules are always build before their
-        # parent modules.
+        # Enforce that the submodules are always build before their parent modules
         for index in sorted(groups, reverse=True):
             group = groups[index]
             random.shuffle(group)
@@ -299,10 +301,12 @@ class Parser(BaseNode):
         if exceptions:
             raise le.LbuildAggregateException(exceptions)
 
-        # Cannot build with these settings, just pre_build
+        # Cannot build without a buildlog
         if buildlog is None:
             return
+        lbuild.environment.SIMULATE = simulate
 
+        # Build modules
         for index in sorted(groups, reverse=True):
             group = groups[index]
             random.shuffle(group)
@@ -310,6 +314,7 @@ class Parser(BaseNode):
             for runner in group:
                 runner.build()
 
+        # Post-build modules
         for index in sorted(groups, reverse=True):
             group = groups[index]
             random.shuffle(group)
