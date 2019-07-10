@@ -20,6 +20,7 @@ from lbuild.buildlog import BuildLog
 from lbuild.parser import Parser
 from lbuild.config import ConfigNode
 from lbuild.utils import listify, listrify
+from lbuild.logger import CallCounter
 
 
 class Builder:
@@ -118,7 +119,7 @@ class Builder:
         """
         build_modules = self._filter_modules(modules)
         self.parser.validate_modules(build_modules, complete)
-        return build_modules
+        return (build_modules, CallCounter.levels)
 
     def build(self, outpath, modules=None, simulate=False):
         """

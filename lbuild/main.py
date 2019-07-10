@@ -22,7 +22,7 @@ from lbuild.format import format_option_short_description
 
 from lbuild.api import Builder
 
-__version__ = '1.12.0'
+__version__ = '1.12.1'
 
 
 class InitAction:
@@ -242,19 +242,37 @@ class ValidateAction(ManipulationActionBase):
             dest="modules",
             type=str,
             action="append",
-            default=[":**"],
+            default=[],
             help="Select a specific module.")
         parser.add_argument(
-            "--fast",
-            dest="validate_fast",
+            "--strict",
+            dest="validate_strict",
             action="store_true",
             default=False,
-            help="Run only validation steps not build and post-build.")
-        parser.set_defaults(execute_action=self.load_repositories)
+            help="Treat logging warnings as errors.")
+        parser.set_defaults(execute_action=self.verbose_validation)
+
+    def verbose_validation(self, args, builder):
+        if lbuild.facade.VERBOSE_DEPRECATION < 1:
+            lbuild.facade.VERBOSE_DEPRECATION = 1
+        return self.load_repositories(args, builder)
 
     @staticmethod
     def perform(args, builder):
-        builder.validate(args.modules, complete=not args.validate_fast)
+        _, msg_count = builder.validate(args.modules, complete=True)
+        warnings = msg_count["WARNING"]
+        errors = msg_count["ERROR"] + msg_count["CRITICAL"]
+
+        if errors:
+            raise lbuild.exception.LbuildException("Library configuration invalid! "
+                    "Logged {} error{}!".format(errors, "s" if errors > 1 else ""))
+        if args.validate_strict and warnings:
+            raise lbuild.exception.LbuildException("Library configuration invalid! "
+                    "Logged {} warning{}!".format(warnings, "s" if warnings > 1 else ""))
+        if warnings:
+            return "Library configuration valid.\n" \
+                   "Please check {} warning{}!".format(warnings, "s" if warnings > 1 else "")
+
         return "Library configuration valid."
 
 

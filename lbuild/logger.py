@@ -9,7 +9,13 @@
 # governing this code.
 
 import logging.config
+from collections import defaultdict
 
+class CallCounter(logging.Handler):
+    levels = defaultdict(int)
+
+    def emit(self, record):
+        CallCounter.levels[record.levelname] += 1
 
 def configure_logger(verbosity):
     """
@@ -41,3 +47,4 @@ def configure_logger(verbosity):
             }
         }
     })
+    logging.getLogger().addHandler(CallCounter())
