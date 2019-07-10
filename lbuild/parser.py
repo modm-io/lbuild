@@ -289,7 +289,7 @@ class Parser(BaseNode):
         for (name, value, filename) in self.config.collectors:
             try:
                 collector = resolver[name]
-                collector.add_values(value, collector.repository, filename=filename)
+                collector.add_values(value, collector.repository.fullname, filename=filename)
             except le.LbuildOptionException as error:
                 raise le.LbuildParserOptionInvalidException(self, error, filename)
             except le.LbuildResolverNoMatchException as error:
