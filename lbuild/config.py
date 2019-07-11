@@ -219,12 +219,14 @@ class ConfigNode(anytree.AnyNode):
         for option_node in xmltree.xpath('options/option'):
             name = option_node.attrib['name']
             value = option_node.attrib.get('value', option_node.text)
+            value = "" if value is None else value
             config._options[name] = (value, filename)
 
         # Load collectors
         for collector_node in xmltree.xpath('collectors/collect'):
             name = collector_node.attrib['name']
-            config._collectors.append( (name, collector_node.text, filename,) )
+            value = "" if collector_node.text is None else collector_node.text
+            config._collectors.append( (name, value, filename) )
 
         return config
 

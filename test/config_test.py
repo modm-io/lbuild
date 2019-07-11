@@ -77,15 +77,24 @@ class ConfigTest(unittest.TestCase):
         self.assertIn("::submodule3:subsubmodule1", modules)
         self.assertIn("::submodule3", modules)
 
-        self.assertEqual(7, len(config.options))
+        self.assertEqual(8, len(config.options))
         self.assertEqual(config.options[':target'][0], 'hosted')
         self.assertEqual(config.options['repo1:foo'][0], '43')
+        self.assertEqual(config.options['repo1:empty'][0], '')
 
         self.assertEqual(config.options['repo1:other:foo'][0], '456')
         self.assertEqual(config.options['repo1::bar'][0], '768')
         self.assertEqual(config.options[':other:xyz'][0], 'No')
         self.assertEqual(config.options['::abc'][0], 'Hello World!')
         self.assertEqual(config.options['::submodule3::price'][0], '15')
+
+        self.assertEqual(3, len(config.collectors))
+        self.assertEqual(config.collectors[0][0], 'repo1:collect')
+        self.assertEqual(config.collectors[0][1], 'value1')
+        self.assertEqual(config.collectors[1][0], 'repo1:collect')
+        self.assertEqual(config.collectors[1][1], 'value2')
+        self.assertEqual(config.collectors[2][0], 'repo1:collect_empty')
+        self.assertEqual(config.collectors[2][1], '')
 
     def test_should_parse_base_configuration(self):
         config = self._parse_config("configfile_inheritance/depth_0.xml")

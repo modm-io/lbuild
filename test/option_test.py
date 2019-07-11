@@ -161,6 +161,8 @@ class OptionTest(unittest.TestCase):
 
         option = PathOption("test", "description", default="", empty_ok=True, absolute=True)
         self.assertEqual("", option.value)
+        option.value = ""
+        self.assertEqual("", option.value)
         option.value = "filename.txt"
         self.assertEqual("{}/filename.txt".format(os.getcwd()), option.value)
         option._filename = "/root/test/hello.lb"
