@@ -12,7 +12,6 @@ import os
 import sys
 import shutil
 import anytree
-import colorful
 
 import lbuild.node
 import lbuild.filter
@@ -37,7 +36,7 @@ COLOR_SCHEME = {
     "module": None,
     "description": None,
     "short_description": None,
-    "error": colorful.red,  # pylint: disable=no-member
+    "error": "\033[38;2;255;0;0m",
 }
 
 
@@ -46,16 +45,22 @@ def ansi_escape(obj=None):
         # The terminal does not support color
         return ""
 
+    COLORFUL_REPLACEMENT = {
+        "reset": "\033[0m",
+        "bold": "\033[1m",
+        "underlined": "\033[4m",
+        "no_bold": "\033[21m",
+        "no_underlined": "\033[24m",
+        "close_fg_color": "\033[39m",
+    }
+
     name = obj
     if isinstance(obj, lbuild.node.BaseNode):
         name = obj.type.name.lower()
 
     col = COLOR_SCHEME.get(name, "nope")
     if col == "nope":
-        try:
-            col = getattr(colorful, name)
-        except AttributeError:
-            col = None
+        col = COLORFUL_REPLACEMENT.get(name, None)
 
     return str(col) if col is not None else ""
 
