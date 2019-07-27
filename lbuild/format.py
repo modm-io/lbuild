@@ -49,7 +49,7 @@ def ansi_escape(obj=None):
         "reset": "\033[0m",
         "bold": "\033[1m",
         "underlined": "\033[4m",
-        "no_bold": "\033[21m",
+        "no_bold": "\033[22m",
         "no_underlined": "\033[24m",
         "close_fg_color": "\033[39m",
     }
