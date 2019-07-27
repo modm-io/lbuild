@@ -263,7 +263,7 @@ def format_node(node, _, depth):
 
 def format_node_tree(node, filterfunc=None):
     if filterfunc is None:
-        filterfunc = lambda n: n.type in SHOW_NODES
+        filterfunc = lambda n: n.type in SHOW_NODES and not n.name.startswith("__")
 
     def childiter(nodes):
         nodes = [n for n in nodes if filterfunc(n)]
