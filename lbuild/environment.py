@@ -25,25 +25,43 @@ import lbuild.exception as le
 from .parser import Parser
 
 SIMULATE = False
+SYMLINK_ON_COPY = False
+
+def default_fn_copy(src, dst):
+    if os.path.lexists(dst):
+        os.remove(dst)
+    if SYMLINK_ON_COPY:
+        os.symlink(src, dst)
+    else:
+        shutil.copy2(src, dst)
 
 
-def _copyfile(sourcepath, destpath, fn_copy=shutil.copy2):
+def _copyfile(sourcepath, destpath, fn_copy=None):
     """
     Copy a file if the source file time stamp is newer than the destination
     timestamp.
     """
+    if fn_copy is None:
+        fn_copy = default_fn_copy
     if not SIMULATE:
         fn_copy(sourcepath, destpath)
 
 
 def _copytree(logger, src, dst, ignore=None,
-              fn_listdir=os.listdir,
-              fn_isdir=os.path.isdir,
-              fn_copy=shutil.copy2):
+              fn_listdir=None,
+              fn_isdir=None,
+              fn_copy=None):
     """
     Implementation of shutil.copytree that overwrites files instead
     of aborting.
     """
+    if fn_listdir is None:
+        fn_listdir = os.listdir
+    if fn_isdir is None:
+        fn_isdir = os.path.isdir
+    if fn_copy is None:
+        fn_copy = default_fn_copy
+
     files = fn_listdir(src)
     if ignore is not None:
         ignored = ignore(src, files)
@@ -307,7 +325,7 @@ class Environment:
         else:
             relative = os.path.join(self.__outpath, relative)
         path = os.path.join(self.__outpath, path)
-        return os.path.relpath(os.path.realpath(path), os.path.realpath(relative))
+        return os.path.relpath(os.path.abspath(path), os.path.abspath(relative))
 
     def generated_local_files(self, filterfunc=None):
         """
