@@ -278,11 +278,21 @@ class Parser(BaseNode):
         if buildlog is None and simulate:
             buildlog = BuildLog() # Create a buildlog for simulation
 
-        groups = collections.defaultdict(list)
+        # Update subtree build order
+        self._update_order()
+        groups = collections.defaultdict(lambda: collections.defaultdict(list))
         # Build environments for all modules and repos
         for node in (build_modules | {m.repository for m in build_modules}):
             env = lbuild.environment.Environment(node, buildlog)
-            groups[node.depth].append(Runner(node, env))
+            groups[node._build_order][node.depth].append(Runner(node, env))
+
+        def walk_modules():
+            # Enforce that the submodules are always build before their parent modules
+            for group in (groups[index] for index in sorted(groups)):
+                for modules in (group[index] for index in sorted(group, reverse=True)):
+                    random.shuffle(modules)
+                    for module in modules:
+                        yield module
 
         # Merge config collectors values
         resolver = self.collector_available_resolver
@@ -296,16 +306,11 @@ class Parser(BaseNode):
                 raise le.LbuildParserNodeNotFoundException(self, name, self.Type.COLLECTOR, filename)
 
         exceptions = []
-        # Enforce that the submodules are always build before their parent modules
-        for index in sorted(groups, reverse=True):
-            group = groups[index]
-            random.shuffle(group)
-
-            for runner in group:
-                try:
-                    runner.validate()
-                except le.LbuildException as error:
-                    exceptions.append(error)
+        for runner in walk_modules():
+            try:
+                runner.validate()
+            except le.LbuildException as error:
+                exceptions.append(error)
 
         if exceptions:
             raise le.LbuildAggregateException(exceptions)
@@ -316,17 +321,9 @@ class Parser(BaseNode):
         lbuild.environment.SIMULATE = simulate
 
         # Build modules
-        for index in sorted(groups, reverse=True):
-            group = groups[index]
-            random.shuffle(group)
-
-            for runner in group:
-                runner.build()
+        for runner in walk_modules():
+            runner.build()
 
         # Post-build modules
-        for index in sorted(groups, reverse=True):
-            group = groups[index]
-            random.shuffle(group)
-
-            for runner in group:
-                runner.post_build(buildlog)
+        for runner in walk_modules():
+            runner.post_build(buildlog)

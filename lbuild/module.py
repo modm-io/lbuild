@@ -102,6 +102,7 @@ class ModuleInit:
         self.description = ""
         self.functions = {}
         self.available = False
+        self.order = 0
         self._format_description = lbuild.format.format_description
         self._format_short_description = lbuild.format.format_short_description
 
@@ -143,6 +144,8 @@ class ModuleInit:
 
         self.parent = ":".join(p.strip(":") for p in (self.repository.name,
                                 parent_parent, parent_name, name_parent) if p)
+
+        self.order = int(self.order)
 
     def prepare(self):
         self.available = lbuild.utils.with_forward_exception(
@@ -187,6 +190,7 @@ class Module(BaseNode):
         self._description = module.description
         self._fullname = module.fullname
         self._available = module.available
+        self._build_order = module.order
 
         # Prefix the global filters with the `repo.` name
         for (name, func) in module._filters:

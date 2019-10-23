@@ -201,6 +201,7 @@ class BaseNode(anytree.Node):
         self._dependencies_resolved = False
         self._dependencies = []
 
+        self._build_order = 0
         self._description = ""
         # All _update()-able traits: defaults
         self._available_default = True
@@ -472,6 +473,17 @@ class BaseNode(anytree.Node):
 
         for child in self.children:
             child._update_format()
+
+    def _update_order(self):
+        if self.parent:
+            # Set every module order in tree to sum of subtree
+            if self.type is self.Type.MODULE and self.parent.type is self.Type.REPOSITORY:
+                self._build_order = sum(d._build_order for d in (self.descendants + (self,)) if d._selected)
+            elif self.parent._build_order:
+                self._build_order = self.parent._build_order
+
+        for child in self.children:
+            child._update_order()
 
     def _update(self):
         if self.parent:

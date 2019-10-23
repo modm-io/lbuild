@@ -10,6 +10,7 @@
 # governing this code.
 
 import os
+import sys
 import glob
 import logging
 import fnmatch
@@ -89,6 +90,7 @@ class Repository(BaseNode):
         self._functions = repo._functions
         self._format_description = repo._format_description
         self._format_short_description = repo._format_short_description
+        self._build_order = sys.maxsize
 
         if repo.name is None:
             raise le.LbuildRepositoryNoNameException(repo._parser, repo)

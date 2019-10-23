@@ -187,6 +187,14 @@ class ModuleInitFacade(BaseNodeInitFacade):
                    "module.name = \":parent:module\"")
         self._node.parent = name
 
+    @property
+    def order(self):
+        return self._node.order
+
+    @order.setter
+    def order(self, number):
+        self._node.order = number
+
     def add_filter(self, name, function):
         self._node._filters.append( (name, function,) )
 
