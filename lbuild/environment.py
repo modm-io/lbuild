@@ -44,6 +44,8 @@ def _copyfile(sourcepath, destpath, fn_copy=None):
     if fn_copy is None:
         fn_copy = default_fn_copy
     if not SIMULATE:
+        if not os.path.exists(os.path.dirname(destpath)):
+            os.makedirs(os.path.dirname(destpath), exist_ok=True)
         fn_copy(sourcepath, destpath)
 
 
@@ -76,8 +78,6 @@ def _copytree(logger, src, dst, ignore=None,
                 _copytree(logger, sourcepath, destpath, ignore, fn_listdir, fn_isdir, fn_copy)
             else:
                 starttime = time.time()
-                if not os.path.exists(dst):
-                    os.makedirs(dst, exist_ok=True)
                 _copyfile(sourcepath, destpath, fn_copy)
                 endtime = time.time()
                 total = endtime - starttime
@@ -176,8 +176,6 @@ class Environment:
                 _copytree(log_copy, src, destpath, wrap_ignore,
                           fn_listdir, fn_isdir, fn_copy)
             else:
-                if not os.path.exists(os.path.dirname(destpath)):
-                    os.makedirs(os.path.dirname(destpath), exist_ok=True)
                 _copyfile(src, destpath, fn_copy)
 
                 endtime = time.time()
@@ -227,8 +225,6 @@ class Environment:
                       destpath,
                       wrap_ignore)
         else:
-            if not os.path.exists(os.path.dirname(destpath)):
-                os.makedirs(os.path.dirname(destpath), exist_ok=True)
             _copyfile(srcpath, destpath)
 
             endtime = time.time()
@@ -284,11 +280,11 @@ class Environment:
 
         outfile_name = self.outpath(dest)
 
-        # Create folder structure if it doesn't exists
         if not SIMULATE:
+            # Create folder structure if it doesn't exists
             if not os.path.exists(os.path.dirname(outfile_name)):
                 os.makedirs(os.path.dirname(outfile_name), exist_ok=True)
-
+            # Write template output to file
             with open(outfile_name, 'w', encoding="utf-8") as outfile:
                 outfile.write(output)
 
