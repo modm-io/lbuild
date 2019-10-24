@@ -12,8 +12,10 @@
 import os
 import sys
 import uuid
+import time
 import shutil
 import fnmatch
+import hashlib
 import importlib.util
 import importlib.machinery
 
@@ -203,3 +205,13 @@ def _is_pathname_valid(pathname: str) -> bool:
     except TypeError as exc:
         return False
     return True
+
+def hash_file(filename):
+    if os.path.exists(filename):
+        with open(filename, "rb") as fileobj:
+            return (int(os.path.getmtime(filename)),
+                    hashlib.md5(fileobj.read().strip()).hexdigest())
+    return (None, None)
+
+def hash_content(content):
+    return (int(time.time()), hashlib.md5(file_or_content).hexdigest())
