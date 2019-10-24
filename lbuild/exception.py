@@ -353,6 +353,21 @@ class LbuildBuildlogOverwritingFileException(LbuildException):
         super().__init__(msg)
 
 
+# =============================== API EXCEPTIONS ==============================
+class LbuildApiBuildlogNotFoundException(LbuildException):
+    def __init__(self, buildlog):
+        msg = "Buildlog '{}' not found!".format(_hl(_rel(buildlog)))
+        super().__init__(msg)
+        self.buildlog = buildlog
+
+class LbuildApiModifiedFilesException(LbuildException):
+    def __init__(self, buildlog, modified):
+        msg = ("Buildlog '{}' shows these generated files were modified:\n\n{}"
+               .format(_hl(_rel(buildlog)), _bp(_rel(m) for m in modified)))
+        super().__init__(msg)
+        self.buildlog = buildlog
+        self.modified = modified
+
 # =========================== REPOSITORY EXCEPTIONS ===========================
 class LbuildRepositoryNoNameException(LbuildDumpConfigException):
     def __init__(self, parser, repo): # RepositoryInit

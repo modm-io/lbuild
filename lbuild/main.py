@@ -16,13 +16,14 @@ import argparse
 import traceback
 import textwrap
 
+from pathlib import Path
+
 import lbuild.logger
 import lbuild.vcs.common
 from lbuild.format import format_option_short_description
-
 from lbuild.api import Builder
 
-__version__ = '1.13.0'
+__version__ = '1.14.0'
 
 
 class InitAction:
@@ -315,21 +316,19 @@ class BuildAction(ManipulationActionBase):
 
     @staticmethod
     def perform(args, builder):
-        buildlog = builder.build(args.path, args.modules, simulate=args.simulate,
-                                 use_symlinks=args.symlink)
+        try:
+            buildlog = builder.build(args.path, args.modules, simulate=args.simulate,
+                                     use_symlinks=args.symlink, write_buildlog=args.buildlog)
+        except lbuild.exception.LbuildApiModifiedFilesException as error:
+            raise lbuild.exception.LbuildException(str(error) +
+                    "\nA build may overwrite these files, run '{}' to remove them anyways.".format(
+                        lbuild.exception._hl("lbuild clean --force")))
 
         if args.simulate:
             ostream = []
             for operation in buildlog.operations:
                 ostream.append(operation.local_filename_out())
             return "\n".join(sorted(ostream))
-
-        if args.buildlog:
-            configfilename = args.config
-            logfilename = configfilename + ".log"
-            buildlog.log_unsafe("lbuild", "buildlog.xml.in", logfilename)
-            with open(logfilename, "wb") as logfile:
-                logfile.write(buildlog.to_xml(to_string=True, path=os.getcwd()))
 
         return ""
 
@@ -343,38 +342,32 @@ class CleanAction(ManipulationActionBase):
         parser.add_argument(
             "--buildlog",
             dest="buildlog",
-            default="project.xml.log",
+            default=next(Path(os.getcwd()).glob("*.xml.log"), "project.xml.log"),
             help="Use the given buildlog to identify the files to remove.")
+        parser.add_argument(
+            "--force",
+            dest="force_clean",
+            action="store_true",
+            default=False,
+            help="Remove modified files without error.")
         parser.set_defaults(execute_action=self.perform)
 
     @staticmethod
     def perform(args, builder):
-        ostream = []
-        if os.path.exists(args.buildlog):
-            with open(args.buildlog, "rb") as logfile:
-                buildlog = lbuild.buildlog.BuildLog.from_xml(logfile.read(), path=os.getcwd())
-        else:
-            builder.load(args.repositories)
-            buildlog = builder.build(args.path, simulate=True)
+        # builder.load(args.repositories)
+        # buildlog = builder.build(args.path, simulate=True)
+        try:
+            removed = builder.clean(args.buildlog, args.force_clean)
+        except lbuild.exception.LbuildApiModifiedFilesException as error:
+            raise lbuild.exception.LbuildException(str(error) +
+                    "\nRun '{}' to remove these files anyways.".format(
+                        lbuild.exception._hl("lbuild clean --force")))
+        except lbuild.exception.LbuildApiBuildlogNotFoundException as error:
+            raise lbuild.exception.LbuildException(str(error) +
+                    "\nRun with '{}' or manually delete the generated files.".format(
+                        lbuild.exception._hl("lbuild clean --buildlog path/to/buildlog.xml.log")))
 
-        dirs = set()
-        filenames = [op.local_filename_out() for op in buildlog.operations]
-        for filename in sorted(filenames):
-            ostream.append("Removing " + filename)
-            dirs.add(os.path.dirname(filename))
-            try:
-                os.remove(filename)
-            except OSError:
-                pass
-
-        dirs = sorted(list(dirs), key=lambda d: d.count("/"), reverse=True)
-        for directory in dirs:
-            try:
-                os.removedirs(directory)
-            except OSError:
-                pass
-
-        return "\n".join(ostream)
+        return "\n".join("Removing '{}'".format(os.path.relpath(f)) for f in removed)
 
 
 class DependenciesAction(ManipulationActionBase):
