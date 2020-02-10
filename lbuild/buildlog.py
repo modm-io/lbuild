@@ -14,6 +14,7 @@ import logging
 import collections
 import threading
 from os.path import join, relpath, dirname, normpath, basename, isabs, abspath
+from pathlib import Path
 
 import lxml.etree
 import lbuild.utils
@@ -21,7 +22,6 @@ import lbuild.utils
 from .exception import LbuildBuildlogOverwritingFileException
 
 LOGGER = logging.getLogger('lbuild.buildlog')
-
 
 class Operation:
     """
@@ -46,6 +46,22 @@ class Operation:
 
         self.filename_in = abspath(filename_in)
         self.filename_out = abspath(filename_out)
+        self.filename_module = None
+
+        self.hash_in = None
+        self.hash_out = None
+        self.hash_module = None
+
+        self.mtime_in = None
+        self.mtime_out = None
+        self.mtime_module = None
+
+    def compute_hash(self, module_filename=None):
+        self.mtime_in, self.hash_in = lbuild.utils.hash_file(self.filename_in)
+        self.mtime_out, self.hash_out = lbuild.utils.hash_file(self.filename_out)
+        self.mtime_module, self.hash_module = lbuild.utils.hash_file(module_filename)
+        if self.hash_module is not None:
+            self.filename_module = relpath(module_filename)
 
     def local_filename_in(self, relative_to=None):
         path = self.inpath
@@ -161,6 +177,7 @@ class BuildLog:
         with self.__lock:
             operation = Operation(module.fullname, self.outpath, module._filepath,
                                   filename_in, filename_out, time, metadata)
+            operation.compute_hash(module._filename)
             LOGGER.debug(str(operation))
 
             previous = self._build_files.get(filename_out, None)
@@ -173,7 +190,8 @@ class BuildLog:
 
         return operation
 
-    def log_unsafe(self, modulename, filename_in, filename_out, time=None, metadata=None):
+    def log_unsafe(self, modulename, filename_in, filename_out,
+                   time=None, metadata=None, compute_hash=True):
         """
         Log an lbuild internal operation.
 
@@ -184,6 +202,7 @@ class BuildLog:
         """
         operation = Operation(modulename, self.outpath, self.outpath,
                               filename_in, filename_out, time, metadata)
+        if compute_hash: operation.compute_hash();
         with self.__lock:
             self._operations[modulename].append(operation)
 
@@ -218,6 +237,24 @@ class BuildLog:
         operations = (o for olists in operations for o in olists)
         return sorted(operations, key=lambda o: (o.module_name, o.filename_in, o.filename_out))
 
+    def compare_outpath(self):
+        unmodified = []
+        modified = []
+        missing = []
+        for op in self.operations:
+            destname = op.local_filename_out()
+            if os.path.exists(destname):
+                mtime_out = int(os.path.getmtime(destname))
+                if (op.mtime_out != mtime_out and
+                    op.hash_out != lbuild.utils.hash_file(destname)[1]):
+                        modified.append(destname)
+                else:
+                    unmodified.append(destname)
+            else:
+                missing.append(destname)
+
+        return (unmodified, modified, missing)
+
     @staticmethod
     def from_xml(string, path):
         rootnode = lxml.etree.fromstring(string)
@@ -225,11 +262,32 @@ class BuildLog:
         buildlog = BuildLog(outpath)
 
         for opnode in rootnode.iterfind("operation"):
-            module_name = opnode.find("module").text
-            source = join(outpath, opnode.find("source").text)
-            destination = join(outpath, opnode.find("destination").text)
-            operation = Operation(module_name, outpath, path, source, destination)
-            buildlog._operations[module_name].append(operation)
+            module = opnode.find("module")
+            module_hash = module.get("hash", None)
+            module_mtime = module.get("mtime", None)
+            module = module.get("name")
+
+            source = opnode.find("source")
+            source_hash = source.get("hash", None)
+            source_mtime = source.get("modified", None)
+            source = join(outpath, source.text)
+
+            destination = opnode.find("destination")
+            destination_hash = destination.get("hash", None)
+            destination_mtime = destination.get("modified", None)
+            destination = join(outpath, destination.text)
+
+            operation = Operation(module, outpath, path, source, destination)
+
+            operation.hash_module = module_hash
+            operation.hash_in = source_hash
+            operation.hash_out = destination_hash
+
+            operation.mtime_module = None if module_mtime is None else int(module_mtime)
+            operation.mtime_in = None if source_mtime is None else int(source_mtime)
+            operation.mtime_out = None if destination_mtime is None else int(destination_mtime)
+
+            buildlog._operations[module].append(operation)
 
         return buildlog
 
@@ -238,23 +296,45 @@ class BuildLog:
         Convert the complete build log into a XML representation.
         """
         rootnode = lxml.etree.Element("buildlog")
+        extended_format=False
 
         with self.__lock:
+            versionnode = lxml.etree.SubElement(rootnode, "version")
+            versionnode.text = "2.0"
             outpathnode = lxml.etree.SubElement(rootnode, "outpath")
             outpathnode.text = relpath(self.outpath, path)
             for operation in self.operations:
                 operationnode = lxml.etree.SubElement(rootnode, "operation")
 
                 modulenode = lxml.etree.SubElement(operationnode, "module")
-                modulenode.text = operation.module_name
+                if extended_format:
+                    if operation.mtime_module is not None:
+                        modulenode.set("modified", str(operation.mtime_module))
+                    if operation.hash_module is not None:
+                        modulenode.set("hash", operation.hash_module)
+                    if operation.filename_module is not None:
+                        modulenode.text = operation.filename_module
+                modulenode.set("name", operation.module_name)
+
                 srcnode = lxml.etree.SubElement(operationnode, "source")
+                if extended_format:
+                    if operation.mtime_in is not None:
+                        srcnode.set("modified", str(operation.mtime_in))
+                    if operation.hash_in is not None:
+                        srcnode.set("hash", operation.hash_in)
                 srcnode.text = relpath(operation.filename_in, path)
+
                 destnode = lxml.etree.SubElement(operationnode, "destination")
+                if operation.mtime_out is not None:
+                    destnode.set("modified", str(operation.mtime_out))
+                if operation.hash_out is not None:
+                    destnode.set("hash", operation.hash_out)
                 destnode.text = relpath(operation.filename_out, path)
 
-                if operation.time is not None:
-                    timenode = lxml.etree.SubElement(operationnode, "time")
-                    timenode.text = "{:.3f} ms".format(operation.time * 1000)
+                if extended_format:
+                    if operation.time is not None:
+                        timenode = lxml.etree.SubElement(operationnode, "time")
+                        timenode.text = "{:.3f} ms".format(operation.time * 1000)
 
         if to_string:
             return lxml.etree.tostring(rootnode,

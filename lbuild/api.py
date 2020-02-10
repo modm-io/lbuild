@@ -21,6 +21,8 @@ from lbuild.parser import Parser
 from lbuild.config import ConfigNode
 from lbuild.utils import listify, listrify
 from lbuild.logger import CallCounter
+from lbuild.exception import LbuildApiBuildlogNotFoundException, LbuildApiModifiedFilesException
+from pathlib import Path
 
 
 class Builder:
@@ -121,7 +123,7 @@ class Builder:
         self.parser.validate_modules(build_modules, complete)
         return (build_modules, CallCounter.levels)
 
-    def build(self, outpath, modules=None, simulate=False, use_symlinks=False):
+    def build(self, outpath, modules=None, simulate=False, use_symlinks=False, write_buildlog=True):
         """
         Build the given set of modules.
 
@@ -133,8 +135,45 @@ class Builder:
             simulate -- If set to True simulate the build process. In
                 that case no output will be generated.
         """
+        buildlogname = self.config.filename + ".log"
+        try:
+            self.clean(buildlogname)
+        except LbuildApiBuildlogNotFoundException:
+            pass
+
         build_modules = self._filter_modules(modules)
         buildlog = BuildLog(outpath)
         lbuild.environment.SYMLINK_ON_COPY = use_symlinks
         self.parser.build_modules(build_modules, buildlog, simulate=simulate)
+        if write_buildlog and not simulate:
+            Path(buildlogname).write_bytes(buildlog.to_xml(to_string=True, path=self.cwd))
         return buildlog
+
+    def clean(self, buildlog, force=False):
+        buildlogfile = Path(buildlog)
+        if not buildlogfile.exists():
+            raise LbuildApiBuildlogNotFoundException(buildlogfile)
+        buildlog = BuildLog.from_xml(buildlogfile.read_bytes(), path=self.cwd)
+
+        unmodified, modified, missing = buildlog.compare_outpath()
+        if not force and len(modified):
+            raise LbuildApiModifiedFilesException(buildlogfile, modified)
+
+        removed = []
+        dirs = set()
+        for filename in sorted(unmodified + modified + [str(buildlogfile)]):
+            dirs.add(os.path.dirname(filename))
+            try:
+                os.remove(filename)
+                removed.append(filename)
+            except OSError:
+                pass
+
+        dirs = sorted(list(dirs), key=lambda d: d.count("/"), reverse=True)
+        for directory in dirs:
+            try:
+                os.removedirs(directory)
+            except OSError:
+                pass
+
+        return removed

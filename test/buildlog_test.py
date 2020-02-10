@@ -65,14 +65,15 @@ class BuildLogTest(unittest.TestCase):
 
         self.assertEqual(b"""<?xml version='1.0' encoding='UTF-8'?>
 <buildlog>
+  <version>2.0</version>
   <outpath>.</outpath>
   <operation>
-    <module>repo:module1</module>
+    <module name="repo:module1"/>
     <source>m1/in1</source>
     <destination>out1</destination>
   </operation>
   <operation>
-    <module>repo:module2</module>
+    <module name="repo:module2"/>
     <source>m2/in2</source>
     <destination>out2</destination>
   </operation>
