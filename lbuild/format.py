@@ -244,6 +244,8 @@ def format_node(node, _, depth):
         name = _cw(node.fullname).wrap(node)
     elif node._type in {node.Type.QUERY, node.Type.COLLECTOR}:
         name = name.wrap("bold")
+    if node._type in {node.Type.MODULE} and node._selected:
+        name = name.wrap("underlined")
 
     descr = (class_name + _cw("(") + name + _cw(")")).wrap(node)
 
