@@ -202,10 +202,10 @@ class Parser(BaseNode):
             list: Required modules for the given list of modules.
         """
         selected_modules = set(requested_modules.copy())
-
         LOGGER.info("Selected modules: %s",
                     ", ".join(sorted(module.fullname for module in selected_modules)))
 
+        self._update_dependencies()
         try:
             current = selected_modules
             while depth > 0:

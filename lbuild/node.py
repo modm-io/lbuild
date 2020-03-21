@@ -474,6 +474,10 @@ class BaseNode(anytree.Node):
         for child in self.children:
             child._update_format()
 
+    def _update_dependencies(self):
+        for child in self.children:
+            child._update_dependencies()
+
     def _update_order(self):
         if self.parent:
             # Set every module order in tree to sum of subtree
