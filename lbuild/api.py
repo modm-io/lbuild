@@ -87,6 +87,8 @@ class Builder:
             self.parser.merge_module_options()
 
     def _filter_modules(self, modules=None):
+        if self.parser._undefined_repo_options():
+            return []
         self.parser.config.modules.extend(listify(modules))
         selected_modules = self.parser.find_modules(self.parser.config.modules)
         return self.parser.resolve_dependencies(selected_modules)
