@@ -37,6 +37,7 @@ def load_functions_from_file(repository, filename: str, required, optional=None,
         'repopath': RelocatePath(repository._filepath),
         'listify': lu.listify,
         'listrify': lu.listrify,
+        'uniquify': lu.uniquify,
 
         'FileReader': LocalFileReaderFactory(localpath),
         'ValidateException': le.LbuildValidateException,

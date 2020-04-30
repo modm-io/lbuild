@@ -92,6 +92,13 @@ def listrify(*objs):
     return list(map(str, listify(*objs)))
 
 
+def uniquify(*objs, key=None):
+    """
+    Return a list of unique objects, sorted by key.
+    """
+    return list(sorted(set(*objs), key=key))
+
+
 def get_global_functions(env, required, optional=None):
     """
     Get global functions an environment.

@@ -62,5 +62,6 @@ DEFAULT_FILTERS = {
     'lbuild.pad': pad,
     'lbuild.values': values,
     'lbuild.split': split,
-    'lbuild.listify': listify,
+    'lbuild.listify': lbuild.utils.listify,
+    'lbuild.uniquify': lbuild.utils.uniquify
 }
