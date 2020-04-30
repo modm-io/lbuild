@@ -319,6 +319,10 @@ class BaseNode(anytree.Node):
     def module_resolver(self):
         return NameResolver(self, self.Type.MODULE)
 
+    @property
+    def filters(self):
+        return self._filters
+
     def render(self, filterfunc=None):
         return lbuild.format.format_node_tree(self, filterfunc)
 

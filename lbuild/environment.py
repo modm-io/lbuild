@@ -114,6 +114,10 @@ class Environment:
     def queries(self):
         return self.__module.query_resolver(self.facade)
 
+    @property
+    def filters(self):
+        return self.__module.filters
+
     def extract(self, archive_path, src=None, dest=None, ignore=None, metadata=None):
 
         def wrap_ignore(path, files):

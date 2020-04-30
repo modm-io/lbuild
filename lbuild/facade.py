@@ -220,6 +220,12 @@ class EnvironmentValidateFacade:
     def has_collector(self, key):
         return key in self._env.collectors_available
 
+    def has_filter(self, key):
+        return key in self._env.filters
+
+    def filter(self, key, default=None):
+        return self._env.filters.get(key, default)
+
     def get(self, key, default=None):
         return self._env.options.get(key, default)
 
