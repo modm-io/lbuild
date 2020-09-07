@@ -22,7 +22,7 @@ from lbuild.format import format_option_short_description
 
 from lbuild.api import Builder
 
-__version__ = '1.13.4'
+__version__ = '1.13.5'
 
 
 class InitAction:
@@ -543,7 +543,7 @@ def main():
 
     except lbuild.exception.LbuildException as error:
         sys.stderr.write('\nERROR: {}\n'.format(error))
-        if args.verbose >= 2:
+        if args.verbose >= 1:
             traceback.print_exc()
         sys.exit(1)
 

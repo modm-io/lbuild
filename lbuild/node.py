@@ -279,11 +279,13 @@ class BaseNode(anytree.Node):
 
     @property
     def description(self):
-        return self._format_description(self, str(self._description))
+        return lu.with_forward_exception(self.fullname,
+                lambda: self._format_description(self, str(self._description)))
 
     @property
     def short_description(self):
-        return self._format_short_description(self, str(self._description))
+        return lu.with_forward_exception(self.fullname,
+                lambda: self._format_short_description(self, str(self._description)))
 
     @description.setter
     def description(self, description):

@@ -88,8 +88,11 @@ class LbuildDumpConfigException(LbuildException):
 class LbuildForwardException(LbuildException):
     def __init__(self, location, error):
         import traceback
-        error_fmt = "".join(traceback.format_exception(type(error), error,
-                                                       error.__traceback__, limit=-1))
+        tb = error.__traceback__
+        limit = -next((i for i, fs in enumerate(reversed(traceback.extract_tb(tb)))
+                       if os.path.dirname(__file__) in fs.filename), 0)
+
+        error_fmt = "".join(traceback.format_exception(type(error), error, tb, limit=limit))
         error_fmt = error_fmt.replace("lbuild.exception.Lbuild", "")
         msg = ("In '{}':\n\n{}"
                .format(_hl(location), _hl(error_fmt)))
