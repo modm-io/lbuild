@@ -651,16 +651,16 @@ def build(env):
     value = env[":module:option"]
 ```
 
-If your option requires a set of input values, you can tell *lbuild* to wrap the
-option into a set using `module.add_set_option()`:
+If your option requires a unique set of input values, you can tell *lbuild* to 
+wrap the option into a set using `module.add_set_option()`:
 
 ```python
 def prepare(module, options):
-    # Add an option, but allow a set of values as input and output
+    # Add an option, but allow a set of unique values as input and output
     module.add_set_option(option)
 
 def build(env):
-    # a list of option values is returned here
+    # a unique set of option values is returned here
     for value in env[":module:option"]:
         print(value)
 ```
@@ -673,6 +673,19 @@ easy to split your string value in Python exactly how you want.
 ```xml
 <!-- All comma separated values are validated by the option -->
 <option name=":module:set-option">value, 1, obj</option>
+```
+
+If you want to preserve duplicates to count the number of inputs, use a list
+option `module.add_list_option()`:
+
+```python
+def prepare(module, options):
+    # Add an option, but allow a list of values as input and output
+    module.add_list_option(option)
+
+def build(env):
+    # a list of option values is returned here
+    value_count = env[":module:option"].count("value")
 ```
 
 Options can have a dependency handler which is called when the project

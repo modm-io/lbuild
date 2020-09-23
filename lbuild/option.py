@@ -334,24 +334,31 @@ class EnumerationOption(Option):
         except KeyError:
             raise TypeError("Input must be an element of the enumeration!")
 
+
 class OptionSet(Option):
 
-    def __init__(self, option, default=None):
+    def __init__(self, option, default=None, unique=True):
         if isinstance(option, (SetOption, StringOption)):
             raise le.LbuildOptionConstructionException(self, "StringOption cannot be used as a set option!")
 
         Option.__init__(self, option.name, option._description,
-                        convert_input=self.to_set,
-                        convert_output=self.as_set)
+                        convert_input=self.to_list,
+                        convert_output=self.as_list)
+        self._unique = unique
         self._option = option
         self._dependency_handler = option._dependency_handler
         if default is not None:
             self._set_default(default)
         elif not option.is_default():
             self._set_default(option._default)
+        else:
+            self._set_default(list())
 
     def format_value(self):
-        return "{{{}}}".format(", ".join(map(str, self._input)))
+        if self._unique:
+            return "{{{}}}".format(", ".join(sorted(set(map(str, self._input)))))
+        else:
+            return "[{}]".format(", ".join(sorted(map(str, self._input))))
 
     def format_values(self):
         if isinstance(self._option, EnumerationOption):
@@ -363,18 +370,19 @@ class OptionSet(Option):
     @property
     def class_name(self):
         otype = self._option.class_name.replace("Option", "")
-        return "{}SetOption".format(otype)
+        return "{}{}Option".format(otype, "Set" if self._unique else "List")
 
-    def to_set(self, values):
+    def to_list(self, values):
         if isinstance(values, str):
             values = [v.strip() for v in values.split(",")]
-        values = list(map(self._option._in, lbuild.utils.listify(values)))
-        return values
+        return [self._option._in(v) for v in lbuild.utils.listify(values)]
 
-    def as_set(self, values):
-        values = self.to_set(values)
-        # remove duplicates, but retain order with OrderedDict
-        return [self._option._out(value) for value in collections.OrderedDict.fromkeys(values)]
+    def as_list(self, values):
+        values = self.to_list(values)
+        if self._unique:
+            # remove duplicates, but retain order with OrderedDict
+            values = collections.OrderedDict.fromkeys(values)
+        return [self._option._out(v) for v in values]
 
 
 class SetOption(OptionSet):

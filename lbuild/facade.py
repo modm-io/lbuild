@@ -104,6 +104,9 @@ class RepositoryInitFacade(BaseNodeInitFacade):
     def add_set_option(self, option, default=None):
         self._node._options.append(OptionSet(option, default))
 
+    def add_list_option(self, option, default=None):
+        self._node._options.append(OptionSet(option, default, unique=False))
+
     def add_query(self, query):
         self._node._queries.append(query)
 
@@ -154,6 +157,9 @@ class ModulePrepareFacade(BaseNodePrepareFacade):
 
     def add_set_option(self, option, default=None):
         self._node._options.append(OptionSet(option, default))
+
+    def add_list_option(self, option, default=None):
+        self._node._options.append(OptionSet(option, default, unique=False))
 
     def add_query(self, query):
         self._node._queries.append(query)
