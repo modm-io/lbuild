@@ -354,6 +354,10 @@ class OptionSet(Option):
         else:
             self._set_default(list())
 
+    @property
+    def values(self):
+        return self._option.values
+
     def format_value(self):
         if self._unique:
             return "{{{}}}".format(", ".join(sorted(set(map(str, self._input)))))
