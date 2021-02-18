@@ -5,7 +5,7 @@
 			<path>repo1.lb</path>
 		</repository>
 		<repository>
-			<path>repo2/repo2.lb</path>
+			<path>${LBUILD_TEST_REPOHOME}/repo2.lb</path>
 		</repository>
 		<cache>hello_there/</cache>
 	</repositories>

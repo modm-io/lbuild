@@ -240,7 +240,8 @@ which *lbuild* will search for in the current working directory.
   <repositories>
     <!-- Declare all your repository locations relative to this file here -->
     <repository><path>path/to/repo.lb</path></repository>
-    <repository><path>path/to/repo2.lb</path></repository>
+    <!-- You can also use environment variables in all nodes -->
+    <repository><path>${PROJECTHOME}/repo2.lb</path></repository>
   </repositories>
   <!-- You can also inherit from another configfile. The options you specify
        here will be overwritten. -->

@@ -108,6 +108,15 @@ class LbuildConfigException(LbuildException):
         super().__init__(message)
         self.filename = filename
 
+class LbuildConfigSubstitutionException(LbuildConfigException):
+    def __init__(self, filename, node, key):
+        filename = _rel(filename)
+        message = (": Unable to resolve '${{{}}}'!\n\n"
+            "    {}\n\n"
+            "Hint: Check if the variable exists in your shell environment.\n"
+            .format(_hl(key), node.strip()))
+        super().__init__(filename, message)
+
 class LbuildConfigNotFoundException(LbuildConfigException):
     def __init__(self, filename, parent=None):
         filename = _rel(filename)

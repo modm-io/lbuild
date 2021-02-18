@@ -11,6 +11,7 @@
 
 import os
 from os.path import realpath, join
+import re
 import pkgutil
 import logging
 import collections
@@ -19,7 +20,8 @@ from pathlib import Path
 import lxml.etree
 import anytree
 
-from .exception import LbuildConfigException, LbuildConfigNotFoundException
+from .exception import LbuildConfigException, LbuildConfigNotFoundException, \
+                       LbuildConfigSubstitutionException
 
 LOGGER = logging.getLogger('lbuild.config')
 DEFAULT_CACHE_FOLDER = ".lbuild_cache"
@@ -175,6 +177,7 @@ class ConfigNode(anytree.AnyNode):
             raise LbuildConfigNotFoundException(filename)
 
         xmltree = ConfigNode._load_and_verify(configfile)
+        xmltree = ConfigNode._substitute_env(configfile, xmltree, env=os.environ)
 
         config = ConfigNode(parent)
         config.filename = os.path.relpath(filename)
@@ -251,6 +254,24 @@ class ConfigNode(anytree.AnyNode):
             # pylint: disable=no-member
             raise LbuildConfigException(configfile, ": Validation failed!\n\n{}".format(error))
         return xmltree
+
+    @staticmethod
+    def _substitute_env(configfile, root, env={}):
+        for i, node in enumerate(root):
+
+            if node.text and "$" in node.text:
+                # replace all occurences inside the string with lookup matches
+                keys = re.findall(r'\${(.*?)}', node.text)
+                for k in keys:
+                    v = env.get(k, None)
+                    if v:
+                        node.text = node.text.replace('${%s}'%k, v)
+                    else:
+                        raise LbuildConfigSubstitutionException(
+                                configfile, lxml.etree.tostring(node).decode("utf-8"), k)
+            # recursively crawl nodes
+            node = ConfigNode._substitute_env(configfile, node, env)
+        return root
 
     @staticmethod
     def _rel_path(path, configpath):

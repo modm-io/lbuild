@@ -67,8 +67,16 @@ class ConfigTest(unittest.TestCase):
         with self.assertRaises(le.LbuildConfigNotFoundException):
             config = self._parse_config("non-existant.xml")
 
+        with self.assertRaises(le.LbuildConfigSubstitutionException):
+            config = self._parse_config("configfile/project.xml")
+
+        os.environ["LBUILD_TEST_REPOHOME"] = self._get_path("repo2")
         config = self._parse_config("configfile/project.xml")
+        del os.environ["LBUILD_TEST_REPOHOME"]
         self.assertEqual(self._get_path("configfile/hello_there"), abspath(config.cachefolder))
+
+        self.assertEqual(2, len(config.repositories))
+        self.assertIn(self._get_path("repo2/repo2.lb"), config.repositories)
 
         modules = config.modules
         self.assertEqual(4, len(modules))
