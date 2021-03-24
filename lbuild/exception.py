@@ -471,6 +471,12 @@ class LbuildResolverAmbiguousMatchException(LbuildResolverException):
         self.query = query
         self.results = results
 
+class LbuildResolverAliasException(LbuildResolverException):
+    def __init__(self, node):
+        msg = ("Cannot resolve alias of '{}'!\n\n{}\n\n{}"
+               .format(_hl(node.fullname), node.description, _call_site()))
+        super().__init__(msg, node)
+        self.query = node.fullname
 
 # =========================== ENVIRONMENT EXCEPTIONS ==========================
 class LbuildEnvironmentException(LbuildException):

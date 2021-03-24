@@ -119,6 +119,9 @@ class RepositoryInitFacade(BaseNodeInitFacade):
     def add_configuration(self, name, path, description=None):
         self._node._configurations.append( (name, path, description,) )
 
+    def add_alias(self, alias):
+        self._node._alias.append(alias)
+
 
 class RepositoryPrepareFacade(BaseNodePrepareFacade):
 
@@ -166,6 +169,9 @@ class ModulePrepareFacade(BaseNodePrepareFacade):
 
     def add_collector(self, collector):
         self._node._collectors.append(collector)
+
+    def add_alias(self, alias):
+        self._node._alias.append(alias)
 
     def add_modules(self, *modules):
         self._node._submodules.extend(modules)

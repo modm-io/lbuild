@@ -64,6 +64,7 @@ class RepositoryInit:
         self._queries = []
         self._ignore_patterns = []
         self._configurations = []
+        self._alias = []
 
     def init(self):
         lbuild.utils.with_forward_exception(self,

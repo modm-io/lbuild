@@ -112,6 +112,7 @@ class ModuleInit:
         self._filters = []
         self._queries = []
         self._collectors = []
+        self._alias = []
 
     @property
     def fullname(self):
@@ -202,7 +203,7 @@ class Module(BaseNode):
             self._filters[name] = func
 
         try:
-            for child in (module._options + module._queries):
+            for child in (module._options + module._queries + module._alias):
                 self.add_child(child)
             for collector in module._collectors:
                 self.add_child(lbuild.collector.Collector(collector))

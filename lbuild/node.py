@@ -59,6 +59,8 @@ def load_functions_from_file(repository, filename: str, required, optional=None,
         'NumericOption': lbuild.option.NumericOption,
         'EnumerationOption': lbuild.option.EnumerationOption,
         'SetOption': lbuild.option.SetOption,
+
+        'Alias': Alias,
     })
 
     try:
@@ -106,9 +108,6 @@ class LocalFileReaderFactory:
 
 
 class NameResolver:
-    """
-    Name resolver for node.
-    """
 
     def __init__(self, node, nodetype, selected=True, returner=None, defaulter=None):
         self._node = node
@@ -121,6 +120,25 @@ class NameResolver:
         node = self._node._resolve_partial_max(key, max_results=1, raise_on_fail=raise_on_fail)
         if node is None: return None;
         node = node[0]
+
+        if node.type == BaseNode.Type.ALIAS:
+            if node._destination is None:
+                if not raise_on_fail: return None;
+                raise le.LbuildResolverAliasException(node)
+            context_resolver = NameResolver(node.parent, self._type, self._selected, self._returner, self._defaulter)
+            alias = node
+            warning = "Node '{}' has been moved to '{}'!\n\n{}\n\n".format(
+                            alias.fullname, alias._destination, alias.description)
+            try:
+                node = context_resolver._get_node(node._destination)
+                warning += node.description + "\n"
+            except LbuildException as e:
+                LOGGER.warning(warning)
+                raise e
+            if alias._print_warning:
+                LOGGER.warning(warning)
+                alias._print_warning = False
+
         if not node._available:
             if not raise_on_fail: return None;
             raise le.LbuildResolverSearchException(self, node, "is not available!")
@@ -179,6 +197,7 @@ class BaseNode(anytree.Node):
         QUERY = 5
         COLLECTOR = 6
         MODULE = 7
+        ALIAS = 8
 
     def __init__(self, name, node_type, repository=None):
         anytree.Node.__init__(self, name)
@@ -517,3 +536,12 @@ class BaseNode(anytree.Node):
         if not os.path.isabs(path):
             path = os.path.join(self._filepath, path)
         return os.path.normpath(path)
+
+
+class Alias(BaseNode):
+
+    def __init__(self, name, description, destination=None):
+        BaseNode.__init__(self, name, BaseNode.Type.ALIAS)
+        self.description = description
+        self._destination = destination
+        self._print_warning = True

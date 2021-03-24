@@ -16,8 +16,10 @@ import unittest
 # Hack to support the usage of `coverage`
 sys.path.append(os.path.abspath("."))
 
-import lbuild
+import io, contextlib
+import lbuild, logging
 from lbuild.option import *
+from lbuild.node import Alias
 import lbuild.exception as le
 import lbuild.module as lm
 
@@ -41,6 +43,21 @@ class ResolverTest(unittest.TestCase):
         self.module.add_child(NumericOption("bar", "", default=768))
         self.module.add_child(BooleanOption("xyz", "", default="Yes"))
         self.module.add_child(Option("abc", "", default="Hello World!"))
+
+        self.module.add_child(Alias("alias1", "", destination="foo"))
+        self.module.add_child(Alias("alias2", "", destination="::bar"))
+        self.module.add_child(Alias("alias3", "", destination=":other:xyz"))
+        self.module.add_child(Alias("alias4", "", destination="repo1:other:abc"))
+
+        self.module.add_child(Alias("alias_module", "", destination=":other"))
+
+        self.module.add_child(Alias("alias_none", ""))
+        self.module.add_child(Alias("alias_wrong", "::wrong"))
+
+
+    def test_should_resolve_module(self):
+        resolver = self.module.module_resolver
+        self.assertEqual(self.module, resolver["repo1:other"])
 
     def test_resolver_should_reject_invalid_names(self):
         resolver = self.module.module_resolver
@@ -73,6 +90,28 @@ class ResolverTest(unittest.TestCase):
         resolver = self.module.option_value_resolver
         self.assertEqual(4, repr(resolver).count("Option("))
         self.assertEqual(4, len(resolver))
+
+    def test_should_resolve_alias(self):
+        logging.disable(logging.WARNING)
+
+        # Resolve Option aliases
+        resolver = self.module.option_value_resolver
+        self.assertEqual(456, resolver["repo1:other:alias1"])
+        self.assertEqual(768, resolver["repo1:other:alias2"])
+        self.assertEqual(True, resolver["repo1:other:alias3"])
+        self.assertEqual("Hello World!", resolver["repo1:other:alias4"])
+        # Resolve modules
+        resolver = self.module.module_resolver
+        self.assertEqual(self.module, resolver["repo1:other:alias_module"])
+
+        with self.assertRaises(le.LbuildResolverAliasException):
+            resolver["repo1:other:alias_none"]
+
+        with self.assertRaises(le.LbuildResolverAliasException):
+            resolver["repo1:other:alias_wrong"]
+
+        logging.disable(logging.NOTSET)
+
 
 
 if __name__ == '__main__':
