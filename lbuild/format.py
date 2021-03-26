@@ -215,7 +215,7 @@ def format_description(node, description):
         output += [_cw(""), _cw("Inputs: [") + values + _cw("]")]
     elif node.type == node.Type.ALIAS:
         alias = _cw("Removed" if node._destination is None else node._destination).wrap("bold")
-        output += [_cw(""), _cw("Alias: ") + alias]
+        output += [_cw(""), _cw("Destination: ") + alias]
 
     children = []
     # Print every node except the submodule, due to obvious recursion
@@ -245,7 +245,7 @@ def format_node(node, _, depth):
         name = format_option_name(node, fullname=False)
     elif node._type in {node.Type.MODULE, node.Type.CONFIG}:
         name = _cw(node.fullname).wrap(node)
-    elif node._type in {node.Type.QUERY, node.Type.COLLECTOR, node.Type.ALIAS}:
+    elif node._type in {node.Type.QUERY, node.Type.COLLECTOR}:
         name = name.wrap("bold")
     if node._type in {node.Type.MODULE} and node._selected:
         name = name.wrap("underlined")
@@ -262,7 +262,7 @@ def format_node(node, _, depth):
         descr += _cw("]")
     elif node._type == node.Type.ALIAS:
         descr += _cw(" -> ")
-        descr += _cw("Removed" if node._destination is None else node._destination).wrap("bold")
+        descr += _cw("Removed" if node._destination is None else node._destination)
 
     descr += _cw("   " + node.short_description)
 

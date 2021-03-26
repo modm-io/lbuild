@@ -128,7 +128,7 @@ class NameResolver:
             context_resolver = NameResolver(node.parent, self._type, self._selected, self._returner, self._defaulter)
             alias = node
             warning = "Node '{}' has been moved to '{}'!\n\n{}\n\n".format(
-                            alias.fullname, alias._destination, alias.description)
+                    le._hl(alias.fullname), le._hl(alias._destination), alias.description)
             try:
                 node = context_resolver._get_node(node._destination)
                 warning += node.description + "\n"
@@ -340,6 +340,10 @@ class BaseNode(anytree.Node):
     @property
     def module_resolver(self):
         return NameResolver(self, self.Type.MODULE)
+
+    @property
+    def config_resolver(self):
+        return NameResolver(self, self.Type.CONFIG)
 
     @property
     def filters(self):

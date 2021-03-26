@@ -38,6 +38,7 @@ class ResolverTest(unittest.TestCase):
 
         self.repo.add_child(Option("target", "", default="hosted"))
         self.repo.add_child(NumericOption("foo", "", default=43))
+        self.repo.add_child(Alias("alias0", "", destination="foo"))
 
         self.module.add_child(NumericOption("foo", "", default=456))
         self.module.add_child(NumericOption("bar", "", default=768))
@@ -93,6 +94,9 @@ class ResolverTest(unittest.TestCase):
 
     def test_should_resolve_alias(self):
         logging.disable(logging.WARNING)
+
+        resolver = self.repo.option_value_resolver
+        self.assertEqual(43, resolver[":alias0"])
 
         # Resolve Option aliases
         resolver = self.module.option_value_resolver

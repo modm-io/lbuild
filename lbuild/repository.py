@@ -107,7 +107,7 @@ class Repository(BaseNode):
             self._filters[name] = func
 
         try:
-            for child in (repo._options + repo._queries):
+            for child in (repo._options + repo._queries + repo._alias):
                 self.add_child(child)
             for (name, path, description) in repo._configurations:
                 path = self._relocate_relative_path(path)

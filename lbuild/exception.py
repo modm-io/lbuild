@@ -173,7 +173,7 @@ class LbuildConfigAddNotFoundException(LbuildConfigException):
 
 class LbuildConfigAliasNotFoundException(LbuildConfigException):
     def __init__(self, parser, alias):
-        message = (": alias '{}' not found in any repository!"
+        message = (": name '{}' not found in any repository!"
                    .format(_hl(alias)) + _dump(parser))
         filename = next( (f for f, a in parser._config_flat._extends.items() if alias in a), None)
         super().__init__(filename, message)
@@ -181,7 +181,7 @@ class LbuildConfigAliasNotFoundException(LbuildConfigException):
 class LbuildConfigAliasAmbiguousException(LbuildConfigException):
     def __init__(self, parser, alias, matches):
         aliases = _bp(sorted(c.fullname for c in matches))
-        message = (": alias '{}' is ambiguous!\n"
+        message = (": name '{}' is ambiguous!\n"
                    "Hint: Found multiple matches:\n\n{}"
                    .format(_hl(alias), aliases) + _dump(parser))
         filename = next( (f for f, a in parser._config_flat._extends.items() if alias in a), None)
