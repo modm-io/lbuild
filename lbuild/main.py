@@ -22,7 +22,7 @@ from lbuild.format import format_option_short_description
 
 from lbuild.api import Builder
 
-__version__ = '1.16.0'
+__version__ = '1.16.1'
 
 
 class InitAction:
@@ -112,10 +112,10 @@ class DiscoverAction(ManipulationActionBase):
 
     @staticmethod
     def perform(args, builder):
-        builder._filter_modules()
+        names = args.names + args.names_explicit
+        builder._filter_modules(names)
         if args.show_developer_view:
             lbuild.format.SHOW_NODES.update(lbuild.node.BaseNode.Type)
-        names = args.names + args.names_explicit
         if names:
             ostream = []
             for node in builder.parser.find_all(names):
