@@ -25,7 +25,7 @@ LOGGER = logging.getLogger('lbuild.option')
 
 class Option(BaseNode):
 
-    def __init__(self, name, description, default=None, dependencies=None,
+    def __init__(self, name, description, default=None, dependencies=None, validate=None,
                  convert_input=None, convert_output=None):
         BaseNode.__init__(self, name, BaseNode.Type.OPTION)
         self._dependency_handler = dependencies
@@ -35,6 +35,7 @@ class Option(BaseNode):
         self._input = None
         self._output = None
         self._default = None
+        self._validate = validate
         self._filename = os.path.join(os.getcwd(), "dummy")
         self._set_default(default)
 
@@ -93,24 +94,24 @@ class Option(BaseNode):
 class StringOption(Option):
 
     def __init__(self, name, description, default=None, dependencies=None, validate=None):
-        Option.__init__(self, name, description, None, dependencies,
+        Option.__init__(self, name, description, None, dependencies, validate,
                         convert_input=self._validate_string)
-        self._validate = validate
         self._set_default(default)
 
     def _validate_string(self, value):
         value = str(value)
-        if self._validate:
+        if self._validate is not None:
             self._validate(value)
         return value
 
 
 class PathOption(Option):
 
-    def __init__(self, name, description, default=None, dependencies=None, empty_ok=False, absolute=False):
+    def __init__(self, name, description, default=None, empty_ok=False,
+                 absolute=False, dependencies=None, validate=None):
         self._empty_ok = empty_ok
         self._absolute = absolute
-        Option.__init__(self, name, description, default, dependencies,
+        Option.__init__(self, name, description, default, dependencies, validate,
                         convert_input=self._validate_path,
                         convert_output=self._relocate_path)
 
@@ -132,6 +133,8 @@ class PathOption(Option):
         # Relocate path to be relative to the user's perspective
         if self._relocate(path):
             path = os.path.relpath(self._relocate_path(path))
+        if self._validate is not None:
+            self._validate(path)
         return path
 
     @staticmethod
@@ -191,8 +194,8 @@ class BooleanOption(Option):
 class NumericOption(Option):
 
     def __init__(self, name, description, minimum=None, maximum=None,
-                 default=None, dependencies=None):
-        Option.__init__(self, name, description, default, dependencies,
+                 default=None, dependencies=None, validate=None):
+        Option.__init__(self, name, description, default, dependencies, validate,
                         convert_input=str,
                         convert_output=self.as_numeric_value)
         self.minimum_input = str(minimum)
@@ -227,6 +230,8 @@ class NumericOption(Option):
                 raise ValueError("Input must be greater or equal to '{}'".format(self.minimum))
             if self.maximum is not None and numeric_value > self.maximum:
                 raise ValueError("Input must be smaller or equal to '{}'".format(self.maximum))
+            if self._validate is not None:
+                self._validate(numeric_value)
         except (TypeError, ValueError) as error:
             raise le.LbuildOptionInputException(self, value, error)
         self._set_value(value)

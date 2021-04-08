@@ -752,6 +752,7 @@ option = PathOption(name="option-name",
                     default="path/to/folder/or/file",
                     empty_ok=False, # is an empty path considered valid?
                     absolute=False, # is the path relative to the config file?
+                    validate=validate_path,
                     dependencies=add_option_dependencies)
 ```
 
@@ -774,7 +775,7 @@ option = BooleanOption(name="option-name",
 This option allows a number from [-Inf, +Inf]. You can limit this to the
 range [minimum, maximum]. When using floating point numbers here, please be
 aware that not all floating point numbers can be represented as a string
-(like "1/3"). The dependency handler is passed a numeric value.
+(like "1/3"). The validation and dependency handlers are passed a numeric value.
 
 ```python
 option = NumericOption(name="option-name",
@@ -782,6 +783,7 @@ option = NumericOption(name="option-name",
                        minimum=0,
                        maximum=100,
                        default=50,
+                       validate=validate_number,
                        dependencies=add_option_dependencies)
 ```
 

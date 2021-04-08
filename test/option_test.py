@@ -121,7 +121,11 @@ class OptionTest(unittest.TestCase):
                          validate=validate_string)
 
     def test_should_be_constructable_from_path(self):
-        option = PathOption("test", "description", default="filename.txt")
+        def validate_path(path):
+            if path.startswith(".."):
+                raise ValueError("Path must be local.")
+
+        option = PathOption("test", "description", default="filename.txt", validate=validate_path)
         self.assertIn("test  [PathOption]", option.description)
         self.assertEqual("filename.txt", option.value)
         option.value = "filename.txt.in"
@@ -147,6 +151,8 @@ class OptionTest(unittest.TestCase):
             option.value = "/folder//"
         with self.assertRaises(le.LbuildOptionInputException):
             option.value = "//folder/"
+        with self.assertRaises(le.LbuildOptionInputException):
+            option.value = "../folder"
 
         option = PathOption("test", "description", default="", empty_ok=True)
         self.assertEqual("", option.value)
@@ -190,8 +196,11 @@ class OptionTest(unittest.TestCase):
             option.value = "hello"
 
     def test_should_be_constructable_from_number(self):
+        def validate_number(number):
+            if number == 69:
+                raise ValueError("Only clean numbers allowed")
         option = NumericOption("test", "description", default=1,
-                               minimum=0, maximum=100)
+                               minimum=0, maximum=100, validate=validate_number)
         self.assertIn("test  [NumericOption]", option.description)
         self.assertEqual(1, option.value)
         option.value = 2
@@ -215,6 +224,8 @@ class OptionTest(unittest.TestCase):
             option.value = 1000
         with self.assertRaises(le.LbuildOptionInputException):
             option.value = "hello"
+        with self.assertRaises(le.LbuildOptionInputException):
+            option.value = 69
 
         with self.assertRaises(le.LbuildOptionConstructionException):
             NumericOption("test", "description", minimum=0, maximum=0)
