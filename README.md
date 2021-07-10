@@ -1,4 +1,4 @@
-# lbuild: generic, modular code generation in Python 3 [![][travis-svg]][travis]
+# lbuild: generic, modular code generation in Python 3
 
 The Library Builder (pronounced *lbuild*) is a BSD licensed [Python 3.5 tool][python]
 for describing repositories containing modules which can copy or generate a set
