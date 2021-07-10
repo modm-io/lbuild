@@ -25,7 +25,8 @@ LOGGER = logging.getLogger('lbuild.option')
 
 class Option(BaseNode):
 
-    def __init__(self, name, description, default=None, dependencies=None, validate=None,
+    def __init__(self, name, description, default=None,
+                 dependencies=None, validate=None, transform=None,
                  convert_input=None, convert_output=None):
         BaseNode.__init__(self, name, BaseNode.Type.OPTION)
         self._dependency_handler = dependencies
@@ -36,6 +37,7 @@ class Option(BaseNode):
         self._output = None
         self._default = None
         self._validate = validate
+        self._transform = transform
         self._filename = os.path.join(os.getcwd(), "dummy")
         self._set_default(default)
 
@@ -93,15 +95,22 @@ class Option(BaseNode):
 
 class StringOption(Option):
 
-    def __init__(self, name, description, default=None, dependencies=None, validate=None):
-        Option.__init__(self, name, description, None, dependencies, validate,
-                        convert_input=self._validate_string)
+    def __init__(self, name, description, default=None, dependencies=None, validate=None, transform=None):
+        Option.__init__(self, name, description, None, dependencies, validate, transform,
+                        convert_input=self._validate_string,
+                        convert_output=self._transform_string)
         self._set_default(default)
 
     def _validate_string(self, value):
         value = str(value)
         if self._validate is not None:
             self._validate(value)
+        return value
+
+    def _transform_string(self, value):
+        value = str(value)
+        if self._transform is not None:
+            value = self._transform(value)
         return value
 
 
@@ -163,29 +172,36 @@ class PathOption(Option):
 
 class BooleanOption(Option):
 
-    def __init__(self, name, description, default=False, dependencies=None):
-        Option.__init__(self, name, description, default, dependencies,
-                        convert_input=self.as_boolean,
-                        convert_output=self.as_boolean)
+    def __init__(self, name, description, default=False, dependencies=None, transform=None):
+        self._transform = transform
+        Option.__init__(self, name, description, default, dependencies, transform=transform,
+                        convert_input=self.input_boolean,
+                        convert_output=self.output_boolean)
 
     @property
     def values(self):
-        return ["True", "False"]
+        return ["yes", "no"]
 
     def format_values(self):
-        if self._default:
-            return _cw("True").wrap("underlined") + _cw(", False")
-        return _cw("True, ") + _cw("False").wrap("underlined")
+        if self.output_boolean(self._default):
+            return _cw("yes").wrap("underlined") + _cw(", no")
+        return _cw("yes, ") + _cw("no").wrap("underlined")
 
-    @staticmethod
-    def as_boolean(value):
+    def input_boolean(self, value):
+        if isinstance(value, bool):
+            value = "yes" if value else "no"
+        return str(value).lower()
+
+    def output_boolean(self, value):
         if value is None:
             return value
+        if self._transform is not None:
+            value = self._transform(value)
         if isinstance(value, bool):
             return value
-        if str(value).lower() in ['true', 'yes', '1']:
+        if str(value).strip().lower() in ['true', 'yes', '1', 'enable', 'enabled']:
             return True
-        if str(value).lower() in ['false', 'no', '0']:
+        if str(value).strip().lower() in ['false', 'no', '0', 'disable', 'disabled']:
             return False
 
         raise TypeError("Input must be boolean!")
@@ -196,7 +212,6 @@ class NumericOption(Option):
     def __init__(self, name, description, minimum=None, maximum=None,
                  default=None, dependencies=None, validate=None):
         Option.__init__(self, name, description, default, dependencies, validate,
-                        convert_input=str,
                         convert_output=self.as_numeric_value)
         self.minimum_input = str(minimum)
         self.maximum_input = str(maximum)
@@ -263,8 +278,7 @@ class NumericOption(Option):
 
         return default
 
-    @staticmethod
-    def as_numeric_value(value):
+    def as_numeric_value(self, value):
         if value is None:
             return value
         if isinstance(value, (int, float)):

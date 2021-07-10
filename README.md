@@ -711,6 +711,7 @@ def add_option_dependencies(value):
 This is the most generic option, allowing to input any string.
 You may, however, provide your own validator that may raise a `ValueError`
 if the input string does not match your expectations.
+You may also pass a transformation function to convert the option value.
 The string is passed unmodified from the configuration to the module and the
 dependency handler.
 
@@ -719,10 +720,14 @@ def validate_string(string):
     if "please" not in string:
         raise ValueError("Input does not contain the magic word!")
 
+def transform_string(string):
+    return string.lower()
+
 option = StringOption(name="option-name",
                       description="inline", # or FileReader("file.md")
                       default="default string",
                       validate=validate_string,
+                      transform=transform_string,
                       dependencies=add_option_dependencies)
 ```
 
@@ -759,13 +764,20 @@ option = PathOption(name="option-name",
 
 #### BooleanOption
 
-This option maps strings from `true`, `yes`, `1` to `bool(True)` and `false`,
-`no`, `0` to `bool(False)`. The dependency handler is passed this `bool` value.
+This option maps strings from `true`, `yes`, `1`, `enable` to `bool(True)` and
+`false`, `no`, `0`, `disable` to `bool(False)`. You can extend this list with a
+custom transform handler. The dependency handler is passed this `bool` value.
 
 ```python
+def transform_boolean(string):
+    if string == 'y': return True;
+    if string == 'n': return False;
+    return string # hand over to built-in conversion
+
 option = BooleanOption(name="option-name",
                        description="boolean",
                        default=True,
+                       transform=transform_boolean,
                        dependencies=add_option_dependencies)
 ```
 
