@@ -98,6 +98,13 @@ class OptionTest(unittest.TestCase):
         option.value = False
         self.assertEqual("False", option.value)
 
+        option = StringOption("test", "description", default="hello",
+                              transform=lambda v: v.lower())
+        option.value = "HELLO"
+        self.assertEqual("hello", option.value)
+        option.value = False
+        self.assertEqual("false", option.value)
+
         def validate_string(value):
             if not isinstance(value, str):
                 raise TypeError("must be of type str")
@@ -178,7 +185,8 @@ class OptionTest(unittest.TestCase):
         self.assertEqual("/absolute/filename.txt", option.value)
 
     def test_should_be_constructable_from_boolean(self):
-        option = BooleanOption("test", "description", False)
+        option = BooleanOption("test", "description", False,
+                               transform=lambda v: True if v == "world" else v)
         self.assertIn("test  [BooleanOption]", option.description)
         self.assertEqual(False, option.value)
         option.value = 1
@@ -191,6 +199,8 @@ class OptionTest(unittest.TestCase):
         self.assertEqual(True, option.value)
         option.value = False
         self.assertEqual(False, option.value)
+        option.value = "world"
+        self.assertEqual(True, option.value)
 
         with self.assertRaises(le.LbuildOptionInputException):
             option.value = "hello"
@@ -378,10 +388,24 @@ class OptionTest(unittest.TestCase):
                       str(lbuild.format.format_option_value_description(option)))
 
     def test_should_format_boolean_option(self):
-        option = BooleanOption("test", "description", default=True)
+        option = BooleanOption("test", "description", default=True,
+                               transform=lambda v: True if v == "hello" else v)
 
         output = str(lbuild.format.format_option_value_description(option))
-        self.assertIn("True in [True, False]", output, "Output")
+        self.assertIn("yes in [yes, no]", output, "Output")
+
+        option.value = "hello"
+        self.assertEqual(True, option.value)
+        output = str(lbuild.format.format_option_value_description(option))
+        self.assertIn("hello in [yes, no]", output, "Output")
+
+        option.value = "1"
+        output = str(lbuild.format.format_option_value_description(option))
+        self.assertIn("1 in [yes, no]", output, "Output")
+
+        option.value = "TRUE"
+        output = str(lbuild.format.format_option_value_description(option))
+        self.assertIn("true in [yes, no]", output, "Output")
 
     def test_should_format_numeric_option(self):
 
