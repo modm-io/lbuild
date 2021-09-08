@@ -55,7 +55,7 @@ def _call_site(obj = None, plain = False):
     msg = "In file '{}:{}' in {} '{}':\n{}".format(
             _hl(_rel(filename), plain), _hl(lineno, plain),
             "class" if is_class else "function", _hl(name, plain),
-            code_context[0])
+            code_context and code_context[0])
     return msg
 
 
