@@ -14,8 +14,10 @@ You can [install *lbuild* via PyPi][pypi]: `pip install lbuild`
 
 Projects using *lbuild*:
 
-- [modm generates a HAL for hundreds of embedded devices][modm] using *lbuild*
+- [modm generates a HAL for thousands of embedded devices][modm] using *lbuild*
   and a data-driven code generation pipeline.
+- [Taproot: a friendly control library and framework for RoboMaster robots][taproot]
+  uses *lbuild*.
 - [OUTPOST - Open modUlar sofTware PlatfOrm for SpacecrafT][outpost] uses *lbuild*
   to assemble an execution platform targeted at embedded systems running mission
   critical software.
@@ -31,11 +33,11 @@ Consider this repository:
  $ lbuild discover
 Parser(lbuild)
 ╰── Repository(repo @ ../repo)
-    ├── EnumerationOption(option) = value in [value, special]
+    ├── Option(option) = value in [value, special]
     ├── Module(repo:module)
-    │   ├── BooleanOption(option) = True in [True, False]
+    │   ├── Option(option) = yes in [yes, no]
     │   ├── Module(repo:module:submodule)
-    │   │   ╰── EnumerationOption(option) = REQUIRED in [1, 2, 3, 4, 5]
+    │   │   ╰── Option(option) = REQUIRED in [1, 2, 3, 4, 5]
     │   ╰── Module(repo:module:submodule2)
     ╰── Module(modm:module2)
 ```
@@ -112,11 +114,11 @@ main.cpp        project.xml
 .
 ├── main.cpp
 ├── repo
-│   ├── module
-│   │   ├── static.hpp
-│   │   ├── template_1.cpp
-│   │   ├── template_2.cpp
-│   │   └── template_3.cpp
+│   ├── module
+│   │   ├── static.hpp
+│   │   ├── template_1.cpp
+│   │   ├── template_2.cpp
+│   │   └── template_3.cpp
 ```
 
 
@@ -136,7 +138,7 @@ Before you can build a project you need to provide a configuration.
  $ lbuild --repository ../modm/repo.lb discover
 Parser(lbuild)
 ╰── Repository(modm @ ../modm)   modm: a barebone embedded library generator
-    ╰── EnumerationOption(target) = REQUIRED in [at90can128, at90can32, at90can64, ...
+    ╰── Option(target) = REQUIRED in [at90can128, at90can32, at90can64, ...
 ```
 
 This gives you an overview of the repositories and their options. In this case
@@ -158,25 +160,25 @@ for this specific repository option:
  $ lbuild -r ../modm/repo.lb --option modm:target=stm32f407vgt discover
 Parser(lbuild)
 ╰── Repository(modm @ ../modm)   modm: a barebone embedded library generator
-    ├── EnumerationOption(target) = stm32f407vgt in [at90can128, at90can32, at90can64, ...]
+    ├── Option(target) = stm32f407vgt in [at90can128, at90can32, at90can64, ...]
     ├── Configuration(modm:disco-f407vg)
     ├── Module(modm:board)   Board Support Packages
     │   ╰── Module(modm:board:disco-f469ni)   STM32F469IDISCOVERY
     ├── Module(modm:build)   Build System Generators
     │   ├── PathOption(build.path) = build/parent-folder in [String]
-    │   ├── StringOption(project.name) = parent-folder in [String]
+    │   ├── Option(project.name) = parent-folder in [String]
     │   ╰── Module(modm:build:scons)  SCons Build Script Generator
-    │       ├── BooleanOption(info.build) = False in [True, False]
-    │       ╰── EnumerationOption(info.git) = Disabled in [Disabled, Info, Info+Status]
+    │       ├── Option(info.build) = no in [yes, no]
+    │       ╰── Option(info.git) = Disabled in [Disabled, Info, Info+Status]
     ├── Module(modm:platform)   Platform HAL
     │   ├── Module(modm:platform:can)   Controller Area Network (CAN)
     │   │   ╰── Module(modm:platform:can:1)   Instance 1
-    │   │       ├── NumericOption(buffer.rx) = 32 in [1 .. 32 .. 65534]
-    │   │       ╰── NumericOption(buffer.tx) = 32 in [1 .. 32 .. 65534]
+    │   │       ├── Option(buffer.rx) = 32 in [1 .. 32 .. 65534]
+    │   │       ╰── Option(buffer.tx) = 32 in [1 .. 32 .. 65534]
     │   ├── Module(modm:platform:core)   ARM Cortex-M Core
-    │   │   ├── EnumerationOption(allocator) = newlib in [block, newlib, tlsf]
-    │   │   ├── NumericOption(main_stack_size) = 3072 in [256 .. 3072 .. 65536]
-    │   │   ╰── EnumerationOption(vector_table_location) = rom in [ram, rom]
+    │   │   ├── Option(allocator) = newlib in [block, newlib, tlsf]
+    │   │   ├── Option(main_stack_size) = 3072 in [256 .. 3072 .. 65536]
+    │   │   ╰── Option(vector_table_location) = rom in [ram, rom]
 ```
 
 You can now discover all module options in more detail:
@@ -251,6 +253,8 @@ which *lbuild* will search for in the current working directory.
        exactly where the configuration file is stored in the repo.
        See also `repo.add_configuration(name, path)`. -->
   <extends>repo:name_of_config</extends>
+  <!-- You can declare the *where* the output should be generated, default is cwd -->
+  <outpath>generated/folder</outpath>
   <options>
     <!-- Options are treated as key-value pairs -->
     <option name="repo:repo_option_name">value</option>
@@ -304,11 +308,14 @@ global functions and classes for use in all files:
   to be explicit.
 - `repopath(path)`: remaps paths relative to the repository file. You should use
   this to reference paths that are not related to your module.
-- `FileReader(path)`: reads the contents of a file and turns it into a string.
 - `listify(obj)`: turns obj into a list, maps `None` to empty list.
+- `listrify(obj)`: turns obj into a list of strings, maps `None` to empty list.
+- `uniquify(obj)`: turns obj into a unique list, maps `None` to empty list.
+- `FileReader(path)`: reads the contents of a file and turns it into a string.
 - `{*}Option(...)`: classes for describing options, [see Options](#Options).
 - `{*}Query(...)`: classes for sharing code and data, [see Queries](#Queries).
 - `{*}Collector(...)`: classes for describing metadata sinks, [see Collectors](#Collectors).
+- `Alias(...)`: links to other nodes, [see Aliases](#Aliases).
 
 
 ### Repositories
@@ -1177,6 +1184,7 @@ it is therefore recommended to:
 
 
 [modm]: https://modm.io/how-modm-works
+[taproot]: https://github.com/uw-advanced-robotics/taproot
 [outpost]: https://github.com/DLR-RY/outpost-core
 [jinja2]: http://jinja.pocoo.org
 [python]: https://www.python.org
