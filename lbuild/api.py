@@ -25,7 +25,7 @@ from lbuild.logger import CallCounter
 
 class Builder:
 
-    def __init__(self, cwd=None, config=None, options=None, collectors=None):
+    def __init__(self, cwd=None, config=None, options=None, collectors=None, outpath=None):
         """
         Build instance to invoke lbuild methods.
 
@@ -38,6 +38,7 @@ class Builder:
                 "key=value" format.
             collectors -- List of collector values. Must be list of strings in a
                 "key=value" format.
+            outpath -- Path where the output will be generated. Defaults to cwd.
         """
         if cwd is None:
             if config is None:
@@ -75,6 +76,16 @@ class Builder:
         self.config = file_config
         self.config.add_commandline_options(listify(options))
         self.config.add_commandline_collectors(listify(collectors))
+
+        # 1. outpath is None: use cwd
+        self.outpath = self.cwd
+        # 2. outpath from config: use that
+        if self.config.outpath is not None:
+            self.outpath = self.config.outpath
+        # 3. outpath from command line overwrites it both
+        if outpath is not None:
+            self.outpath = outpath
+
         self.parser = Parser(self.config)
 
     def _load_repositories(self, repos=None):
@@ -123,20 +134,20 @@ class Builder:
         self.parser.validate_modules(build_modules, complete)
         return (build_modules, CallCounter.levels)
 
-    def build(self, outpath, modules=None, simulate=False, use_symlinks=False):
+    def build(self, modules=None, simulate=False, use_symlinks=False):
         """
         Build the given set of modules.
 
         Args:
-            outpath -- Path where the output will be generated.
             modules -- List of modules which should be built. This list
                 is combined with modules given in the configuration
                 files.
             simulate -- If set to True simulate the build process. In
                 that case no output will be generated.
+            use_symlinks -- symlink instead of copy non-templated files.
         """
         build_modules = self._filter_modules(modules)
-        buildlog = BuildLog(outpath)
+        buildlog = BuildLog(outpath=self.outpath, cwd=self.cwd)
         lbuild.environment.SYMLINK_ON_COPY = use_symlinks
         self.parser.build_modules(build_modules, buildlog, simulate=simulate)
         return buildlog

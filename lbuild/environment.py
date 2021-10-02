@@ -94,7 +94,8 @@ class Environment:
         self.__module = module
         self.__modulepath = module._filepath
         self.__repopath = module.repository._filepath
-        self.__outpath = buildlog.outpath if buildlog else None
+        self.__outpath = buildlog.outpath if buildlog is not None else None
+        self.__cwdpath = buildlog.cwd if buildlog is not None else None
 
         self.buildlog = buildlog
         self.__template_environment = None
@@ -322,6 +323,20 @@ class Environment:
             return os.path.join(self.__outpath, *path)
 
         return os.path.join(self.__outpath, basepath, *path)
+
+    def cwdpath(self, *path):
+        """Relocate given path to current working directory"""
+        return os.path.join(self.__cwdpath, *path)
+
+    def cwdoutpath(self, *path):
+        """Relocate given path to the outpath in respect to current working directory"""
+        return self.outpath("", basepath="")
+
+    def relcwdoutpath(self, *path):
+        """Relocate given path to the outpath in respect to current working directory"""
+        relative = self.cwdpath("")
+        path = os.path.join(self.cwdoutpath(""), *path)
+        return os.path.relpath(os.path.abspath(path), os.path.abspath(relative))
 
     def reloutpath(self, path, relative=None):
         if relative is None:

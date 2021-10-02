@@ -22,7 +22,7 @@ from lbuild.format import format_option_short_description
 
 from lbuild.api import Builder
 
-__version__ = '1.18.1'
+__version__ = '1.19.0'
 
 
 class InitAction:
@@ -316,7 +316,7 @@ class BuildAction(ManipulationActionBase):
 
     @staticmethod
     def perform(args, builder):
-        buildlog = builder.build(args.path, args.modules, simulate=args.simulate,
+        buildlog = builder.build(args.modules, simulate=args.simulate,
                                  use_symlinks=args.symlink)
 
         if args.simulate:
@@ -445,8 +445,8 @@ def prepare_argument_parser():
         '-p',
         '--path',
         dest='path',
-        default='.',
-        help="Path in which the library will be generated (default: '%(default)s').")
+        default=None,
+        help="Path in which the library will be generated (default: '.').")
     argument_parser.add_argument(
         '-D',
         '--option',
@@ -518,7 +518,7 @@ def run(args):
     except AttributeError:
         raise lbuild.exception.LbuildArgumentException("No command specified!")
 
-    builder = Builder(config=args.config, options=args.options, collectors=args.collectors)
+    builder = Builder(config=args.config, options=args.options, collectors=args.collectors, outpath=args.path)
     return command(args, builder)
 
 

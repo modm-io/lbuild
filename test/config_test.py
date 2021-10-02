@@ -74,6 +74,7 @@ class ConfigTest(unittest.TestCase):
         config = self._parse_config("configfile/project.xml")
         del os.environ["LBUILD_TEST_REPOHOME"]
         self.assertEqual(self._get_path("configfile/hello_there"), abspath(config.cachefolder))
+        self.assertEqual(self._get_path("configfile/build/folder"), abspath(config.outpath))
 
         self.assertEqual(2, len(config.repositories))
         self.assertIn(self._get_path("repo2/repo2.lb"), config.repositories)
@@ -103,6 +104,7 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(config.collectors[1][1], 'value2')
         self.assertEqual(config.collectors[2][0], 'repo1:collect_empty')
         self.assertEqual(config.collectors[2][1], '')
+
 
     def test_should_parse_base_configuration(self):
         config = self._parse_config("configfile_inheritance/depth_0.xml")

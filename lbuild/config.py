@@ -32,6 +32,7 @@ class ConfigNode(anytree.AnyNode):
     def __init__(self, parent=None):
         anytree.AnyNode.__init__(self, parent)
 
+        self._outpath = None
         self._cachefolder = None
         self._extends = collections.defaultdict(list)
         self._vcs = []
@@ -63,6 +64,10 @@ class ConfigNode(anytree.AnyNode):
         return self._vcs
 
     @property
+    def outpath(self):
+        return self._outpath
+
+    @property
     def cachefolder(self):
         if self._cachefolder is None:
             return str(Path(self.filename).parent / DEFAULT_CACHE_FOLDER)
@@ -82,6 +87,8 @@ class ConfigNode(anytree.AnyNode):
         for node in list(self.siblings) + [self]:
             if node._cachefolder is not None:
                 config._cachefolder = node._cachefolder
+            if node._outpath is not None:
+                config._outpath = node._outpath
             config._extends.update(node._extends)
             config._vcs.extend(node._vcs)
             config._repositories.extend(node._repositories)
@@ -217,6 +224,11 @@ class ConfigNode(anytree.AnyNode):
 
         # Load all requested modules
         config._modules = xmltree.xpath('modules/module/text()')
+
+        # Load output path for lbuild and modules
+        outpath = xmltree.find("outpath")
+        if outpath is not None:
+            config._outpath = ConfigNode._rel_path(outpath.text, configpath)
 
         # Load options
         for option_node in xmltree.xpath('options/option'):

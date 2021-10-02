@@ -6,6 +6,8 @@
 		</repository>
 	</repositories>
 
+	<outpath>build/folder</outpath>
+
 	<options>
 		<option name="repo:option">value</option>
 		<option name="repo:module:option">value</option>

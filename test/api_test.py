@@ -38,6 +38,7 @@ class ApiTest(unittest.TestCase):
             "repositories": list(),
             "vcs": list(),
             "cachefolder": ".lbuild_cache",
+            "outpath": None,
         }
         defaults.update(kw)
         for key, default in defaults.items():
@@ -51,11 +52,17 @@ class ApiTest(unittest.TestCase):
         api = lbuild.api.Builder(config="project.xml")
         self._assert_config(api)
 
+    def test_project_builder_outpath(self):
+        outputPath = "testpath"
+        api = lbuild.api.Builder(cwd=self._get_path("parser/api"), config="project.xml", outpath=outputPath)
+        self.assertEqual(api.outpath, outputPath)
+
     def test_config_builder(self):
         api = lbuild.api.Builder(config=self._get_path("parser/api/simple.xml"))
         self.assertEqual(api.cwd, self._get_path("parser/api"))
         self._assert_config(api,
             filename=self._rel_path("parser/api/simple.xml"),
+            outpath=self._get_path("parser/api/build/folder"),
             options={"repo:option": ("value", self._get_path("parser/api/simple.xml")),
                      "repo:module:option": ("value", self._get_path("parser/api/simple.xml"))},
             modules=["repo:module"],

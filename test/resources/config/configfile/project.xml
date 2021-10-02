@@ -10,6 +10,8 @@
 		<cache>hello_there/</cache>
 	</repositories>
 
+	<outpath>build/folder</outpath>
+
 	<options>
 		<option name=":target">hosted</option>
 		<option name="repo1:foo">43</option>

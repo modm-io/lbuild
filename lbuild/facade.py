@@ -257,6 +257,15 @@ class EnvironmentValidateFacade:
     def localpath(self, *path):
         return self._env.modulepath(*path)
 
+    def cwdpath(self, *path):
+        return self._env.cwdpath(*path)
+
+    def cwdoutpath(self, *path):
+        return self._env.pcwdoutpath(*path)
+
+    def relcwdoutpath(self, *path):
+        return self._env.relcwdoutpath(*path)
+
     def __getitem__(self, key):
         return self._env.options[key]
 
