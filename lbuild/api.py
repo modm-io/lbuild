@@ -44,11 +44,10 @@ class Builder:
             if config is None:
                 cwd = os.getcwd()
             else:
-                cwd = os.path.abspath(os.path.dirname(config))
-        self.cwd = cwd
+                cwd = os.path.dirname(config)
+        self.cwd = os.path.abspath(cwd)
 
         file_config = None
-        filesystem_config = ConfigNode.from_path(self.cwd)
 
         # 0. config is default, but file doesn't exist, config = None
         if config == "project.xml":
@@ -58,6 +57,7 @@ class Builder:
 
         # 1. config is None: use filesystem config
         if config is None:
+            filesystem_config = ConfigNode.from_path(self.cwd)
             if filesystem_config is None:
                 file_config = ConfigNode()
             else:
@@ -66,6 +66,7 @@ class Builder:
         elif os.path.exists(config):
             file_config = ConfigNode.from_file(config)
             if file_config is not None:
+                filesystem_config = ConfigNode.from_path(os.path.dirname(config))
                 file_config.extend_last(filesystem_config)
         # 3. config is alias: create virtual config and extend it with alias
         else:

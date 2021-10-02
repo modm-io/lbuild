@@ -442,11 +442,17 @@ def prepare_argument_parser():
              "Specifies the required repositories, modules and options "
              "(default: '%(default)s').")
     argument_parser.add_argument(
+        '-C',
+        '--cwd',
+        dest='cwd',
+        default='.',
+        help="Current working directory (default: '%(default)s').")
+    argument_parser.add_argument(
         '-p',
         '--path',
         dest='path',
         default=None,
-        help="Path in which the library will be generated (default: '.').")
+        help="Path in which the library will be generated (default: CWD).")
     argument_parser.add_argument(
         '-D',
         '--option',
@@ -518,7 +524,7 @@ def run(args):
     except AttributeError:
         raise lbuild.exception.LbuildArgumentException("No command specified!")
 
-    builder = Builder(config=args.config, options=args.options, collectors=args.collectors, outpath=args.path)
+    builder = Builder(cwd=args.cwd, config=args.config, options=args.options, collectors=args.collectors, outpath=args.path)
     return command(args, builder)
 
 
