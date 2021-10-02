@@ -135,7 +135,7 @@ class Builder:
         self.parser.validate_modules(build_modules, complete)
         return (build_modules, CallCounter.levels)
 
-    def build(self, modules=None, simulate=False, use_symlinks=False):
+    def build(self, outpath=None, modules=None, simulate=False, use_symlinks=False):
         """
         Build the given set of modules.
 
@@ -148,7 +148,7 @@ class Builder:
             use_symlinks -- symlink instead of copy non-templated files.
         """
         build_modules = self._filter_modules(modules)
-        buildlog = BuildLog(outpath=self.outpath, cwd=self.cwd)
+        buildlog = BuildLog(outpath=self.outpath if outpath is None else outpath, cwd=self.cwd)
         lbuild.environment.SYMLINK_ON_COPY = use_symlinks
         self.parser.build_modules(build_modules, buildlog, simulate=simulate)
         return buildlog
