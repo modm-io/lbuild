@@ -22,7 +22,7 @@ from lbuild.format import format_option_short_description
 
 from lbuild.api import Builder
 
-__version__ = '1.19.2'
+__version__ = '1.19.3'
 
 
 class InitAction:
@@ -316,7 +316,7 @@ class BuildAction(ManipulationActionBase):
 
     @staticmethod
     def perform(args, builder):
-        buildlog = builder.build(args.modules, simulate=args.simulate,
+        buildlog = builder.build(modules=args.modules, simulate=args.simulate,
                                  use_symlinks=args.symlink)
 
         if args.simulate:
