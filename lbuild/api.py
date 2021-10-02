@@ -48,13 +48,11 @@ class Builder:
         self.cwd = os.path.abspath(cwd)
 
         file_config = None
-
         # 0. config is default, but file doesn't exist, config = None
         if config == "project.xml":
             config = os.path.join(self.cwd, config)
             if not os.path.exists(config):
                 config = None
-
         # 1. config is None: use filesystem config
         if config is None:
             filesystem_config = ConfigNode.from_path(self.cwd)
@@ -79,7 +77,7 @@ class Builder:
         self.config.add_commandline_collectors(listify(collectors))
 
         # 1. outpath is None: use cwd
-        self.outpath = self.cwd
+        self.outpath = os.path.abspath('.')
         # 2. outpath from config: use that
         if self.config.outpath is not None:
             self.outpath = self.config.outpath

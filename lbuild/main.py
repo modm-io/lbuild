@@ -22,7 +22,7 @@ from lbuild.format import format_option_short_description
 
 from lbuild.api import Builder
 
-__version__ = '1.19.1'
+__version__ = '1.19.2'
 
 
 class InitAction:
@@ -445,8 +445,8 @@ def prepare_argument_parser():
         '-C',
         '--cwd',
         dest='cwd',
-        default='.',
-        help="Current working directory (default: '%(default)s').")
+        default=None,
+        help="Current working directory (default: '.').")
     argument_parser.add_argument(
         '-p',
         '--path',
@@ -524,7 +524,8 @@ def run(args):
     except AttributeError:
         raise lbuild.exception.LbuildArgumentException("No command specified!")
 
-    builder = Builder(cwd=args.cwd, config=args.config, options=args.options, collectors=args.collectors, outpath=args.path)
+    builder = Builder(cwd=args.cwd, outpath=args.path, config=args.config,
+                      options=args.options, collectors=args.collectors)
     return command(args, builder)
 
 
