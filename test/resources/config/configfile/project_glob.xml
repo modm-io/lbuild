@@ -1,0 +1,34 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<library>
+	<repositories>
+		<glob>**/repo.lb</glob>
+		<cache>hello_there/</cache>
+	</repositories>
+
+	<outpath>build/folder</outpath>
+
+	<options>
+		<option name=":target">hosted</option>
+		<option name="repo1:foo">43</option>
+		<option name="repo1:empty"></option>
+
+		<option name="repo1:other:foo">456</option>
+		<option name="repo1::bar">768</option>
+		<option name=":other:xyz">No</option>
+		<option name="::abc">Hello World!</option>
+		<option name="::submodule3::price">15</option>
+	</options>
+
+	<collectors>
+		<collect name="repo1:collect">value1</collect>
+		<collect name="repo1:collect">value2</collect>
+		<collect name="repo1:collect_empty"></collect>
+	</collectors>
+
+	<modules>
+		<module>repo1:other</module>
+		<module>:module1</module>
+		<module>::submodule3:subsubmodule1</module>
+		<module>::submodule3</module>
+	</modules>
+</library>

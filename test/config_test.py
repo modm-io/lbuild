@@ -105,6 +105,9 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(config.collectors[2][0], 'repo1:collect_empty')
         self.assertEqual(config.collectors[2][1], '')
 
+    def test_should_glob_repository_configuration(self):
+        config = self._parse_config("configfile/project_glob.xml")
+        self.assertGreaterEqual(len(config.repositories),1)
 
     def test_should_parse_base_configuration(self):
         config = self._parse_config("configfile_inheritance/depth_0.xml")
