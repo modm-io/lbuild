@@ -11,6 +11,7 @@
 
 import os
 from os.path import realpath, join
+import glob
 import re
 import pkgutil
 import logging
@@ -221,6 +222,13 @@ class ConfigNode(anytree.AnyNode):
             repopath = path_node.text.format(cache=config._cachefolder)
             rfilename = ConfigNode._rel_path(repopath, configpath)
             config._repositories.append(rfilename)
+
+        # Load glob repositories (optional)
+        for glob_node in xmltree.iterfind("repositories/glob"):
+            globPath = glob_node.text.format(cache=config._cachefolder)
+            for f in glob.glob(globPath, recursive=True):
+                rfilename = ConfigNode._rel_path(f, configpath)
+                config._repositories.append(rfilename)
 
         # Load all requested modules
         config._modules = xmltree.xpath('modules/module/text()')

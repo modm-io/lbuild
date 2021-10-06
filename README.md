@@ -244,6 +244,8 @@ which *lbuild* will search for in the current working directory.
     <repository><path>path/to/repo.lb</path></repository>
     <!-- You can also use environment variables in all nodes -->
     <repository><path>${PROJECTHOME}/repo2.lb</path></repository>
+    <!-- You can also search for repository files -->
+    <glob>ext/**/repo.lb</glob>
   </repositories>
   <!-- You can also inherit from another configfile. The options you specify
        here will be overwritten. -->

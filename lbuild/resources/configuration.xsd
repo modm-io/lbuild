@@ -16,6 +16,7 @@
 
   <xsd:complexType name="RepositoriesType">
     <xsd:choice maxOccurs="unbounded">
+      <xsd:element name="glob" type="xsd:string" minOccurs="0" maxOccurs="unbounded"/>
       <xsd:element name="repository" type="RepositoryType" minOccurs="0" maxOccurs="unbounded"/>
       <xsd:element name="cache" type="xsd:anyURI" minOccurs="0" maxOccurs="1">
         <xsd:annotation>
