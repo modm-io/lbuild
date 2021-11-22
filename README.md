@@ -473,15 +473,15 @@ def prepare(module, options):
     class Instance(Module):
         def __init__(self, instance):
             self.instance = instance
-        def init(module):
+        def init(self, module):
             module.name = str(self.instance)
-        def prepare(module, options):
+        def prepare(self, module, options):
             pass
-        def validate(env): # optional
+        def validate(self, env): # optional
             pass
-        def build(env):
+        def build(self, env):
             pass
-        def post_build(env): # optional
+        def post_build(self, env): # optional
             pass
 
     # You can statically create and add these submodules
