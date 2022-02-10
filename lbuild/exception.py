@@ -165,7 +165,7 @@ class LbuildConfigAddNotFoundException(LbuildConfigException):
         message = (" not found!\n{}\n"
             "Hint: Check your config paths in '{}':\n\n"
             "   def init(repo):\n"
-            "       repo.add_configuration(name, \"{}\", description)"
+            "       repo.add_configuration(Configuration(name, description, \"{}\"))"
             .format(_call_site(repo._functions['init']),
                     _hl(_rel(repo._filename)), _hl(filename)))
         super().__init__(filename, message)
@@ -186,6 +186,17 @@ class LbuildConfigAliasAmbiguousException(LbuildConfigException):
                    .format(_hl(alias), aliases) + _dump(parser))
         filename = next( (f for f, a in parser._config_flat._extends.items() if alias in a), None)
         super().__init__(filename, message)
+
+class LbuildConfigNoDefaultException(LbuildConfigException):
+    def __init__(self, repo, config):
+        message = (" multiple paths must be defaulted!\n{}\n"
+            "Hint: Check your default value in '{}':\n\n"
+            "   def init(repo):\n"
+            "       repo.add_configuration(Configuration(name, description, paths, *default*))"
+            .format(_call_site(repo._functions['init']),
+                    _hl(_rel(repo._filename))))
+        super().__init__(repo.name + ":" + config.name, message)
+        self.node = repo
 
 
 # ============================= OPTION EXCEPTIONS =============================

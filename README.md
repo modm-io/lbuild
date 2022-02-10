@@ -253,8 +253,10 @@ which *lbuild* will search for in the current working directory.
   <!-- A repository may provide aliases for configurations, so that you can
        use a string as well, instead of a path. This saves you from knowing
        exactly where the configuration file is stored in the repo.
-       See also `repo.add_configuration(name, path)`. -->
+       See also `repo.add_configuration(...)`. -->
   <extends>repo:name_of_config</extends>
+  <!-- A configuration alias may also be versioned -->
+  <extends>repo:name_of_config:specific_version</extends>
   <!-- You can declare the *where* the output should be generated, default is cwd -->
   <outpath>generated/folder</outpath>
   <options>
@@ -318,6 +320,7 @@ global functions and classes for use in all files:
 - `{*}Query(...)`: classes for sharing code and data, [see Queries](#Queries).
 - `{*}Collector(...)`: classes for describing metadata sinks, [see Collectors](#Collectors).
 - `Alias(...)`: links to other nodes, [see Aliases](#Aliases).
+- `Configuration(...)`: links to a configuration inside the repository.
 
 
 ### Repositories
@@ -375,7 +378,14 @@ Use whatever markup you want, lbuild treats it all as text.
 
     # Add an alias for a internal configuration
     # NOTE: the configuration is namespaced with the repository! <extends>repo:config</extends>
-    repo.add_configuration("config", "internal/path/to/config.xml")
+    repo.add_configuration(Configuration(name="config",
+                                         description="Special Config",
+                                         path="path/to/config.xml")
+    # You can also add configuration versions
+    repo.add_configuration(Configuration(name="config2",
+                                         description="Versioned Config",
+                                         path={"v1": "path/to/config_v1.xml",
+                                               "v2": "path/to/config_v2.xml"})
 
     # See Options for more option types
     repo.add_option(StringOption(name="option", default="value"))

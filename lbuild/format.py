@@ -210,6 +210,10 @@ def format_description(node, description):
         value = format_option_value(node, single_line=False)[0]
         values = format_option_values(node, offset=9, single_line=False)
         output += [_cw(""), _cw("Value: ") + value, _cw("Inputs: [") + values + _cw("]")]
+    elif node.type == node.Type.CONFIG and node._enumeration.keys() != {""}:
+        value = format_option_value(node, single_line=False)[0]
+        values = format_option_values(node, offset=9, single_line=False)
+        output += [_cw(""), _cw("Version: ") + value, _cw("Versions: [") + values + _cw("]")]
     elif node.type == node.Type.COLLECTOR:
         values = format_option_values(node, offset=9, single_line=False)
         output += [_cw(""), _cw("Inputs: [") + values + _cw("]")]
@@ -243,11 +247,16 @@ def format_node(node, _, depth):
         name = _cw(node.name + " @ " + os.path.relpath(node._filepath))
     elif node._type == node.Type.OPTION:
         name = format_option_name(node, fullname=False)
-    elif node._type in {node.Type.MODULE, node.Type.CONFIG}:
+    elif node._type == node.Type.MODULE:
         name = _cw(node.fullname).wrap(node)
+    elif node._type == node.Type.CONFIG:
+        name = _cw(node.fullname)
+        if node._enumeration.keys() != {""}:
+            name += _cw(":") + _cw(node.value).wrap("bold")
+        name = _cw(name).wrap(node)
     elif node._type in {node.Type.QUERY, node.Type.COLLECTOR}:
         name = name.wrap("bold")
-    if node._type in {node.Type.MODULE} and node._selected:
+    if node._type in {node.Type.MODULE, node.Type.CONFIG} and node._selected:
         name = name.wrap("underlined")
 
     descr = (class_name + _cw("(") + name + _cw(")")).wrap(node)
@@ -256,6 +265,11 @@ def format_node(node, _, depth):
     if node._type == node.Type.OPTION:
         descr += _cw(" = ")
         descr += format_option_value_description(node, offset=offset + len(descr), single_line=True)
+    elif node._type == node.Type.CONFIG:
+        if len(node._enumeration) > 1:
+            descr += _cw(" in ")
+            values = format_option_values(node, offset + len(descr) + 5)
+            descr += _cw("[") + values + _cw("]")
     elif node._type == node.Type.COLLECTOR:
         descr += _cw(" in [")
         descr += format_option_values(node, offset=offset + len(descr), single_line=True)

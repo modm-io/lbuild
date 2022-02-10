@@ -111,13 +111,18 @@ class Parser(BaseNode):
             for filename, aliases in self._config_flat._extends.items():
                 node = self._config.find(filename)
                 for alias in aliases:
+                    version = None
+                    if alias.count(":") > 1:
+                        alias, version = alias.rsplit(":", 1)
                     try:
                         fconfig = self.config_resolver[alias]
+                        fconfig._selected = True
+                        if version: fconfig.value = version
                     except le.LbuildResolverNoMatchException:
                         raise le.LbuildConfigAliasNotFoundException(self, alias)
                     except le.LbuildResolverAmbiguousMatchException as e:
                         raise le.LbuildConfigAliasAmbiguousException(self, alias, e.results)
-                    self._config.extend(node, ConfigNode.from_file(fconfig._config))
+                    self._config.extend(node, ConfigNode.from_file(fconfig._enumeration[fconfig.value]))
                 node._extends.pop(filename)
 
         self._update_format()

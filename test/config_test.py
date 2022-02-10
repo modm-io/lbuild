@@ -190,5 +190,27 @@ class ConfigTest(unittest.TestCase):
         self.assertIn("::submodule3:subsubmodule1", config.modules)
         self.assertIn("::submodule3", config.modules)
 
+    def test_should_build_versions(self):
+        config = lbuild.repository.Configuration("test", "", "hello.xml")
+        self.assertEqual(1, len(config._enumeration))
+        self.assertEqual("", config.value)
+        self.assertEqual("hello.xml", config._enumeration[config.value])
+        self.assertIn("Config(test)", lbuild.format.format_node(config, None, 0))
+
+        config = lbuild.repository.Configuration("test", "", {"v1": "version1.xml"})
+
+
+        config = lbuild.repository.Configuration("test", "", {"v1": "version1.xml"}, "v1")
+        self.assertEqual(1, len(config._enumeration))
+        self.assertEqual("v1", config.value)
+        self.assertEqual("version1.xml", config._enumeration[config.value])
+        self.assertIn("Config(test:v1)", lbuild.format.format_node(config, None, 0))
+
+        config = lbuild.repository.Configuration("test", "", {"v1": "version1.xml", "v2": "version2.xml"}, "v2")
+        self.assertEqual(2, len(config._enumeration))
+        self.assertEqual("v2", config.value)
+        self.assertEqual("version2.xml", config._enumeration[config.value])
+        self.assertIn("Config(test:v2) in [v1, v2]", lbuild.format.format_node(config, None, 0))
+
 if __name__ == '__main__':
     unittest.main()

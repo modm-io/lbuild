@@ -60,6 +60,8 @@ def load_functions_from_file(repository, filename: str, required, optional=None,
         'EnumerationOption': lbuild.option.EnumerationOption,
         'SetOption': lbuild.option.SetOption,
 
+        'Configuration': lbuild.repository.Configuration,
+
         'Alias': Alias,
     })
 
@@ -109,9 +111,9 @@ class LocalFileReaderFactory:
 
 class NameResolver:
 
-    def __init__(self, node, nodetype, selected=True, returner=None, defaulter=None):
+    def __init__(self, node, nodetypes, selected=True, returner=None, defaulter=None):
         self._node = node
-        self._type = nodetype
+        self._types = {nodetypes} if isinstance(nodetypes, BaseNode.Type) else nodetypes
         self._returner = (lambda n: n) if returner is None else returner
         self._defaulter = (lambda n: n) if defaulter is None else defaulter
         self._selected = selected
@@ -125,7 +127,7 @@ class NameResolver:
             if node._destination is None:
                 if not raise_on_fail: return None;
                 raise le.LbuildResolverAliasException(node)
-            context_resolver = NameResolver(node.parent, self._type, self._selected, self._returner, self._defaulter)
+            context_resolver = NameResolver(node.parent, self._types, self._selected, self._returner, self._defaulter)
             alias = node
             warning = "Node '{}' has been moved to '{}'!\n\n{}\n\n".format(
                     le._hl(alias.fullname), le._hl(alias._destination), alias.description)
@@ -147,11 +149,11 @@ class NameResolver:
             if not raise_on_fail: return None;
             raise le.LbuildResolverSearchException(self, node, "is not selected!")
 
-        if node._type != self._type:
+        if node._type not in self._types:
             if not raise_on_fail: return None;
             raise le.LbuildResolverSearchException(self, node,
                     "is of type '{}', but searching for '{}'!".format(
-                            node._type.name.lower(), self._type.name.lower()))
+                            node._type.name.lower(), "','".join(t.name.lower() for t in self._types)))
 
         if check_dependencies and node.type in {BaseNode.Type.OPTION, BaseNode.Type.QUERY, BaseNode.Type.COLLECTOR}:
             if node.parent != self._node:
@@ -177,10 +179,10 @@ class NameResolver:
         return (self._get_node(key, raise_on_fail=False) is not None)
 
     def __len__(self):
-        return len(self._node._findall(self._type, selected=self._selected))
+        return len(self._node._findall(self._types, selected=self._selected))
 
     def __repr__(self):
-        return repr(self._node._findall(self._type, selected=self._selected))
+        return repr(self._node._findall(self._types, selected=self._selected))
 
 
 class BaseNode(anytree.Node):
@@ -312,7 +314,7 @@ class BaseNode(anytree.Node):
 
     @property
     def option_value_resolver(self):
-        return NameResolver(self, self.Type.OPTION,
+        return NameResolver(self, {self.Type.OPTION, self.Type.CONFIG},
                             returner=lambda n: n.value)
 
     @property
@@ -343,7 +345,7 @@ class BaseNode(anytree.Node):
 
     @property
     def config_resolver(self):
-        return NameResolver(self, self.Type.CONFIG)
+        return NameResolver(self, self.Type.CONFIG, selected=False)
 
     @property
     def filters(self):
@@ -374,10 +376,11 @@ class BaseNode(anytree.Node):
     def all_modules(self, depth=None, selected=True):
         return self._findall(self.Type.MODULE, depth, selected)
 
-    def _findall(self, node_type, depth=None, selected=True):
-
+    def _findall(self, node_types, depth=None, selected=True):
+        if isinstance(node_types, BaseNode.Type):
+            node_types = {node_types}
         def _filter(node):
-            return (node._type == node_type and
+            return (node._type in node_types and
                     node._available and
                     (node._selected or not selected) and
                     node is not self)

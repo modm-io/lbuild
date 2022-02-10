@@ -116,8 +116,13 @@ class RepositoryInitFacade(BaseNodeInitFacade):
     def add_filter(self, name, function):
         self._node._filters.append( (name, function,) )
 
-    def add_configuration(self, name, path, description=None):
-        self._node._configurations.append( (name, path, description,) )
+    def add_configuration(self, *config):
+        if len(config) > 1:
+            deprecated("1.21.0", "repo.add_configuraton(name, path, description)",
+                       "repo.add_configuraton(Configuration(name, description, path))")
+            config = [lbuild.repository.Configuration(
+                      name=config[0], path=config[1], description=config[2])]
+        self._node._configurations.append(config[0])
 
     def add_alias(self, alias):
         self._node._alias.append(alias)

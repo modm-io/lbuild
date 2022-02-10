@@ -20,18 +20,22 @@ import lbuild.utils
 import lbuild.exception as le
 import lbuild.facade as lf
 from .node import BaseNode
+from .option import EnumerationOption
 
 
 LOGGER = logging.getLogger('lbuild.repository')
 
-
-class Configuration(BaseNode):
-    def __init__(self, name, path, description):
-        BaseNode.__init__(self, name, BaseNode.Type.CONFIG)
-        self._config = path
-        if description is None:
-            description = ""
-        self._description = description
+class Configuration(EnumerationOption):
+    def __init__(self, name, description, path, default=None):
+        if not isinstance(path, dict):
+            path = {"": path}
+            default = ""
+        EnumerationOption.__init__(self, name, description,
+                                   enumeration=path, default=default)
+        self._type = BaseNode.Type.CONFIG
+        self._selected = False
+        self._out = str
+        self._set_default(default)
 
 
 def load_repository_from_file(parser, filename):
@@ -109,11 +113,14 @@ class Repository(BaseNode):
         try:
             for child in (repo._options + repo._queries + repo._alias):
                 self.add_child(child)
-            for (name, path, description) in repo._configurations:
-                path = self._relocate_relative_path(path)
+            for version in repo._configurations:
+                if version._default is None:
+                    raise le.LbuildConfigNoDefaultException(repo, version)
+                path = self._relocate_relative_path(version._enumeration[version.value])
                 if not os.path.isfile(path):
                     raise le.LbuildConfigAddNotFoundException(repo, path)
-                self.add_child(Configuration(name, path, description))
+                version._enumeration[version.value] = path
+                self.add_child(version)
 
         except le.LbuildNodeDuplicateChildException as error:
             raise le.LbuildRepositoryDuplicateChildException(repo._parser, repo, error)
