@@ -379,12 +379,12 @@ class BaseNode(anytree.Node):
     def _findall(self, node_types, depth=None, selected=True):
         if isinstance(node_types, BaseNode.Type):
             node_types = {node_types}
-        if not callable(selected):
-            selected = lambda n: (not selected or n._selected)
+        _selected = selected if callable(selected) else \
+                    lambda n: (not selected or n._selected)
         def _filter(node):
             return (node._type in node_types and
                     node._available and
-                    selected(node) and
+                    _selected(node) and
                     node is not self)
 
         return anytree.search.findall(self, maxlevel=depth, filter_=_filter)
