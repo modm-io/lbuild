@@ -282,7 +282,7 @@ class BaseNode(anytree.Node):
 
     @property
     def configurations(self):
-        return self._findall(self.Type.CONFIG, depth=2, selected=False)
+        return self._findall(self.Type.CONFIG, depth=3, selected=False)
 
     @property
     def collectors(self):
