@@ -20,6 +20,7 @@ import io, contextlib
 import lbuild, logging
 from lbuild.option import *
 from lbuild.node import Alias
+from lbuild.repository import Configuration
 import lbuild.exception as le
 import lbuild.module as lm
 
@@ -35,6 +36,11 @@ class ResolverTest(unittest.TestCase):
         module.name = "other"
         module.available = True
         self.module, = lbuild.module.build_modules([module])
+
+        self.repo.add_child(Configuration("config", "", "path.xml"))
+        self.repo.add_child(Configuration("config2", "",
+                                          {"v1": "version1.xml", "v2": "version2.xml"},
+                                          default="v2"))
 
         self.repo.add_child(Option("target", "", default="hosted"))
         self.repo.add_child(NumericOption("foo", "", default=43))
@@ -116,6 +122,10 @@ class ResolverTest(unittest.TestCase):
 
         logging.disable(logging.NOTSET)
 
+    def test_should_resolve_config_value(self):
+        resolver = self.module.option_value_resolver
+        self.assertEqual("", resolver["repo1:config"])
+        self.assertEqual("v2", resolver["repo1:config2"])
 
 
 if __name__ == '__main__':

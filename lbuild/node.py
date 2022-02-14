@@ -116,7 +116,7 @@ class NameResolver:
         self._types = {nodetypes} if isinstance(nodetypes, BaseNode.Type) else nodetypes
         self._returner = (lambda n: n) if returner is None else returner
         self._defaulter = (lambda n: n) if defaulter is None else defaulter
-        self._selected = selected
+        self._selected = selected if callable(selected) else lambda n: n._selected
 
     def _get_node(self, key, check_dependencies=False, raise_on_fail=True):
         node = self._node._resolve_partial_max(key, max_results=1, raise_on_fail=raise_on_fail)
@@ -145,7 +145,7 @@ class NameResolver:
             if not raise_on_fail: return None;
             raise le.LbuildResolverSearchException(self, node, "is not available!")
 
-        if self._selected and not node._selected:
+        if not self._selected(node):
             if not raise_on_fail: return None;
             raise le.LbuildResolverSearchException(self, node, "is not selected!")
 
@@ -155,13 +155,12 @@ class NameResolver:
                     "is of type '{}', but searching for '{}'!".format(
                             node._type.name.lower(), "','".join(t.name.lower() for t in self._types)))
 
-        if check_dependencies and node.type in {BaseNode.Type.OPTION, BaseNode.Type.QUERY, BaseNode.Type.COLLECTOR}:
+        if check_dependencies and node.type in {BaseNode.Type.OPTION, BaseNode.Type.QUERY}:
             if node.parent != self._node:
                 if all(n.type not in {BaseNode.Type.PARSER, BaseNode.Type.REPOSITORY} for n in {self._node, node.module}):
                     if node.parent not in self._node.dependencies:
-                        if self._selected or node.type not in {BaseNode.Type.COLLECTOR}:
-                            LOGGER.warning("Module '{}' accessing '{}' without depending on '{}'!"
-                                           .format(self._node.fullname, node.fullname, node.module.fullname))
+                        LOGGER.warning("Module '{}' accessing '{}' without depending on '{}'!"
+                                       .format(self._node.fullname, node.fullname, node.module.fullname))
 
         return node
 
@@ -283,7 +282,7 @@ class BaseNode(anytree.Node):
 
     @property
     def configurations(self):
-        return self._findall(self.Type.CONFIG, depth=2)
+        return self._findall(self.Type.CONFIG, depth=2, selected=False)
 
     @property
     def collectors(self):
@@ -315,6 +314,7 @@ class BaseNode(anytree.Node):
     @property
     def option_value_resolver(self):
         return NameResolver(self, {self.Type.OPTION, self.Type.CONFIG},
+                            selected=lambda n: n.type == self.Type.CONFIG or n._selected,
                             returner=lambda n: n.value)
 
     @property
@@ -379,10 +379,12 @@ class BaseNode(anytree.Node):
     def _findall(self, node_types, depth=None, selected=True):
         if isinstance(node_types, BaseNode.Type):
             node_types = {node_types}
+        if not callable(selected):
+            selected = lambda n: (n._selected or not selected)
         def _filter(node):
             return (node._type in node_types and
                     node._available and
-                    (node._selected or not selected) and
+                    selected(node) and
                     node is not self)
 
         return anytree.search.findall(self, maxlevel=depth, filter_=_filter)
