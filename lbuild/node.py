@@ -116,7 +116,7 @@ class NameResolver:
         self._types = {nodetypes} if isinstance(nodetypes, BaseNode.Type) else nodetypes
         self._returner = (lambda n: n) if returner is None else returner
         self._defaulter = (lambda n: n) if defaulter is None else defaulter
-        self._selected = selected if callable(selected) else lambda n: n._selected
+        self._selected = selected if callable(selected) else lambda n: not selected or n._selected
 
     def _get_node(self, key, check_dependencies=False, raise_on_fail=True):
         node = self._node._resolve_partial_max(key, max_results=1, raise_on_fail=raise_on_fail)
@@ -380,7 +380,7 @@ class BaseNode(anytree.Node):
         if isinstance(node_types, BaseNode.Type):
             node_types = {node_types}
         if not callable(selected):
-            selected = lambda n: (n._selected or not selected)
+            selected = lambda n: (not selected or n._selected)
         def _filter(node):
             return (node._type in node_types and
                     node._available and

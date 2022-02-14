@@ -37,10 +37,13 @@ class ResolverTest(unittest.TestCase):
         module.available = True
         self.module, = lbuild.module.build_modules([module])
 
-        self.repo.add_child(Configuration("config", "", "path.xml"))
-        self.repo.add_child(Configuration("config2", "",
-                                          {"v1": "version1.xml", "v2": "version2.xml"},
-                                          default="v2"))
+        self.config = Configuration("config", "", "path.xml")
+        self.config._selected = True
+        self.repo.add_child(self.config)
+        self.config2 = Configuration("config2", "",
+                {"v1": "version1.xml", "v2": "version2.xml"},
+                default="v2")
+        self.repo.add_child(self.config2)
 
         self.repo.add_child(Option("target", "", default="hosted"))
         self.repo.add_child(NumericOption("foo", "", default=43))
@@ -126,6 +129,10 @@ class ResolverTest(unittest.TestCase):
         resolver = self.module.option_value_resolver
         self.assertEqual("", resolver["repo1:config"])
         self.assertEqual("v2", resolver["repo1:config2"])
+
+        resolver = self.repo.config_resolver
+        self.assertEqual(self.config, resolver["repo1:config"])
+        self.assertEqual(self.config2, resolver["repo1:config2"])
 
 
 if __name__ == '__main__':
