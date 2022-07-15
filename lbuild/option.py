@@ -177,6 +177,8 @@ class BooleanOption(Option):
         Option.__init__(self, name, description, default, dependencies, transform=transform,
                         convert_input=self.input_boolean,
                         convert_output=self.output_boolean)
+        if self._dependency_handler:
+            self._dependency_handler = lambda _input: dependencies(self.output_boolean(_input))
 
     @property
     def values(self):
