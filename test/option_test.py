@@ -248,6 +248,46 @@ class OptionTest(unittest.TestCase):
         with self.assertRaises(le.LbuildOptionConstructionException):
             NumericOption("test", "description", maximum="str")
 
+    def test_should_parse_numeric_multiplier(self):
+        option = NumericOption("test", "description", default=1,
+                               minimum=0, maximum="8Ti")
+        self.assertEqual(1, option.value)
+        option.value = "2K"
+        self.assertEqual(2 * 1000, option.value)
+        option.value = "2Ki*2"
+        self.assertEqual(4 * 1024, option.value)
+        option.value = "3M-1Ki"
+        self.assertEqual(3 * 1000 * 1000 - 1024, option.value)
+        option.value = "3Mi"
+        self.assertEqual(3 * 1024 * 1024, option.value)
+        option.value = "4G"
+        self.assertEqual(4 * 1000 * 1000 * 1000, option.value)
+        option.value = "4Gi # comment"
+        self.assertEqual(4 * 1024 * 1024 * 1024, option.value)
+        option.value = "5T + 1K"
+        self.assertEqual(5 * 1000 * 1000 * 1000 * 1000 + 1000, option.value)
+        option.value = "5Ti + 2Ti"
+        self.assertEqual(7 * 1024 * 1024 * 1024 * 1024, option.value)
+
+        option.value = "1 K"
+        self.assertEqual(1 * 1000, option.value)
+        option.value = "1  Ki"
+        self.assertEqual(1 * 1024, option.value)
+
+        with self.assertRaises(le.LbuildOptionInputException):
+            option.value = "6P"
+        with self.assertRaises(le.LbuildOptionInputException):
+            option.value = "6Pi"
+
+        with self.assertRaises(le.LbuildOptionInputException):
+            option = NumericOption("test", "description", default="3Ti",
+                                   minimum="1Ti", maximum="8Ti+1K*2")
+            option.value = "1Ki"
+        with self.assertRaises(le.LbuildOptionInputException):
+            option = NumericOption("test", "description", default="3Ti",
+                                   minimum="1Ti + 1M", maximum="8Ti")
+            option.value = "9Ti"
+
     def test_should_be_constructable_from_enum(self):
 
         class TestEnum(enum.Enum):

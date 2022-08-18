@@ -804,16 +804,21 @@ option = BooleanOption(name="option-name",
 #### NumericOption
 
 This option allows a number from [-Inf, +Inf]. You can limit this to the
-range [minimum, maximum]. When using floating point numbers here, please be
-aware that not all floating point numbers can be represented as a string
-(like "1/3"). The validation and dependency handlers are passed a numeric value.
+range [minimum, maximum].
+The values can be specified directly as numeric value or as a string, which is
+interpreted using the `eval()` function, so that you can describe values as more
+intuitive formulas when necessary.
+You can also suffix numbers with the SI multipliers `K`, `M`, `G`, `T`, `Ki`,
+`Mi`, `Gi`, and `Ti` to simplify formulas even further.
+Note that you should use strings to specify precise floating point values such
+as "1/3". The validation and dependency handlers are passed a numeric value.
 
 ```python
 option = NumericOption(name="option-name",
                        description="numeric",
                        minimum=0,
-                       maximum=100,
-                       default=50,
+                       maximum="5Mi*2",
+                       default="1K",
                        validate=validate_number,
                        dependencies=add_option_dependencies)
 ```

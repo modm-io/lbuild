@@ -287,11 +287,23 @@ class NumericOption(Option):
             return value
         if isinstance(value, str):
             try:
+                multipliers = [
+                    ("Ki", "*1024"),
+                    ("Mi", "*1024**2"),
+                    ("Gi", "*1024**3"),
+                    ("Ti", "*1024**4"),
+                    ("K" , "*1000"),
+                    ("M" , "*1000**2"),
+                    ("G" , "*1000**3"),
+                    ("T" , "*1000**4"),
+                ]
+                for key, multiplier in multipliers:
+                    value = value.replace(key, multiplier)
                 value = eval(value)
                 if isinstance(value, (int, float)):
                     return value
-            except:
-                pass
+            except Exception as error:
+                raise TypeError("Input must be numeric! {}".format(error))
 
         raise TypeError("Input must be numeric!")
 
