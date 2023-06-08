@@ -149,7 +149,7 @@ class ConfigNode(anytree.AnyNode):
             otherwise.
         """
         configs = []
-        startpath = Path(startpath) if startpath else Path.cwd()
+        startpath = Path(os.path.abspath(startpath)) if startpath else Path.cwd()
         while startpath.exists():
             config = (startpath / name)
             if config.exists():
