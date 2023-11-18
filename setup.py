@@ -17,7 +17,7 @@ with open("README.md") as f:
 setup(
     name = "lbuild",
     version = __version__,
-    python_requires=">=3.5.0",
+    python_requires=">=3.8.0",
     entry_points={
         "console_scripts": [
             "lbuild = lbuild.main:main",
@@ -58,7 +58,6 @@ setup(
         "Operating System :: OS Independent",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.5",
         "Topic :: Software Development",
         "Topic :: Software Development :: Code Generators",
         "Topic :: Software Development :: Embedded Systems",
