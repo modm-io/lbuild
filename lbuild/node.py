@@ -134,7 +134,7 @@ class NameResolver:
             try:
                 node = context_resolver._get_node(node._destination)
                 warning += node.description + "\n"
-            except LbuildException as e:
+            except le.LbuildException as e:
                 LOGGER.warning(warning)
                 raise e
             if alias._print_warning:
