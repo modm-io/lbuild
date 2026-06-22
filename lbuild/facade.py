@@ -266,7 +266,7 @@ class EnvironmentValidateFacade:
         return self._env.cwdpath(*path)
 
     def cwdoutpath(self, *path):
-        return self._env.pcwdoutpath(*path)
+        return self._env.cwdoutpath(*path)
 
     def relcwdoutpath(self, *path):
         return self._env.relcwdoutpath(*path)
