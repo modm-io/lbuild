@@ -330,7 +330,7 @@ class Environment:
 
     def cwdoutpath(self, *path):
         """Relocate given path to the outpath in respect to current working directory"""
-        return self.outpath("", basepath="")
+        return self.outpath("", basepath="", *path)
 
     def relcwdoutpath(self, *path):
         """Relocate given path to the outpath in respect to current working directory"""
