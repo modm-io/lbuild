@@ -178,9 +178,9 @@ class Repository(BaseNode):
         found_one_module = False
         for path, _, files in os.walk(basepath):
             for file in files:
-                if any(fnmatch.fnmatch(file, i) for i in ignore):
+                if not fnmatch.fnmatch(file, modulefile):
                     continue
-                if fnmatch.fnmatch(file, modulefile):
+                if not any(fnmatch.fnmatch(file, i) for i in ignore):
                     modulefilepath = os.path.normpath(os.path.join(path, file))
                     self._module_files.append(modulefilepath)
                     found_one_module = True
