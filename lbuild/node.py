@@ -237,6 +237,16 @@ class BaseNode(anytree.Node):
         self._format_short_description = self._format_short_description_default
         self._ignore_patterns = lbuild.utils.DEFAULT_IGNORE_PATTERNS
         self._filters = lbuild.filter.DEFAULT_FILTERS
+        # Name lookups of this tree, only valid while this node is the root
+        self._resolve_cache = {}
+
+    # Any change of the tree structure invalidates the cached name lookups
+    def _post_attach(self, parent):
+        self.root._resolve_cache = {}
+
+    def _post_detach(self, parent):
+        parent.root._resolve_cache = {}
+        self._resolve_cache = {}
 
     @property
     def format_description(self):
@@ -439,6 +449,12 @@ class BaseNode(anytree.Node):
         return resolved2 if len(resolved2) < len(resolved1) else resolved1
 
     def _resolve(self, query, default):
+        cache = self.root._resolve_cache
+        if (modules := cache.get(query)) is None:
+            modules = cache[query] = self._resolve_uncached(query)
+        return list(modules) if modules else default
+
+    def _resolve_uncached(self, query):
         # :*   -> non-recursive
         # :**  -> recursive
         query = ":".join(p if p else "*" for p in query.strip().split(":"))
@@ -448,14 +464,14 @@ class BaseNode(anytree.Node):
                 qquery = ":lbuild" + qquery
             found_modules = BaseNode.resolver.glob(self.root, qquery)
         except (anytree.resolver.ChildResolverError, anytree.resolver.ResolverError):
-            return default
+            return []
 
         modules = found_modules
         if query.endswith(":**"):
             for module in found_modules:
                 modules.extend(module.descendants)
 
-        return modules if modules else default
+        return modules
 
     def _fill_partial_name(self, partial_name):
         """
