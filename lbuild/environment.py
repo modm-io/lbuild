@@ -15,6 +15,7 @@ import logging
 import zipfile
 import tarfile
 import tempfile
+import functools
 
 import jinja2
 
@@ -26,6 +27,28 @@ from .parser import Parser
 
 SIMULATE = False
 SYMLINK_ON_COPY = False
+
+
+class _BytecodeCache(jinja2.FileSystemBytecodeCache):
+    """
+    Share compiled templates across all module environments and lbuild runs.
+    Stored in the per-user temp directory, keyed by template path and source checksum.
+    """
+    def dump_bytecode(self, bucket):
+        try:
+            super().dump_bytecode(bucket)
+        except OSError:
+            pass  # the cache is only an optimization, never fail the build
+
+
+@functools.cache
+def _bytecode_cache():
+    # Versions in the filename, so that upgrading Jinja2 or lbuild starts a fresh cache
+    pattern = f"__jinja2_%s.{jinja2.__version__}.{lbuild.__version__}.cache"
+    try:
+        return _BytecodeCache(pattern=pattern)
+    except (OSError, RuntimeError):
+        return None  # no usable temp directory, so compile without cache
 
 def default_fn_copy(src, dst):
     if os.path.lexists(dst):
@@ -431,7 +454,8 @@ class Environment:
 
         environment = RelEnvironment(loader=jinja2.FileSystemLoader(self.__repopath),
                                      extensions=['jinja2.ext.do'],
-                                     undefined=jinja2.StrictUndefined)
+                                     undefined=jinja2.StrictUndefined,
+                                     bytecode_cache=_bytecode_cache())
 
         environment.filters.update(self.__module._filters)
         environment.filters.update(filters)
