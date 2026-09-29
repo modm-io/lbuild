@@ -17,7 +17,7 @@ with open("README.md") as f:
 setup(
     name = "lbuild",
     version = __version__,
-    python_requires=">=3.8.0",
+    python_requires=">=3.11.0",
     entry_points={
         "console_scripts": [
             "lbuild = lbuild.main:main",
