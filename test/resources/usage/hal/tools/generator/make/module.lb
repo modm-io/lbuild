@@ -1,0 +1,58 @@
+def init(module):
+    module.name = ":build:make"
+    module.description = FileReader("module.md")
+    # Needs to know about all generated files, so it must run last
+    module.order = 10000
+
+
+def prepare(module, options):
+    module.add_option(
+        BooleanOption(name="include_makefile",
+                      description="Generate a Makefile into the project folder",
+                      default=True))
+    module.add_collector(
+        CallableCollector(name="flag_format", description="Formats a flag for Make"))
+
+    # These options moved up into the parent module
+    module.add_alias(
+        Alias(name="project.name", destination=":build:project.name",
+              description="Moved into the build module"))
+    module.add_alias(
+        Alias(name="info", destination=":build:info",
+              description="Moved into the build module"))
+    return True
+
+
+def build(env):
+    def flag_format(flag):
+        if flag.startswith("-D"):
+            return "$(DEFINE){}".format(flag[2:])
+        return None
+    env.collect("flag_format", flag_format)
+
+
+def post_build(env):
+    def format_flag(flag):
+        for formatter in env.collector_values("flag_format"):
+            formatted = formatter(flag)
+            if formatted:
+                return formatted
+        return flag
+
+    sources = env.query("::source_files")
+    for repo in sorted(sources):
+        flags = env.query("::collect_flags")(env, lambda scope: scope.repository == repo)
+        env.outbasepath = repo
+        env.template("repo.mk.in", "repo.mk",
+                     substitutions={"repo": repo, "sources": sources[repo], "flags": flags},
+                     filters={"format_flag": format_flag,
+                              "relocate": lambda path: env.relative_outpath(path, repo)})
+
+    # This is the only file that is generated outside of the output folder
+    if env["include_makefile"]:
+        env.outbasepath = env.cwdpath(".")
+        env.template("Makefile.in", substitutions={
+            "name": env["::project.name"],
+            "repositories": sorted(sources),
+            "output": env.relcwdoutpath(""),
+        })

@@ -1,0 +1,21 @@
+<library>
+  <extends>hal:alpha</extends>
+  <repositories>
+    <repository><path>../app/repo.lb</path></repository>
+  </repositories>
+  <outpath>generated</outpath>
+  <options>
+    <option name="hal:build:project.name">project</option>
+    <option name="hal:build:build.path">../build/project</option>
+    <option name="hal:core:stack_size">4Ki</option>
+    <option name="hal:math:tables">sine, sine, log</option>
+    <option name="hal:math:precision">8, 16</option>
+  </options>
+  <modules>
+    <module>hal:math:*</module>
+    <module>app:demo</module>
+  </modules>
+  <collectors>
+    <collect name="hal:build:define">FROM_PROJECT=2</collect>
+  </collectors>
+</library>

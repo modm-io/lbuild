@@ -1,0 +1,103 @@
+import re
+from pathlib import Path
+
+import lbuild
+
+# Libraries check for the lbuild version they require
+if tuple(map(int, lbuild.__version__.split("."))) < (1, 21, 0):
+    raise ImportError("lbuild is too old!")
+
+# name -> {driver: instances}
+DEVICES = {
+    "arm32f4": {"core": ["cortex"], "uart": [1, 2], "heap": [0], "flash": [0]},
+    "avr8a": {"core": ["avr"], "uart": [0]},
+    "host": {"core": ["hosted"], "heap": [0]},
+}
+
+
+class Device:
+    def __init__(self, name, drivers):
+        self.name = name
+        self.drivers = drivers
+        self.revision = ""
+
+    def has_driver(self, name):
+        return name in self.drivers
+
+    def instances(self, name):
+        return self.drivers.get(name, [])
+
+
+class DeviceDatabase(dict):
+    """The devices are expensive to create, so only do it on first access."""
+    created = []
+
+    def __init__(self):
+        dict.__init__(self, {name: None for name in DEVICES})
+
+    def __getitem__(self, name):
+        if dict.__getitem__(self, name) is None:
+            DeviceDatabase.created.append(name)
+            self[name] = Device(name, DEVICES[name])
+        return dict.__getitem__(self, name)
+
+
+class DeviceOption(EnumerationOption):
+    """Accepts an identifier with a revision suffix and a longer name than required."""
+
+    def as_enumeration(self, value):
+        name, _, revision = self._obj_to_str(value).partition("-rev")
+        candidate = name
+        while len(candidate) >= 4:
+            if candidate in self._enumeration:
+                device = self._enumeration[candidate]
+                device.revision = revision
+                return device
+            candidate = candidate[:-1]
+        if any(key.startswith(name) for key in self._enumeration):
+            raise ValueError("Device is ambiguous!")
+        raise TypeError("Device is unknown!")
+
+
+def format_description(node, description):
+    # Descriptions are Markdown, make the headings stand out
+    description = re.sub(r"^#+ (.*)$", lambda m: m.group(1).upper(), description, flags=re.M)
+    return node.format_description(node, description)
+
+
+def format_short_description(node, description):
+    return node.format_short_description(node, description.replace("#", ""))
+
+
+def init(repo):
+    repo.name = "hal"
+    repo.description = FileReader("README.md")
+    repo.format_description = format_description
+    repo.format_short_description = format_short_description
+    repo.add_ignore_patterns("*/*.lb", "*/board*.xml")
+
+    # Every board comes with a configuration that can be inherited by its name
+    for board in sorted(Path(repopath("src/board")).glob("*/board.xml")):
+        name = board.parent.name
+        revisions = {"": str(board)}
+        if name == "alpha":
+            revisions = {"rev2": board, "rev1": board.with_name("board_rev1.xml")}
+        repo.add_configuration(Configuration(name, "Board {}".format(name),
+                                             revisions, sorted(revisions)[-1]))
+
+    repo.add_filter("hal.hex", lambda value: "0x{:04x}".format(value))
+    repo.add_filter("hal.guard", lambda path: re.sub(r"\W", "_", path).upper())
+
+    repo.add_option(
+        DeviceOption(name="target",
+                     description="# Target device\n\nMeets the device database.",
+                     enumeration=DeviceDatabase()))
+
+
+def prepare(repo, options):
+    repo.add_modules_recursive("src", modulefile="*.lb")
+    repo.add_modules_recursive("tools", modulefile="*.lb")
+
+
+def build(env):
+    env.collect(":build:path.include", "hal/src")

@@ -1,0 +1,8 @@
+def init(repo):
+    repo.name = "app"
+    repo.description = "Application modules living outside of the library"
+
+
+def prepare(repo, options):
+    # Finds every module next to this file, but not this file itself
+    repo.add_modules_recursive(".", modulefile="*.lb")

@@ -1,0 +1,30 @@
+def init(module):
+    module.name = ":math"
+    module.description = """# Math
+
+Lookup tables and filters.
+"""
+
+
+def prepare(module, options):
+    module.add_set_option(
+        EnumerationOption(name="tables",
+                          description="Tables to generate",
+                          enumeration=["sine", "log", "gamma"]),
+        default="sine")
+    module.add_list_option(
+        NumericOption(name="precision",
+                      description="Bit width of every table",
+                      minimum=1, maximum=32),
+        default=[8])
+    return True
+
+
+def build(env):
+    env.outbasepath = "hal/src/math"
+    # Everything but the tests, templates and scratch files
+    env.copy(".", ignore=env.ignore_paths("*/test", "*.tmp", "*.in"))
+    for table in env["tables"]:
+        for precision in env["precision"]:
+            env.template("table.hpp.in", "table_{}_{}.hpp".format(table, precision),
+                         substitutions={"table": table, "precision": precision})

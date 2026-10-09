@@ -1,0 +1,11 @@
+<library>
+  <repositories>
+    <repository><path>../../../repo.lb</path></repository>
+  </repositories>
+  <options>
+    <option name="hal:target">avr8a</option>
+  </options>
+  <modules>
+    <module>hal:board:beta</module>
+  </modules>
+</library>

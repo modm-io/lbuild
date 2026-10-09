@@ -1,0 +1,80 @@
+def memories(env):
+    """
+    Computes the memory map of the target device.
+
+    :returns: list of memory dictionaries
+    """
+    device = env[":target"]
+    memories.calls.append(device.name)
+    return [{"name": "ram", "size": env["stack_size"] * 16},
+            {"name": "rom", "size": 0x10000 if device.has_driver("flash") else 0}]
+memories.calls = []
+
+
+def align(value, alignment=8):
+    """Rounds the value up to the next multiple of the alignment."""
+    return (value + alignment - 1) // alignment * alignment
+
+
+def validate_stack(size):
+    if size % 8:
+        raise ValueError("Stack must be 8-byte aligned!")
+
+
+def init(module):
+    module.name = ":core"
+    module.description = FileReader("module.md")
+
+
+def prepare(module, options):
+    core = options[":target"].instances("core")[0]
+
+    module.add_option(
+        NumericOption(name="stack_size",
+                      description="Size of the main stack in bytes",
+                      minimum=256, maximum="64Ki", default="3Ki",
+                      validate=validate_stack))
+    module.add_option(
+        BooleanOption(name="with_heap",
+                      description="Provide dynamic memory",
+                      default=False,
+                      dependencies=lambda value: ":heap" if value else None))
+    if core == "cortex":
+        module.add_option(
+            EnumerationOption(name="vectors",
+                              description="Location of the vector table",
+                              enumeration={"rom": 0, "ram": 1},
+                              default="rom"))
+
+    module.add_query(EnvironmentQuery(name="memories", factory=memories))
+    module.add_query(Query(name="align", function=align))
+    return True
+
+
+def validate(env):
+    ram = env.query("memories")[0]["size"]
+    if env.get("vectors", 0) and ram < 0x10000:
+        raise ValidateException("Vector table does not fit into {} bytes of RAM!".format(ram))
+    if env["stack_size"] < 512:
+        env.log.warning("A stack of %s bytes is very small!", env["stack_size"])
+
+
+def build(env):
+    device = env[":target"]
+    env.outbasepath = "hal/src/core"
+    env.substitutions = {
+        "device": device.name,
+        "revision": device.revision,
+        "stack_size": env["stack_size"],
+        "memories": env.query("memories"),
+        "with_heap": env.has_module(":heap"),
+        "has_vectors": env.has_option("vectors"),
+    }
+    env.copy("core.hpp")
+    operations = env.template("startup.c.in")
+    # These flags must only apply to the generated startup file
+    env.collect(":build:cflags", "-fno-builtin", operations=operations)
+    if env.has_option("vectors"):
+        env.template("vectors.c.in", "vectors_{}.c".format(device.name),
+                     substitutions={"location": env["vectors"]},
+                     filters={"address": lambda index: index * 4})

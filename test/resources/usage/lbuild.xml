@@ -1,0 +1,15 @@
+<library>
+  <!-- Shared defaults for all projects below this folder -->
+  <repositories>
+    <repository><path>hal/repo.lb</path></repository>
+  </repositories>
+  <options>
+    <option name="hal:build:info">all</option>
+  </options>
+  <modules>
+    <module>hal:build:make</module>
+  </modules>
+  <collectors>
+    <collect name="hal:build:define">FROM_BASE_CONFIG=1</collect>
+  </collectors>
+</library>

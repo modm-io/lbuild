@@ -1,0 +1,11 @@
+<library>
+  <repositories>
+    <repository><path>../../../repo.lb</path></repository>
+  </repositories>
+  <options>
+    <option name="hal:target">arm32f4-rev2</option>
+  </options>
+  <modules>
+    <module>hal:board:alpha</module>
+  </modules>
+</library>

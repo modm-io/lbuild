@@ -1,0 +1,11 @@
+// {{ device }}{% if revision %} revision {{ revision }}{% endif %}
+
+%% for memory in memories
+// {{ memory.name }}: {{ memory.size | hal.hex }}
+%% endfor
+%# line comments must not show up in the output
+static char stack[{{ options["stack_size"] }}];
+%% if with_heap
+#define HAS_HEAP
+%% endif
+%% include "detail.in"

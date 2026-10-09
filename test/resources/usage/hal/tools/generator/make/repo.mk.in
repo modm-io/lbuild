@@ -1,0 +1,7 @@
+# {{ repo }}
+%% for source in sources
+SOURCES += {{ source | relocate }}{% for flag in flags.get(source, []) %} [{{ flag | format_flag }}]{% endfor %}
+
+%% endfor
+FLAGS :={% for flag in flags.get(None, []) %} {{ flag | format_flag }}{% endfor %}
+

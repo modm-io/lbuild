@@ -1,0 +1,15 @@
+def init(module):
+    module.name = ":board:beta"
+    module.description = "Beta board"
+
+
+def prepare(module, options):
+    if options[":target"].name != "avr8a":
+        return False
+    module.depends(":core", ":uart:0")
+    return True
+
+
+def build(env):
+    env.outbasepath = "hal/src/board"
+    env.copy("board.hpp")

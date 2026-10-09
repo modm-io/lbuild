@@ -1,0 +1,11 @@
+def init(module):
+    module.name = ":board"
+    module.description = "Board support packages"
+
+
+def prepare(module, options):
+    return True
+
+
+def build(env):
+    pass

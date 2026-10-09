@@ -1,0 +1,4 @@
+NAME := {{ name }}
+%% for repo in repositories
+include {{ output }}/{{ repo }}/repo.mk
+%% endfor

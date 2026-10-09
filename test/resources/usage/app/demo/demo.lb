@@ -1,0 +1,17 @@
+def init(module):
+    module.name = ":demo"
+    module.description = "Demo application"
+
+
+def prepare(module, options):
+    module.depends("hal:math", "hal:build")
+    return True
+
+
+def build(env):
+    env.outbasepath = "app"
+    env.copy("main.cpp")
+    # Other repositories have to be addressed by their full name
+    env.collect("hal:build:path.include", "app")
+    env.collect("hal:build:jobs", 4)
+    env.log.info("Tables: %s", env["hal:math:tables"])

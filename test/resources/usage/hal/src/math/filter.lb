@@ -1,0 +1,14 @@
+def init(module):
+    module.name = ":math:filter"
+    module.description = "Digital filters"
+
+
+def prepare(module, options):
+    module.depends(":math")
+    return True
+
+
+def build(env):
+    # Absolute source paths are fine as long as they stay inside the repository
+    env.outbasepath = "hal/src/math"
+    env.copy(localpath("detail/filter.hpp"), "filter/filter.hpp")

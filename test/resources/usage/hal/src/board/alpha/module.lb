@@ -1,0 +1,24 @@
+def init(module):
+    module.name = ":board:alpha"
+    module.description = "Alpha board"
+
+
+def prepare(module, options):
+    if options[":target"].name != "arm32f4":
+        return False
+
+    module.add_option(
+        BooleanOption(name="with_logger",
+                      description="Log to the on-board serial adapter",
+                      default=True,
+                      dependencies=lambda value: ":uart:2" if value else None))
+    module.depends(":core", ":uart:1")
+    return True
+
+
+def build(env):
+    env.outbasepath = "hal/src/board"
+    env.substitutions = {"logger": env["with_logger"]}
+    env.template("board.hpp.in")
+    env.collect(":build:define", "BOARD_ALPHA")
+    env.collect(":build:path.include", "hal/src/board")

@@ -1,0 +1,17 @@
+def init(module):
+    module.name = ":heap"
+    module.description = "Dynamic memory"
+
+
+def prepare(module, options):
+    if not options[":target"].has_driver("heap"):
+        return False
+    module.depends(":core")
+    return True
+
+
+def build(env):
+    env.outbasepath = "hal/src/heap"
+    # Copies the folder without the documentation
+    env.copy("pool", ignore=env.ignore_files("*.md"))
+    env.collect(":build:library", "heap")

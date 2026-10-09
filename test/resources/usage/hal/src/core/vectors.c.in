@@ -1,0 +1,4 @@
+// location {{ location }}
+%% for index in range(3)
+// vector {{ index }} at {{ index | address | hal.hex }}
+%% endfor

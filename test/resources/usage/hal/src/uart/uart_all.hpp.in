@@ -1,0 +1,5 @@
+#ifndef {{ "hal/uart_all.hpp" | hal.guard }}
+%% for header in headers
+#include "{{ header }}"
+%% endfor
+#endif

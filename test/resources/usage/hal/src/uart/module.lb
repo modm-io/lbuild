@@ -1,0 +1,52 @@
+class Instance(Module):
+    def __init__(self, instance):
+        self.instance = instance
+
+    def init(self, module):
+        module.name = str(self.instance)
+        module.description = "Instance {}".format(self.instance)
+
+    def prepare(self, module, options):
+        module.add_option(
+            NumericOption(name="baudrate",
+                          description="Baudrate in bits per second",
+                          minimum=1200, default=115200))
+        # The buffers moved into the code, tell everyone still using the option
+        module.add_alias(Alias(name="buffer.tx", description="Use a template argument instead."))
+        module.depends(":core")
+        return True
+
+    def validate(self, env):
+        if env["baudrate"] > 1000000:
+            raise ValidateException("Uart{} cannot do {} baud!"
+                                    .format(self.instance, env["baudrate"]))
+
+    def build(self, env):
+        env.outbasepath = "hal/src/uart"
+        env.substitutions = {"id": self.instance, "baudrate": env["baudrate"]}
+        env.template("uart.hpp.in", "uart_{}.hpp".format(self.instance))
+        env.template("uart.cpp.in", "uart_{}.cpp".format(self.instance))
+
+
+def init(module):
+    module.name = ":uart"
+    module.description = "Serial interfaces"
+
+
+def prepare(module, options):
+    device = options[":target"]
+    if not device.has_driver("uart"):
+        return False
+
+    for instance in device.instances("uart"):
+        module.add_submodule(Instance(instance))
+    return True
+
+
+def build(env):
+    env.outbasepath = "hal/src/uart"
+    env.copy("uart_base.hpp")
+    # The submodules are built first, so that their files can be summarized
+    headers = env.generated_local_files(filterfunc=lambda path: "uart_" in path and
+                                                                path.endswith(".hpp"))
+    env.template("uart_all.hpp.in", substitutions={"headers": sorted(headers)})

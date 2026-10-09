@@ -1,0 +1,135 @@
+import os
+from collections import defaultdict
+
+
+class Documentation:
+    """Only assembles the documentation when somebody reads it."""
+    reads = 0
+
+    def __str__(self):
+        Documentation.reads += 1
+        with open(localpath("module.md")) as text:
+            return text.read() + "\nScripts live in " + repopath("tools/scripts")
+
+
+def source_files(env):
+    """
+    Finds all generated source files that need to be compiled.
+
+    :returns: dictionary of repository name to sorted list of filenames
+    """
+    sources = defaultdict(list)
+    for operation in env.buildlog:
+        if os.path.splitext(operation.filename)[-1] in [".c", ".cpp"]:
+            sources[operation.repository].append(operation.filename)
+    return {repo: sorted(files) for repo, files in sources.items()}
+
+
+def collect_flags(env, scope_filter=None):
+    """
+    Sorts the compile flags by the file they apply to.
+
+    :returns: dictionary of filename (`None` for all files) to list of flags
+    """
+    flags = defaultdict(list)
+    for scope, values in env.collector(":build:cflags").items():
+        if scope_filter is None or scope_filter(scope):
+            flags[scope.filename if scope.has_filename else None].extend(values)
+    return dict(flags)
+
+
+def init(module):
+    module.name = ":build"
+    module.description = Documentation()
+
+
+def prepare(module, options):
+    device = options[":target"]
+
+    module.add_option(
+        StringOption(name="project.name",
+                     description="Name of the executable",
+                     default=os.path.basename(os.getcwd()).replace(".", "_")))
+    module.add_option(
+        PathOption(name="build.path",
+                   description="Folder for the build artifacts",
+                   default="build", absolute=True))
+    module.add_option(
+        PathOption(name="image.source",
+                   description="Folder with images to convert",
+                   default="", empty_ok=True, absolute=True))
+    module.add_option(
+        EnumerationOption(name="info",
+                          description="Information compiled into the executable",
+                          enumeration=["off", "git", "all"],
+                          default="off"))
+
+    module.add_query(EnvironmentQuery(name="source_files", factory=source_files))
+    module.add_query(Query(name="collect_flags", function=collect_flags))
+
+    def validate_flag(flag):
+        if not flag.startswith("-"):
+            raise ValueError("Flags must start with '-'!")
+
+    def validate_library(library):
+        if library.startswith("lib") or library.endswith(".a"):
+            raise ValueError("Only pass the name of the library!")
+
+    module.add_collector(
+        PathCollector(name="path.include", description="Search paths for header files"))
+    module.add_collector(
+        StringCollector(name="library", description="Libraries to link against",
+                        validate=validate_library))
+    module.add_collector(
+        StringCollector(name="define", description="Preprocessor definitions"))
+    module.add_collector(
+        StringCollector(name="cflags", description="Compile flags", validate=validate_flag))
+    module.add_collector(
+        NumericCollector(name="jobs", description="Parallel compile jobs", minimum=1))
+    if device.has_driver("flash"):
+        module.add_collector(
+            PathCollector(name="flash.script", description="Scripts for the programmer"))
+    return True
+
+
+def build(env):
+    env.outbasepath = "hal"
+    # Not all devices can be programmed
+    if env.has_collector(":build:flash.script"):
+        env.collect(":build:flash.script", "hal/tools/flash.cfg")
+        env.copy("flash.cfg", "tools/flash.cfg")
+    # The tools are shared with other modules and located next to this one
+    env.copy(localpath("../scripts/size.py"), "tools/size.py")
+    if env["info"] != "off":
+        env.template("info.c.in", "src/info.c", substitutions={"level": env["info"]})
+        env.collect("cflags", "-DINFO")
+
+
+def post_build(env):
+    # Only the repositories that generated files into their own folder
+    repositories = sorted(repo for repo in env.buildlog.repositories
+                          if os.path.isdir(env.real_outpath(repo, basepath=".")))
+
+    report = {}
+    for repo in repositories:
+        in_repo = lambda scope: scope.repository == repo
+        report[repo] = {
+            "includes": [env.relative_outpath(path, repo) for path in
+                         env.collector_values("path.include", filterfunc=in_repo)],
+            "defines": env.collector_values("define", filterfunc=in_repo),
+            "libraries": env.collector_values(":build:library", filterfunc=in_repo),
+        }
+
+    env.outbasepath = "hal"
+    env.substitutions = {
+        "name": env["project.name"],
+        "report": report,
+        "build_path": env.relcwdoutpath(env["build.path"]),
+        "image_path": env["image.source"],
+        "output": env.relcwdoutpath(""),
+        "jobs": env.collector_values("jobs", 1)[0],
+        "flash": env.collector_values(":build:flash.script", []),
+        "memories": env.query(":core:memories") if env.has_module(":core") else [],
+        "has_uart": env.has_module(":uart"),
+    }
+    env.template("report.json.in")

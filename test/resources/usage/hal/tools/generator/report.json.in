@@ -1,0 +1,12 @@
+{
+  "name": {{ name | tojson }},
+  "build_path": {{ build_path | tojson }},
+  "image_path": {{ image_path | tojson }},
+  "output": {{ output | tojson }},
+  "jobs": {{ jobs }},
+  "flash": {{ flash | tojson }},
+  "memories": {{ memories | tojson }},
+  "has_uart": {{ has_uart | tojson }},
+  "defines": {{ collector_values["define"] | tojson }},
+  "repositories": {{ report | tojson }}
+}
