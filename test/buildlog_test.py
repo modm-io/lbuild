@@ -11,7 +11,9 @@
 
 import os
 import sys
+import ntpath
 import unittest
+from unittest import mock
 
 # Hack to support the usage of `coverage`
 sys.path.append(os.path.abspath("."))
@@ -99,6 +101,23 @@ class BuildLogTest(unittest.TestCase):
         self.assertEqual("/m1/in1", o1.filename_in)
         self.assertEqual("in1", o1.local_filename_in())
         self.assertEqual("out1", o1.local_filename_out("test"))
+
+    def test_should_create_local_path_with_forward_slashes(self):
+        # Use the Windows path functions on every host
+        names = ["join", "relpath", "dirname", "normpath", "basename", "isabs", "abspath"]
+        with mock.patch.multiple("lbuild.buildlog", **{n: getattr(ntpath, n) for n in names}), \
+             mock.patch("os.path", ntpath), mock.patch("os.sep", "\\"):
+            log = lbuild.buildlog.BuildLog("C:\\project\\out", cwd="C:\\project")
+            self.module1._filename = "C:\\repo\\m1\\module.lb"
+            o1 = log.log(self.module1, "sub\\in1", "generated\\nanopb\\out1")
+
+            self.assertEqual("C:\\project\\out\\generated\\nanopb\\out1", o1.filename_out)
+            self.assertEqual("sub/in1", o1.local_filename_in())
+            self.assertEqual("generated/nanopb/out1", o1.local_filename_out())
+            self.assertEqual("nanopb/out1", o1.local_filename_out("generated"))
+            self.assertEqual("out/generated/nanopb/out1", o1.local_filename_out(".."))
+            self.assertEqual("generated/nanopb/out1",
+                             lbuild.facade.BuildLogOperationFacade(o1).filename)
 
 
 if __name__ == '__main__':

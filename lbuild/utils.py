@@ -29,6 +29,16 @@ DEFAULT_IGNORE_PATTERNS = [
 ]
 
 
+def posixpath(path):
+    """
+    Convert a relative path to forward slashes on every host.
+
+    Paths that are written into generated files must not contain the
+    backslashes of a Windows path, since they are escape characters there.
+    """
+    return path.replace(os.sep, "/")
+
+
 def ignore_files(*files):
     """
     Ignore file and folder names without checking the full path.

@@ -19,6 +19,7 @@ import lxml.etree
 import lbuild.utils
 
 from .exception import LbuildBuildlogOverwritingFileException
+from .utils import posixpath
 
 LOGGER = logging.getLogger('lbuild.buildlog')
 
@@ -62,7 +63,7 @@ class Operation:
     @staticmethod
     def _local_filename(filename, path):
         localfile = join(relpath(dirname(filename), path), basename(filename))
-        return normpath(localfile)
+        return posixpath(normpath(localfile))
 
     def __repr__(self):
         return "<{}: {} -> {}>".format(self.module_name, self.filename_in, self.filename_out)

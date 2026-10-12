@@ -24,6 +24,7 @@ import lbuild.utils
 import lbuild.facade as lf
 import lbuild.exception as le
 from .parser import Parser
+from .utils import posixpath
 
 SIMULATE = False
 SYMLINK_ON_COPY = False
@@ -359,7 +360,7 @@ class Environment:
         """Relocate given path to the outpath in respect to current working directory"""
         relative = self.cwdpath("")
         path = os.path.join(self.cwdoutpath(""), *path)
-        return os.path.relpath(os.path.abspath(path), os.path.abspath(relative))
+        return posixpath(os.path.relpath(os.path.abspath(path), os.path.abspath(relative)))
 
     def reloutpath(self, path, relative=None):
         if relative is None:
@@ -367,7 +368,7 @@ class Environment:
         else:
             relative = os.path.join(self.__outpath, relative)
         path = os.path.join(self.__outpath, path)
-        return os.path.relpath(os.path.abspath(path), os.path.abspath(relative))
+        return posixpath(os.path.relpath(os.path.abspath(path), os.path.abspath(relative)))
 
     def generated_local_files(self, filterfunc=None):
         """
@@ -382,10 +383,10 @@ class Environment:
         filenames = []
         operations = self.buildlog.operations_per_module(self.__module.fullname)
         for operation in operations:
-            filename = os.path.normpath(
+            filename = posixpath(os.path.normpath(
                 os.path.join(os.path.relpath(os.path.dirname(operation.filename_out),
                                              self.outpath('.')),
-                             os.path.basename(operation.filename_out)))
+                             os.path.basename(operation.filename_out))))
             if filterfunc is None or filterfunc(filename):
                 filenames.append(filename)
         return filenames
