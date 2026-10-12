@@ -15,23 +15,21 @@ pylint:
 
 dist:
 	@rm -rf dist
-	@python3 setup.py sdist bdist_wheel
+	@python3 -m build
 
 install:
-	@python3 setup.py install --record uninstall.txt
+	@pip3 install .
 
 install-user:
-	@python3 setup.py install --user
+	@pip3 install --user .
 
 install-prerequisites:
-	sudo -H pip3 install -r requirements.txt
+	pip3 install -e .[test]
 
 upload: dist
 	@twine upload --skip-existing dist/*
 
-# TODO: Also remove folder
 uninstall:
-	@cat uninstall.txt | xargs rm -rf
-#rm -rf installed_files.txt
+	@pip3 uninstall -y lbuild
 
 .PHONY : test dist install uninstall upload

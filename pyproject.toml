@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=77", "setuptools-git-versioning>=3,<4"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lbuild"
+authors = [
+    {name = "Fabian Greif", email = "fabian.greif@rwth-aachen.de"},
+    {name = "Niklas Hauser", email = "niklas@salkinium.com"},
+]
+description = "Generic, modular code generator using the Jinja2 template engine."
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = ["library", "builder", "generator"]
+license = "BSD-2-Clause"
+license-files = ["LICENSE.txt"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Software Development :: Embedded Systems",
+]
+dependencies = [
+    "lxml>=5.3.0",
+    "jinja2>=3.1.6",
+    "gitpython>=3.1.41",
+    "anytree>=2.12.1",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+test = ["testfixtures>=10", "coverage>=7.6"]
+
+[project.scripts]
+lbuild = "lbuild.main:main"
+
+[project.urls]
+"GitHub" = "https://github.com/modm-io/lbuild"
+
+[tool.setuptools.packages.find]
+include = ["lbuild*"]
+
+[tool.setuptools.package-data]
+lbuild = ["resources/*"]
+
+# The version is the latest `v1.2.3` git tag.
+[tool.setuptools-git-versioning]
+enabled = true

@@ -13,6 +13,7 @@ import os
 import re
 import sys
 import argparse
+import importlib.metadata
 import traceback
 import textwrap
 
@@ -22,7 +23,14 @@ from lbuild.format import format_option_short_description
 
 from lbuild.api import Builder
 
-__version__ = '1.23.0'
+try:
+    # Set from the git tag at build time, e.g. `1.23.0.post3+git.abcdef12`
+    __full_version__ = importlib.metadata.version("lbuild")
+except importlib.metadata.PackageNotFoundError:
+    # Running from a source checkout without installation
+    __full_version__ = "0.0.0"
+# Plain `X.Y.Z` so that users can compare it without parsing PEP 440
+__version__ = re.match(r"\d+(\.\d+)*", __full_version__).group(0)
 
 
 class InitAction:
@@ -488,7 +496,7 @@ def prepare_argument_parser():
     argument_parser.add_argument(
         '--version',
         action='version',
-        version='%(prog)s {}'.format(__version__),
+        version='%(prog)s {}'.format(__full_version__),
         help="Print the lbuild version number and exit.")
 
     subparsers = argument_parser.add_subparsers(
