@@ -12,7 +12,9 @@
 import os
 import sys
 import enum
+import ntpath
 import unittest
+from unittest import mock
 
 # Hack to support the usage of `coverage`
 sys.path.append(os.path.abspath("."))
@@ -183,6 +185,18 @@ class OptionTest(unittest.TestCase):
         self.assertEqual("/root/test/filename.txt", option.value)
         option.value = "/absolute/filename.txt"
         self.assertEqual("/absolute/filename.txt", option.value)
+
+    def test_should_return_relative_path_with_forward_slashes(self):
+        option = PathOption("test", "description", default="build")
+        # Use the Windows separator on every host
+        with mock.patch("os.path.isabs", ntpath.isabs), mock.patch("os.sep", "\\"):
+            option.value = "..\\..\\build"
+            self.assertEqual("../../build", option.value)
+            option.value = "path\\folder/file.txt"
+            self.assertEqual("path/folder/file.txt", option.value)
+            # Absolute paths remain native for file system access
+            option.value = "C:\\path\\folder"
+            self.assertEqual("C:\\path\\folder", option.value)
 
     def test_should_be_constructable_from_boolean(self):
         option = BooleanOption("test", "description", False,

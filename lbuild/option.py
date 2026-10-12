@@ -18,6 +18,7 @@ import lbuild.utils
 
 from .node import BaseNode
 from .format import ColorWrapper as _cw
+from .utils import posixpath
 import lbuild.exception as le
 
 LOGGER = logging.getLogger('lbuild.option')
@@ -132,6 +133,9 @@ class PathOption(Option):
         # relocate path relative to the option filepath to absolute
         if self._relocate(path):
             path = os.path.abspath(os.path.join(self._filepath, path))
+        elif not os.path.isabs(path):
+            # relative paths are written into generated files
+            path = posixpath(path)
         return path
 
     def _validate_path(self, path):
