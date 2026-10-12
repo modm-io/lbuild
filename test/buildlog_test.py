@@ -119,6 +119,28 @@ class BuildLogTest(unittest.TestCase):
             self.assertEqual("generated/nanopb/out1",
                              lbuild.facade.BuildLogOperationFacade(o1).filename)
 
+    def test_should_read_xml_with_native_and_forward_slashes(self):
+        # Use the Windows path functions on every host
+        names = ["join", "relpath", "dirname", "normpath", "basename", "isabs", "abspath"]
+        with mock.patch.multiple("lbuild.buildlog", **{n: getattr(ntpath, n) for n in names}), \
+             mock.patch("os.path", ntpath), mock.patch("os.sep", "\\"):
+            log = lbuild.buildlog.BuildLog("C:\\project", cwd="C:\\project")
+            self.module1._filename = "C:\\repo\\m1\\module.lb"
+            log.log(self.module1, "sub\\in1", "generated\\out1")
+
+            xml = log.to_xml(path="C:\\project")
+            self.assertIn(b"<outpath>.</outpath>", xml)
+            self.assertIn(b"<source>../repo/m1/sub/in1</source>", xml)
+            self.assertIn(b"<destination>generated/out1</destination>", xml)
+
+            # Build logs written by previous versions contain native paths
+            for content in [xml, xml.replace(b"/", b"\\").replace(b"<\\", b"</")]:
+                log = lbuild.buildlog.BuildLog.from_xml(content, path="C:\\project")
+                self.assertEqual(["generated/out1"],
+                                 [o.local_filename_out() for o in log.operations])
+                self.assertEqual(["C:\\project\\generated\\out1"],
+                                 [o.filename_out for o in log.operations])
+
 
 if __name__ == '__main__':
     unittest.main()

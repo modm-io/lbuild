@@ -243,16 +243,16 @@ class BuildLog:
 
         with self.__lock:
             outpathnode = lxml.etree.SubElement(rootnode, "outpath")
-            outpathnode.text = relpath(self.outpath, path)
+            outpathnode.text = posixpath(relpath(self.outpath, path))
             for operation in self.operations:
                 operationnode = lxml.etree.SubElement(rootnode, "operation")
 
                 modulenode = lxml.etree.SubElement(operationnode, "module")
                 modulenode.text = operation.module_name
                 srcnode = lxml.etree.SubElement(operationnode, "source")
-                srcnode.text = relpath(operation.filename_in, path)
+                srcnode.text = posixpath(relpath(operation.filename_in, path))
                 destnode = lxml.etree.SubElement(operationnode, "destination")
-                destnode.text = relpath(operation.filename_out, path)
+                destnode.text = posixpath(relpath(operation.filename_out, path))
 
                 if operation.time is not None:
                     timenode = lxml.etree.SubElement(operationnode, "time")
