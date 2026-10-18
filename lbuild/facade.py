@@ -301,13 +301,13 @@ class EnvironmentBuildCommonFacade(EnvironmentValidateFacade):
     def substitutions(self, substitutions):
         self._env.substitutions = substitutions
 
-    def copy(self, src, dest=None, ignore=None, metadata=None):
+    def copy(self, src, dest=None, ignore=None, metadata=None, patch=None):
         if metadata is not None:
             deprecated("1.8.0", "EnvironmentBuild.copy(..., metadata=metadata)",
                                 "operations = env.copy(...)\n"
                                 "for key, values in metadata.items():\n"
                                 "    env.collect(key, *values, operations=operations)")
-        return self._env.copy(src, dest, ignore, metadata)
+        return self._env.copy(src, dest, ignore, metadata, patch)
 
     def extract(self, archive, src=None, dest=None, ignore=None, metadata=None):
         if metadata is not None:
@@ -317,13 +317,13 @@ class EnvironmentBuildCommonFacade(EnvironmentValidateFacade):
                                 "    env.collect(key, *values, operations=operations)")
         return self._env.extract(archive, src, dest, ignore, metadata)
 
-    def template(self, src, dest=None, substitutions=None, filters=None, metadata=None):
+    def template(self, src, dest=None, substitutions=None, filters=None, metadata=None, patch=None):
         if metadata is not None:
             deprecated("1.8.0", "EnvironmentBuild.template(..., metadata=metadata)",
                                 "operations = env.template(...)\n"
                                 "for key, values in metadata.items():\n"
                                 "    env.collect(key, *values, operations=operations)")
-        return self._env.template(src, dest, substitutions, filters, metadata)
+        return self._env.template(src, dest, substitutions, filters, metadata, patch)
 
     def generated_local_files(self, filterfunc=None):
         return self._env.generated_local_files(filterfunc)
