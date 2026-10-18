@@ -11,9 +11,18 @@
 import os
 import logging
 
-import git
+import pygit2
 
 LOGGER = logging.getLogger('lbuild.vcs.git')
+
+
+class _Callbacks(pygit2.RemoteCallbacks):
+    """Authenticates SSH remotes via the SSH agent, like the git binary does."""
+
+    def credentials(self, url, username_from_url, allowed_types):
+        if allowed_types & pygit2.enums.CredentialType.SSH_KEY:
+            return pygit2.KeypairFromAgent(username_from_url or "git")
+        return None
 
 
 class Repository:
@@ -33,10 +42,10 @@ class Repository:
         if self._repo is None:
             if os.path.exists(self.localpath):
                 LOGGER.info("Found existing repository in '%s'", os.path.relpath(self.localpath))
-                self._repo = git.Repo(self.localpath)
+                self._repo = pygit2.Repository(self.localpath)
             else:
                 LOGGER.info("Cloning repository '%s' into '%s'", self.name, os.path.relpath(self.localpath))
-                self._repo = git.Repo.clone_from(self.url, self.localpath)
+                self._repo = pygit2.clone_repository(self.url, self.localpath, callbacks=_Callbacks())
         return self._repo
 
     def initialize(self):
@@ -46,29 +55,53 @@ class Repository:
         elif self.branch is not None:
             self.switch_to_branch(repo, self.branch)
         LOGGER.info("Updating submodules recursively")
-        repo.git.submodule('update', '--init', '--recursive')
+        self.update_submodules(repo)
 
     def update(self):
         repo = self.get_repository()
         LOGGER.info("Updating repository '%s' from origin", self.name)
-        origin = repo.remotes.origin
-        origin.pull()
-        repo.git.submodule('sync')
-        repo.git.submodule('update', '--recursive')
+        repo.remotes["origin"].fetch(callbacks=_Callbacks())
+        if not repo.head_is_detached:
+            # Fast-forward only, like `git pull --ff-only`
+            upstream = repo.branches.local[repo.head.shorthand].upstream
+            if upstream is not None and upstream.target != repo.head.target:
+                analysis, _ = repo.merge_analysis(upstream.target)
+                if not analysis & pygit2.enums.MergeAnalysis.FASTFORWARD:
+                    raise pygit2.GitError("Cannot fast-forward '{}' to '{}'!"
+                                          .format(repo.head.shorthand, upstream.shorthand))
+                repo.checkout_tree(repo[upstream.target])
+                repo.head.set_target(upstream.target)
+        self.update_submodules(repo, sync=True)
+
+    @staticmethod
+    def update_submodules(repo, sync=False):
+        for submodule in repo.submodules:
+            if sync:
+                # Copy the URL from .gitmodules to .git/config, like `git submodule sync`
+                submodule.init(overwrite=True)
+            repo.submodules.update([submodule.path], init=True, callbacks=_Callbacks())
+            subrepo = submodule.open()
+            if sync:
+                subrepo.remotes.set_url("origin", submodule.url)
+            Repository.update_submodules(subrepo, sync)
 
     @staticmethod
     def switch_to_commit(repo, commit):
-        if not repo.head.commit.hexsha.startswith(commit):
+        if not str(repo.head.target).startswith(commit):
             LOGGER.info("Switching to commit '%s'", commit)
-            past_branch = repo.create_head("past_branch", commit)
-            repo.head.reference = past_branch
-            repo.head.reset(index=True, working_tree=True)
-            repo.heads.past_branch.checkout()
+            target = repo.revparse_single(commit).peel(pygit2.Commit)
+            past_branch = repo.branches.local.create("past_branch", target, force=True)
+            repo.checkout(past_branch, strategy=pygit2.enums.CheckoutStrategy.FORCE)
 
     @staticmethod
     def switch_to_branch(repo, branch):
-        active_branch = repo.active_branch
-        if str(active_branch) != branch:
+        active_branch = repo.head.shorthand
+        if active_branch != branch:
             LOGGER.info("Switching from branch '%s' to '%s'", active_branch, branch)
-            git_cmd = repo.git
-            git_cmd.checkout(branch)
+            local = repo.branches.local.get(branch)
+            if local is None:
+                # Create a tracking branch, like `git checkout <branch>`
+                remote = repo.branches.remote["origin/" + branch]
+                local = repo.branches.local.create(branch, remote.peel(pygit2.Commit))
+                local.upstream = remote
+            repo.checkout(local)

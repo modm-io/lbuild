@@ -11,7 +11,6 @@
 import os
 import sys
 import tarfile
-import warnings
 import unittest
 import testfixtures
 
@@ -130,11 +129,6 @@ class GitTest(unittest.TestCase):
 
     @testfixtures.tempdir(ignore=[".git/"])
     def test_should_update_repository_after_initialize(self, tempdir):
-        # GitPython does not release a handle to /dev/null is some cases. This
-        # is a known problem but has not been fixed yet. Suppress the
-        # warning for this test to avoid cluttering up the output.
-        warnings.simplefilter("ignore", ResourceWarning)
-
         self.prepare_git_repository(tempdir)
         config_file = self.prepare_config_file(tempdir)
         args = self.prepare_arguments(config_file, ["init", ])

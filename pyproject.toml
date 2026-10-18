@@ -29,7 +29,6 @@ classifiers = [
 dependencies = [
     "lxml>=5.3.0",
     "jinja2>=3.1.6",
-    "gitpython>=3.1.41",
     "anytree>=2.12.1",
     "pygit2>=1.15",
 ]
