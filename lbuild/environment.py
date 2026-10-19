@@ -121,7 +121,9 @@ def _apply_patch(patchpath, root, destpaths, ignored=None):
     """
     with open(patchpath, encoding="utf-8") as patchfile:
         try:
-            diff = pygit2.Diff.parse_diff(patchfile.read())
+            # Line endings are normalized, since git may check out files with
+            # CRLF on Windows, see `core.autocrlf`.
+            diff = pygit2.Diff.parse_diff(patchfile.read().replace("\r\n", "\n"))
         except Exception as error:
             return "Patch is malformed: {}".format(error)
     if not len(diff):
@@ -142,11 +144,17 @@ def _apply_patch(patchpath, root, destpaths, ignored=None):
                 delta.new_file.path)
         srcpaths[delta.new_file.path] = srcpath
 
+    crlfpaths = set()
     with tempfile.TemporaryDirectory() as tempdir:
         repo = pygit2.init_repository(tempdir)
         for relpath, path in srcpaths.items():
             with open(path, "rb") as file:
-                blob = repo.create_blob(file.read())
+                content = file.read()
+            # ponytail: converts mixed line endings to CRLF entirely
+            if b"\r\n" in content:
+                crlfpaths.add(relpath)
+                content = content.replace(b"\r\n", b"\n")
+            blob = repo.create_blob(content)
             repo.index.add(pygit2.IndexEntry(relpath, blob, pygit2.enums.FileMode.BLOB))
         repo.index.write()
         try:
@@ -162,8 +170,11 @@ def _apply_patch(patchpath, root, destpaths, ignored=None):
             # Never write through a symlinked copy into its source file
             if os.path.islink(path):
                 os.remove(path)
+            content = repo[index[delta.new_file.path].id].data
+            if delta.new_file.path in crlfpaths:
+                content = content.replace(b"\n", b"\r\n")
             with open(path, "wb") as file:
-                file.write(repo[index[delta.new_file.path].id].data)
+                file.write(content)
     return None
 
 

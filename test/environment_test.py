@@ -132,6 +132,19 @@ class EnvironmentTest(unittest.TestCase):
                 with self.assertRaises(le.LbuildEnvironmentPatchException):
                     env.copy("folder", "dir", ignore=lbuild.utils.ignore_files("b.c"), patch="fix.patch")
 
+    def test_should_patch_files_with_crlf_line_endings(self):
+        for crlf_file, crlf_patch in [(True, False), (False, True), (True, True)]:
+            with self.subTest(crlf_file=crlf_file, crlf_patch=crlf_patch):
+                patch = self._diff("file.c")
+                env, repo = self._patch_environment(patch.replace("\n", "\r\n") if crlf_patch else patch)
+                if crlf_file:
+                    with open(os.path.join(repo, "file.c"), "w", newline="\r\n") as file:
+                        file.write("one\ntwo\nthree\n")
+                env.copy("file.c", patch="fix.patch")
+                with open(env.outpath("file.c"), "rb") as file:
+                    content = b"one\nTWO\nthree\n"
+                    self.assertEqual(content.replace(b"\n", b"\r\n") if crlf_file else content, file.read())
+
     def test_should_patch_templated_file(self):
         env, _ = self._patch_environment(self._diff("template.c", first="1"))
         env.template("template.c.in", substitutions={"value": 1}, patch="fix.patch")
