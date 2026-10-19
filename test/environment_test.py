@@ -111,6 +111,27 @@ class EnvironmentTest(unittest.TestCase):
         self.assertEqual("one\ntwo\nthree\n", self._read(env, "dir/a.c"))
         self.assertEqual("one\nTWO\nthree\n", self._read(env, "dir/b.c"))
 
+    def test_should_skip_patch_of_ignored_files(self):
+        patch = self._diff("dir/a.c") + self._diff("dir/b.c")
+        env, repo = self._patch_environment(patch)
+        env.copy("folder", "dir", ignore=lbuild.utils.ignore_files("b.c"), patch="fix.patch")
+        self.assertEqual("one\nTWO\nthree\n", self._read(env, "dir/a.c"))
+        self.assertFalse(os.path.exists(env.outpath("dir/b.c")))
+        with open(os.path.join(repo, "folder/b.c")) as file:
+            self.assertEqual("one\ntwo\nthree\n", file.read())
+
+        failures = [
+            # Ignored files must still be patchable
+            self._diff("dir/a.c") + self._diff("dir/b.c", old="zwei"),
+            # Files missing in the source folder
+            patch + self._diff("dir/c.c"),
+        ]
+        for patch in failures:
+            with self.subTest(patch=patch):
+                env, _ = self._patch_environment(patch)
+                with self.assertRaises(le.LbuildEnvironmentPatchException):
+                    env.copy("folder", "dir", ignore=lbuild.utils.ignore_files("b.c"), patch="fix.patch")
+
     def test_should_patch_templated_file(self):
         env, _ = self._patch_environment(self._diff("template.c", first="1"))
         env.template("template.c.in", substitutions={"value": 1}, patch="fix.patch")
