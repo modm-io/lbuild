@@ -97,4 +97,63 @@ Value: build/parent-folder
 Inputs: [String]
 ```
 
-The complete lbuild command line interface is available with `lbuild -h`.
+You can also search the descriptions of all repositories, modules and options
+with one or more regular expressions:
+
+```
+ $ lbuild -r ../modm/repo.lb -D modm:target=stm32f407vgt search "DMA" "I2C"
+```
+
+
+## Global Arguments
+
+These arguments go before the command:
+
+- `-r`, `--repository REPO`: Add a repository file. Remote repositories are only
+  supported via the [configuration file](configuration.md#remote-repositories).
+- `-c`, `--config CONFIG`: Project configuration file (default: `project.xml`).
+- `-C`, `--cwd CWD`: Current working directory (default: `.`).
+- `-p`, `--path PATH`: Output path in which the library is generated
+  (default: CWD).
+- `-D`, `--option OPTION`: Set an option as `name=value`. Overwrites the
+  configuration file.
+- `--collect COLLECTOR`: Add a collector value as `name=value`.
+- `-v`, `--verbose`: Increase the log level, can be repeated (`-vvv`).
+- `--plain`: Disable styled output, only output plain ASCII.
+
+
+## Commands
+
+- `discover [NAME ...]`: Render the repository tree, or the descriptions of the
+  named nodes.
+    + `-n`, `--name NAME`: Same as passing `NAME` as positional argument.
+    + `-t`, `--tree`: Render the subtree of the named nodes instead.
+    + `--values`: Display the possible values of the named options.
+    + `--developer`: Show developer nodes like queries and collectors.
+- `discover-options`: Display all option names, values, inputs and short
+  descriptions. Use `-n NAME` to select specific options.
+- `search QUERY ...`: Search all descriptions for regular expressions and
+  render the matching nodes and lines.
+- `validate`: Validate the configuration and run the `validate(env)` steps.
+  This also shows warnings for deprecated APIs.
+    + `-m`, `--module MODULE`: Only validate specific modules.
+    + `--strict`: Treat logging warnings as errors.
+- `build`: Generate the library.
+    + `-m`, `--module MODULE`: Only build specific modules.
+    + `--simulate`: Build, but do not write any files. Prints out all generated
+      file names.
+    + `--symlink`: Symlink copied files instead of copying them. Be careful
+      editing them, since you are editing the files in the repository!
+    + `--no-log`: Do not write the build log next to the configuration file
+      (`project.xml.log`).
+- `clean`: Remove all files listed in the build log of the previous build. If
+  there is no build log, the files of a simulated build are removed.
+    + `--buildlog BUILDLOG`: Use a specific build log.
+- `init`: Clone the remote repositories into the cache folder.
+- `update`: Update the remote repositories in the cache folder.
+- `dependencies`: Generate a Graphviz representation of the module dependencies.
+    + `-m`, `--module MODULE`: Only show specific modules.
+    + `-n`, `--depth DEPTH`: Only show dependencies up to a specific depth.
+
+The complete lbuild command line interface is available with `lbuild -h` and
+`lbuild COMMAND -h`.

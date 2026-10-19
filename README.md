@@ -28,10 +28,10 @@ The dedicated maintainer of *lbuild* is [@salkinium][salkinium].
 
 
 [docs]: https://lbuild.modm.dev
-[modm]: https://modm.io/how-modm-works
+[modm]: https://modm.dev/how-modm-works
 [taproot]: https://github.com/uw-advanced-robotics/taproot
 [outpost]: https://github.com/DLR-RY/outpost-core
-[jinja2]: http://jinja.pocoo.org
+[jinja2]: https://jinja.palletsprojects.com
 [python]: https://www.python.org
 [pypi]: https://pypi.org/project/lbuild
 [salkinium]: https://github.com/salkinium

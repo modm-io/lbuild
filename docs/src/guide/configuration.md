@@ -29,6 +29,8 @@ which *lbuild* will search for in the current working directory.
   <options>
     <!-- Options are treated as key-value pairs -->
     <option name="repo:repo_option_name">value</option>
+    <!-- You can also use the value attribute -->
+    <option name="repo:other_option_name" value="value"/>
     <!-- An option set is the only one allowing multiple values -->
     <option name="repo:module:module_option_name">set, options, may, contain, commas</option>
   </options>
@@ -65,3 +67,34 @@ In the simplest case your project just `<extends>` this base config.
   <extends>repo:config-name</extends>
 </library>
 ```
+
+
+## Remote Repositories
+
+*lbuild* can clone repositories from Git into a cache folder, which defaults to
+`.lbuild_cache` next to the configuration file. Use `{cache}` in the repository
+path to reference the cache folder, which requires declaring it explicitly:
+
+```xml
+<library>
+  <repositories>
+    <cache>.lbuild_cache</cache>
+    <repository>
+      <vcs>
+        <git>
+          <!-- Folder name inside the cache folder -->
+          <name>modm</name>
+          <url>https://github.com/modm-io/modm.git</url>
+          <!-- Optionally check out a branch or a specific commit -->
+          <branch>develop</branch>
+          <!-- <commit>a1b2c3d</commit> -->
+        </git>
+      </vcs>
+      <path>{cache}/modm/repo.lb</path>
+    </repository>
+  </repositories>
+</library>
+```
+
+Call `lbuild init` to clone the repositories including their submodules, and
+`lbuild update` to fetch and fast-forward them to the latest changes.

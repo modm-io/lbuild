@@ -13,7 +13,7 @@ details for a workaround.
 ```python
 def prepare(module, options):
     # Move option in this module
-    module.add_module(Option(name="option"))
+    module.add_option(StringOption(name="option", description="Option"))
     # Forward the old option to the new option
     module.add_alias(Alias(name="option-alias",
                            destination="option",
@@ -24,7 +24,7 @@ def prepare(module, options):
                            description="Removed. Workaround: ..."))
     # You alias any type to any other node.
     module.add_alias(Alias(name="submodule-alias",
-                           destination=":other-module:submodule"
+                           destination=":other-module:submodule",
                            description="Removed. Workaround: ..."))
 
 def build(env):
@@ -35,5 +35,5 @@ def build(env):
     # This will raise an exception with the alias description
     value = env[":module:removed-alias"]
     # will check for :other-module:submodule instead
-    value = env.has_module[":module:submodule-alias"]
+    value = env.has_module(":module:submodule-alias")
 ```

@@ -26,6 +26,10 @@ def post_build(env):
     unique_values = env.collector_values(":module:collector")
     # get all values from all operations, even duplicates!
     all_values = env.collector_values(":module:collector", unique=False)
+    # Raises an exception if the collector doesn't exist, for example because
+    # its module is not built. A default value is returned instead, if the
+    # collector doesn't exist or has no values.
+    values = env.collector_values(":module:collector", default=[])
 ```
 
 Note that the ordering of values is preserved only relative to the order they
@@ -72,9 +76,9 @@ manually, and possibly de-duplicating and reordering the values yourself.
 
 ```python
 def post_build(env):
-    # Get the collector, may return None if collector does not exist!
-    collector = env.collector(":module:collector")
-    if collector is not None:
+    # Get the collector, raises an exception if the collector does not exist!
+    if env.has_collector(":module:collector"):
+        collector = env.collector(":module:collector")
         for operation, values in collector.items():
             # values is a list and may contain duplicates
             print(operation.module, values)

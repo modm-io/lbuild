@@ -69,14 +69,15 @@ The `repo.lb` file is compiled by *lbuild* and the two functions `init`,
 def init(repo):
     repo.name = "repo"
     repo.add_option(EnumerationOption(name="option",
+                                      description="Repository option",
                                       enumeration=["value", "special"],
                                       default="value"))
 
 def prepare(repo, options):
-    repo.find_modules_recursive("src")
+    repo.add_modules_recursive("src")
 ```
 
-This gives the repository a name and declares a string option. The prepare step
+This gives the repository a name and declares an enumeration option. The prepare step
 adds all module files in the `src/` folder.
 
 Each `module.lb` file is then compiled by *lbuild*, and the three functions
@@ -88,7 +89,9 @@ def init(module):
 
 def prepare(module, options):
     if options["repo:option"] == "special":
-        module.add_option(EnumerationOption(name="option", enumeration=[1, 2, 3, 4, 5]))
+        module.add_option(EnumerationOption(name="option",
+                                            description="Number of templates",
+                                            enumeration=[1, 2, 3, 4, 5]))
         return True
     return False
 
@@ -127,10 +130,10 @@ Continue with the [command line interface](guide/cli.md) and the
 [reference](reference/files.md) with examples from [the modm repository][modm].
 
 
-[modm]: https://modm.io/how-modm-works
+[modm]: https://modm.dev/how-modm-works
 [taproot]: https://github.com/uw-advanced-robotics/taproot
 [outpost]: https://github.com/DLR-RY/outpost-core
-[jinja2]: http://jinja.pocoo.org
+[jinja2]: https://jinja.palletsprojects.com
 [python]: https://www.python.org
 [pypi]: https://pypi.org/project/lbuild
 [salkinium]: https://github.com/salkinium

@@ -16,10 +16,12 @@ See [Modules](module.md) for the validate step and
 # The build step can do everything the validation step can
 # But now you can finally generate files
 def build(env):
-    # Set the output base path, this is relative to the lbuild invocation path
+    # Set the output base path, this is relative to the output path, which
+    # defaults to the current working directory (see `lbuild -p` and `<outpath>`)
     env.outbasepath = "repo/module"
 
-    # Copy single files
+    # Copy single files, the source path is relative to the module file.
+    # You can only copy files from inside your repository.
     env.copy("file.hpp")
     # Copy single files while renaming them
     env.copy("file.hpp", "cool_filename.hpp")
@@ -44,15 +46,20 @@ def build(env):
     env.extract("archive.zip", dest="renamed/") # extract into folder
     # You can extract only parts of the archive, like a single file
     env.extract("archive.zip", src="filename.hpp", dest="renamed.hpp")
-    # or an a single folder somewhere in the archive
-    env.extract("archive.zip", src="folder/subfolder", dest="renamed/folder")
+    # or a single folder somewhere in the archive. Note that folders inside the
+    # archive must end with a `/`!
+    env.extract("archive.zip", src="folder/subfolder/", dest="renamed/folder")
     # of course, you can ignore files and folders inside the archive too
-    env.extract("archive.zip", src="folder", dest="renamed", ignore=env.ignore_files("*.txt"))
+    env.extract("archive.zip", src="folder/", dest="renamed", ignore=env.ignore_files("*.txt"))
+
+    # All file operations return a set of build log operations, which you can
+    # use to attach collector values to specific files, see Collectors.
+    operations = env.copy("folder/")
 
     # Set the global Jinja2 substitutions dictionary
     env.substitutions = {
         "hello": "world",
-        "instances": map(str, env["repo:instances"]),
+        "instances": list(map(str, env["repo:instances"])),
         "build_data": build_data, # from validation step
     }
     # and generate a file from a template
@@ -60,7 +67,8 @@ def build(env):
     # any `.in` postfix is automatically removed, unless you rename it
     for instance in env["repo:instances"]:
         env.template("template.hpp.in", "template_{}.hpp".format(instance))
-    # You can explicitly add Jinja2 substitutions and filters
+    # You can explicitly add Jinja2 substitutions and filters.
+    # Note: `env.substitutions` overwrite substitutions of the same name!
     env.template("template.hpp.in",
                  substitutions={"more": "subs"},
                  filters={"stringify": lambda i: str(i)})
@@ -69,13 +77,39 @@ def build(env):
     env.template("template.hpp.in", patch="fix_template.patch")
 
     # submodules are build first, so you can access the generated files
-    headers = env.get_generated_local_files(lambda file: file.endswith(".hpp"))
+    # These paths are relative to `env.outbasepath`.
+    headers = env.generated_local_files(lambda file: file.endswith(".hpp"))
     # and use this information for a new template.
     env.template("module_header.hpp.in", substitutions={"headers": headers})
 
     # Add values to a collector, all these are type checked
     env.collect("::include_path", "repo/must_be_valid_path/", "repo/folder2/")
 ```
+
+
+## Paths
+
+The environment provides helpers to relocate paths, which is useful for
+passing paths to generated build system files:
+
+```python
+def build(env):
+    env.outbasepath = "repo/module"
+    # Absolute path inside the output path including `env.outbasepath`
+    env.real_outpath("file.hpp")                # /abs/outpath/repo/module/file.hpp
+    env.real_outpath("file.hpp", basepath=".")  # /abs/outpath/file.hpp
+    # Path relative to the output path or to a folder inside it
+    env.relative_outpath("repo/module/file.hpp", "repo")   # module/file.hpp
+    # Absolute path inside the output path ignoring `env.outbasepath`
+    env.cwdoutpath("build")                     # /abs/outpath/build
+    # Path inside the output path relative to the current working directory
+    env.relcwdoutpath("build")                  # outpath/build
+    # Absolute path inside the current working directory
+    env.cwdpath("project.xml")                  # /abs/cwd/project.xml
+```
+
+To reference files in the repository or module folder use the global
+`localpath()` and `repopath()` functions, see [Files](files.md).
 
 
 ## Patching Generated Files
@@ -171,14 +205,14 @@ def post_build(env):
     operations = env.buildlog.operations_per_module("repo:module")
 
     # iterate over all operations directly
-    for operation in buildlog:
+    for operation in env.buildlog:
         # Get the module name that generated this file
         env.log.info("Module({}) generated the '{}' file"
                      .format(operation.module, operation.filename))
         # You can also get the filename relative to a subfolder in outpath
-        env.relative_output(operation.filename, "subfolder/")
+        env.relative_outpath(operation.filename, "subfolder/")
         # or as an absolute path
-        env.real_output(operation.filename, "subfolder/")
+        env.real_outpath(operation.filename, "subfolder/")
 
     # get all include paths from all active modules
     include_paths = env.collector_values("::include_path")

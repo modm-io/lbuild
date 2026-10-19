@@ -55,15 +55,15 @@ Use whatever markup you want, lbuild treats it all as text.
     # NOTE: the configuration is namespaced with the repository! <extends>repo:config</extends>
     repo.add_configuration(Configuration(name="config",
                                          description="Special Config",
-                                         path="path/to/config.xml")
+                                         path="path/to/config.xml"))
     # You can also add configuration versions
     repo.add_configuration(Configuration(name="config2",
                                          description="Versioned Config",
                                          path={"v1": "path/to/config_v1.xml",
-                                               "v2": "path/to/config_v2.xml"})
+                                               "v2": "path/to/config_v2.xml"}))
 
     # See Options for more option types
-    repo.add_option(StringOption(name="option", default="value"))
+    repo.add_option(StringOption(name="option", description="Option", default="value"))
 
 
 def prepare(repo, options):

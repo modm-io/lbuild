@@ -27,6 +27,8 @@ wrap the option into a set using `module.add_set_option()`:
 def prepare(module, options):
     # Add an option, but allow a set of unique values as input and output
     module.add_set_option(option)
+    # You can also give the set a default value as a list or a comma-separated string
+    module.add_set_option(option, default=["value", 1])
 
 def build(env):
     # a unique set of option values is returned here
@@ -132,8 +134,8 @@ option = PathOption(name="option-name",
 
 ## BooleanOption
 
-This option maps strings from `true`, `yes`, `1`, `enable` to `bool(True)` and
-`false`, `no`, `0`, `disable` to `bool(False)`. You can extend this list with a
+This option maps strings from `true`, `yes`, `1`, `enable`, `enabled` to
+`bool(True)` and `false`, `no`, `0`, `disable`, `disabled` to `bool(False)`. You can extend this list with a
 custom transform handler. The dependency handler is passed this `bool` value.
 
 ```python
@@ -179,7 +181,8 @@ This option maps a string to any generic Python object.
 You can provide a list, set, tuple or range, the only limitation is that
 the objects must be convertible to a string for unique identification.
 If this is not possible, you can provide a dictionary with a manual mapping
-from string to object. The dependency handler is passed the string value.
+from string to object, or a Python `enum.Enum` class, which maps the member names
+to their values. The dependency handler is passed the string value.
 
 ```python
 option = EnumerationOption(name="option-name",
@@ -188,6 +191,8 @@ option = EnumerationOption(name="option-name",
                            enumeration=["value", 1, obj],
                            # or use a dictionary explicitly
                            enumeration={"value": "value", "1": 1, "obj": obj},
+                           # or use an enum.Enum class
+                           enumeration=MyEnum,
                            default="1",
                            dependencies=add_option_dependencies)
 ```

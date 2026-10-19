@@ -12,9 +12,10 @@ def prepare(module, options):
     module.add_query(query)
 
 def build(env):
-    exists = env.has_query(":module:query")
-    # Access query value or use default if query doesn't exist
-    data = env.query(":module:query", default="value")
+    # Only queries of modules that are built are available
+    if env.has_query(":module:query"):
+        # Access the query value, raises an exception if the query doesn't exist
+        data = env.query(":module:query")
 ```
 
 *Note that queries must be stateless (aka. a pure function), since module build

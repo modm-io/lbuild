@@ -7,13 +7,17 @@
   taking the repository options into consideration.
 - `validate(env)` (*optional*): validate your inputs before building anything.
 - `build(env)`: generate your library and add metadata to build log.
-- `post_build(env, buildlog)` (*optional*): access the build log after the build
+- `post_build(env)` (*optional*): access the build log after the build
   step completed.
 
 Module files are provided with these additional global classes:
 
 - `Module`: Base class for generated modules.
 - `ValidateException`: Exception to be raised when the `validate(env)` step fails.
+
+Accessing an option or query of another module via `env[...]` or `env.query(...)`
+logs a warning if your module does not depend on that module, since it may not
+be built. Use `lbuild validate --strict` to turn these warnings into errors.
 
 Note that in contrast to a repository, modules must return a boolean from the
 `prepare(module, options)` function, which indicates that the module is available
@@ -52,6 +56,9 @@ def init(module):
     # Add Jinja2 filters for this modules and all submodules
     # NOTE: the filter is namespace with the repository! {{ 65 | repo.character }} -> "A"
     module.add_filter("repo.character", lambda number: chr(number))
+    # Modules with a higher order are built after all modules with a lower
+    # order, see Execution Order. Default is 0.
+    module.order = 10000
 
 
 def prepare(module, options):
@@ -75,7 +82,7 @@ def prepare(module, options):
         def init(self, module):
             module.name = str(self.instance)
         def prepare(self, module, options):
-            pass
+            return True
         def validate(self, env): # optional
             pass
         def build(self, env):
@@ -91,7 +98,7 @@ def prepare(module, options):
         module.add_submodule(Instance(index))
 
     # See Options for more option types
-    module.add_option(StringOption(name="option", default="world"))
+    module.add_option(StringOption(name="option", description="Option", default="world"))
 
     def common_operation(args):
         """
@@ -123,7 +130,8 @@ def validate(env):
     # env.log.warning(...) and env.log.error(...) also available
     env.log.debug("Repo option: '{}'".format(repo_option))
 
-    # You can query for options
+    # You can check if a module is built or if an option exists. Only modules
+    # that are built and their options are visible to this check!
     if env.has_option("repo:module:option") or env.has_module("repo:module"):
         env.log.info("Module option: '{}'".format(env["repo:module:option"]))
 
