@@ -1,0 +1,92 @@
+site_name: 'lbuild'
+site_description: 'Generic, modular code generation in Python 3'
+site_author: 'Niklas Hauser'
+site_url: 'https://lbuild.modm.dev'
+
+# Repository
+repo_name: modm-io/lbuild
+repo_url: 'https://github.com/modm-io/lbuild'
+edit_uri: 'edit/develop/docs/src/'
+
+copyright: 'Copyright &copy 2017-<script>document.write(new Date().getFullYear())</script> Niklas Hauser & lbuild authors'
+
+docs_dir: 'src'
+site_dir: 'site'
+
+theme:
+  name: 'material'
+  palette:
+    # Light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+    # Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
+  font:
+    text: 'Ubuntu'
+    code: 'Roboto Mono'
+  language: en
+  features:
+    - navigation.tabs
+
+extra:
+  social:
+    - icon: fontawesome/brands/github-alt
+      link: https://github.com/modm-io
+
+markdown_extensions:
+  - markdown.extensions.admonition
+  - markdown.extensions.codehilite:
+      guess_lang: false
+  - markdown.extensions.def_list
+  - markdown.extensions.footnotes
+  - markdown.extensions.meta
+  - markdown.extensions.toc:
+      permalink: true
+  - pymdownx.arithmatex
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.critic
+  - pymdownx.details
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+nav:
+  - Home:
+    - Introduction: index.md
+  - Guide:
+    - Installation: guide/installation.md
+    - Command Line Interface: guide/cli.md
+    - Configuration: guide/configuration.md
+  - Reference:
+    - Files: reference/files.md
+    - Repositories: reference/repository.md
+    - Modules: reference/module.md
+    - Environment: reference/environment.md
+    - Options: reference/options.md
+    - Queries: reference/queries.md
+    - Collectors: reference/collectors.md
+    - Aliases: reference/aliases.md
+    - Jinja2 Configuration: reference/jinja2.md
+    - Name Resolution: reference/name-resolution.md
+    - Execution Order: reference/execution-order.md
+  - Development:
+    - Conventions: conventions.md

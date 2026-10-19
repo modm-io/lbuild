@@ -32,4 +32,10 @@ upload: dist
 uninstall:
 	@pip3 uninstall -y lbuild
 
-.PHONY : test dist install uninstall upload
+docs:
+	@cd docs && mkdocs build --strict
+
+docs-serve:
+	@cd docs && mkdocs serve
+
+.PHONY : test dist install uninstall upload docs docs-serve
