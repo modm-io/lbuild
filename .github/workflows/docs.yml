@@ -1,0 +1,54 @@
+name: Build and deploy docs
+
+on:
+  pull_request:
+  push:
+    branches:
+      - develop
+      - develop-**
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: Install MkDocs
+        run: |
+          python -m pip install --upgrade pip
+          pip install "mkdocs<2" mkdocs-material
+          mkdocs --version
+      - name: Build Homepage
+        run: |
+          make docs
+      - name: Upload Homepage Documentation
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-homepage-test
+          path: docs/site
+      - name: Upload Homepage for GitHub Pages
+        if: github.event_name == 'push'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs/site
+
+  deploy:
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
