@@ -10,6 +10,12 @@ add aliases that do not have a destination and will raise an exception with the
 alias description. This allows you to remove lbuild nodes while providing
 details for a workaround.
 
+An alias to a module also redirects everything below it, so moving a module
+only needs one alias for the module itself: with an alias from `:old` to
+`:new:place`, the name `:old:submodule:option` resolves to
+`:new:place:submodule:option`. This includes selecting the module by its old
+name in the project configuration.
+
 ```python
 def prepare(module, options):
     # Move option in this module

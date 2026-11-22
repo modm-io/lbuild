@@ -132,7 +132,8 @@ class NameResolver:
             warning = "Node '{}' has been moved to '{}'!\n\n{}\n\n".format(
                     le._hl(alias.fullname), le._hl(alias._destination), alias.description)
             try:
-                node = context_resolver._get_node(node._destination)
+                node = context_resolver._get_node(node._destination, raise_on_fail=raise_on_fail)
+                if node is None: return None;
                 warning += node.description + "\n"
             except le.LbuildException as e:
                 LOGGER.warning(warning)
@@ -454,10 +455,31 @@ class BaseNode(anytree.Node):
             modules = cache[query] = self._resolve_uncached(query)
         return list(modules) if modules else default
 
+    def _redirect_alias(self, query):
+        """Rewrite a query that passes *through* a moved node to its destination."""
+        parts = query.split(":")
+        node = self.root
+        start = 0 if node._type == self.Type.PARSER else 1
+        if start and parts[0] != node.name:
+            return query
+        for index, part in enumerate(parts[start:], start):
+            node = next((c for c in node.children if c.name == part), None)
+            if node is None:
+                break
+            if node.type == self.Type.ALIAS and node._destination and index + 1 < len(parts):
+                if node._print_warning:
+                    LOGGER.warning("Node '{}' has been moved to '{}'!\n\n{}\n".format(
+                            le._hl(node.fullname), le._hl(node._destination), node.description))
+                    node._print_warning = False
+                destination = node.parent._fill_partial_name(node._destination.split(":"))
+                return self._redirect_alias(":".join(destination + parts[index + 1:]))
+        return query
+
     def _resolve_uncached(self, query):
         # :*   -> non-recursive
         # :**  -> recursive
-        query = ":".join(p if p else "*" for p in query.strip().split(":"))
+        query = self._redirect_alias(query.strip())
+        query = ":".join(p if p else "*" for p in query.split(":"))
         try:
             qquery = ":" + query.replace(":**", "")
             if self.root._type == self.Type.PARSER:

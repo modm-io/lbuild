@@ -135,5 +135,113 @@ class ResolverTest(unittest.TestCase):
         self.assertEqual(self.config2, resolver["repo1:config2"])
 
 
+class AliasRedirectTest(unittest.TestCase):
+
+    def setUp(self):
+        self.parser = lbuild.parser.Parser()
+        repoinit = lbuild.repository.RepositoryInit(None, ".")
+        repoinit.name = "repo"
+        self.repo = lbuild.repository.Repository(repoinit)
+        self.repo.parent = self.parser
+
+        inits = []
+        for parent, name in (("repo", "new"), ("repo:new", "sub")):
+            init = lbuild.module.ModuleInit(self.repo, "./module.lb")
+            init.parent, init.name, init.available = parent, name, True
+            inits.append(init)
+        self.new, self.sub = lbuild.module.build_modules(inits)
+        self.sub.add_child(NumericOption("opt", "", default=42))
+
+        self.repo.add_child(Alias("old", "Use new.", destination=":new"))
+        self.repo.add_child(Alias("older", "Use old.", destination=":old"))
+        self.repo.add_child(Alias("missing", "Gone.", destination=":nope"))
+        self.repo.add_child(Alias("removed", "Removed."))
+
+    def test_should_redirect_option_below_alias(self):
+        with self.assertLogs("lbuild.node", "WARNING"):
+            resolver = self.sub.option_value_resolver
+            self.assertEqual(42, resolver["repo:old:sub:opt"])
+            self.assertEqual(42, resolver[":old:sub:opt"])
+
+    def test_should_redirect_module_below_alias(self):
+        with self.assertLogs("lbuild.node", "WARNING"):
+            self.assertEqual(self.sub, self.new.module_resolver["repo:old:sub"])
+
+    def test_should_redirect_through_alias_chain(self):
+        with self.assertLogs("lbuild.node", "WARNING") as logs:
+            self.assertEqual(self.sub, self.new.module_resolver["repo:older:sub"])
+        self.assertEqual(2, len(logs.output))
+
+    def test_should_warn_once_per_alias(self):
+        with self.assertLogs("lbuild.node", "WARNING") as logs:
+            resolver = self.sub.option_value_resolver
+            resolver["repo:old:sub:opt"]
+            resolver["repo:old:sub:opt"]
+            self.new.module_resolver["repo:old:sub"]
+        self.assertEqual(1, len(logs.output))
+        self.assertIn("Use new.", logs.output[0])
+
+    def test_should_not_redirect_below_removed_alias(self):
+        with self.assertRaises(le.LbuildResolverNoMatchException):
+            self.new.module_resolver["repo:removed:sub"]
+
+    def test_should_not_redirect_other_repository(self):
+        repoinit = lbuild.repository.RepositoryInit(None, ".")
+        repoinit.name = "repo"
+        repo = lbuild.repository.Repository(repoinit)
+        repo.add_child(Alias("old", "", destination=":new"))
+        self.assertEqual("other:old:sub", repo._redirect_alias("other:old:sub"))
+
+    def test_contains_should_be_false_for_unusable_destination(self):
+        logging.disable(logging.WARNING)
+        resolver = self.new.module_resolver
+        self.assertNotIn("repo:missing", resolver)
+        self.assertIsNone(resolver.get("repo:missing"))
+        self.assertIn("repo:old", resolver)
+
+        self.new._selected = False
+        self.assertNotIn("repo:old", resolver)
+        self.assertIsNone(resolver.get("repo:old"))
+        logging.disable(logging.NOTSET)
+
+    def test_should_raise_for_unusable_destination(self):
+        logging.disable(logging.WARNING)
+        with self.assertRaises(le.LbuildResolverNoMatchException):
+            self.new.module_resolver["repo:missing"]
+        self.new._selected = False
+        with self.assertRaises(le.LbuildResolverSearchException):
+            self.repo.module_resolver["repo:old"]
+        logging.disable(logging.NOTSET)
+
+    def test_find_modules_should_follow_alias(self):
+        with self.assertLogs("lbuild.node", "WARNING"):
+            self.assertEqual([self.new], self.parser.find_modules("repo:old"))
+            self.assertEqual([self.new], self.parser.find_modules("repo:older"))
+            self.assertEqual([self.sub], self.parser.find_modules("repo:old:sub"))
+
+    def test_find_modules_should_select_unselected_destination(self):
+        logging.disable(logging.WARNING)
+        self.new._selected = False
+        self.assertEqual([self.new], self.parser.find_modules("repo:old"))
+        logging.disable(logging.NOTSET)
+
+    def test_find_modules_should_raise_for_missing_destination(self):
+        logging.disable(logging.WARNING)
+        with self.assertRaises(le.LbuildResolverNoMatchException):
+            self.parser.find_modules("repo:missing")
+        logging.disable(logging.NOTSET)
+
+    def test_find_modules_wildcard_should_skip_missing_destination(self):
+        logging.disable(logging.WARNING)
+        self.assertEqual([self.new], self.parser.find_modules("repo:*"))
+        self.assertCountEqual([self.new, self.sub], self.parser.find_modules("repo:old:**"))
+        logging.disable(logging.NOTSET)
+
+    def test_find_any_without_types_should_keep_alias(self):
+        nodes = self.parser.find_any("repo:old")
+        self.assertEqual(1, len(nodes))
+        self.assertEqual(Alias, type(nodes[0]))
+
+
 if __name__ == '__main__':
     unittest.main()

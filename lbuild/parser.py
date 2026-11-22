@@ -20,7 +20,7 @@ import lbuild.environment
 
 import lbuild.exception as le
 
-from .node import BaseNode
+from .node import BaseNode, NameResolver
 from .config import ConfigNode
 from .facade import BuildLogFacade
 from .buildlog import BuildLog
@@ -259,7 +259,13 @@ class Parser(BaseNode):
             result = self._resolve_partial(query, None)
             if result is None:
                 raise le.LbuildParserNodeNotFoundException(self, query, types)
-            nodes |= set(result)
+            if types:
+                # Follow moved nodes, wildcards skip destinations that do not exist
+                resolver = NameResolver(self, set(utils.listify(types)), selected=False)
+                result = [resolver._get_node(n.fullname, raise_on_fail="*" not in query)
+                          if n.type == self.Type.ALIAS and n._destination else n
+                          for n in result]
+            nodes |= set(result) - {None}
         if types:
             types = utils.listify(types)
             nodes = [n for n in nodes if any(n.type == t for t in types)]
